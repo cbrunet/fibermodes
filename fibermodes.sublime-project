@@ -11,6 +11,7 @@
 		{
 			"name": "HTML documentation",
 			"shell_cmd": "make html",
+			"working_dir": "$project_path/doc/",
 			"selector": "text.restructuredtext",
 		},
 		{

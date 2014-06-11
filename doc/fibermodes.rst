@@ -1,8 +1,8 @@
 API Documentation
 =================
 
-Submodules list
----------------
+Modules list
+------------
 
 .. currentmodule:: fibermodes
 

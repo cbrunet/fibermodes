@@ -1,8 +1,4 @@
-'''
-Created on 2014-05-01
-
-@author: cbrunet
-'''
+"""Fiber mode representations, and utility functions."""
 
 from enum import Enum
 
@@ -15,7 +11,8 @@ class Mode(object):
 
     """Fiber mode representation.
 
-    The fiber mode consists of a mode family, and two mode parameters.
+    The fiber mode consists of a mode family, and two mode parameters
+    (*ν* and *m*).
 
     """
 
@@ -41,7 +38,7 @@ class Mode(object):
 
     @property
     def nu(self):
-        """ν parameter of the mode. It often corresponds to the parameter
+        """*ν* parameter of the mode. It often corresponds to the parameter
         of the radial Bessel functions.
 
         """
@@ -51,11 +48,17 @@ class Mode(object):
 
     @property
     def m(self):
-        """Radial order of the mode. It corresponds to the number of
-        concentric rings in the mode fields.
+        """(positive integer) Radial order of the mode.
+        It corresponds to the number of concentric rings in the mode fields.
 
         """
         return self._m
+
+    @m.setter
+    def m(self, mparam):
+        assert mparam > 0, "m must be a positive integer."
+        assert int(mparam) == mparam, "m must be a positive integer."
+        self._m = int(mparam)
 
     def __str__(self):
         return "{}({},{})".format(self.family.name, self.nu, self.m)
@@ -113,6 +116,45 @@ class SMode(Mode):
     def beta(self):
         """Propagation constant."""
         return self._fiber._wl.k0 * self._neff
+
+    def __eq__(self, m2):
+        return self.neff == m2.neff
+
+    def __ne__(self, m2):
+        return self.neff != m2.neff
+
+    def __lt__(self, m2):
+        return self.neff < m2.neff
+
+    def __le__(self, m2):
+        return self.neff <= m2.neff
+
+    def __ge__(self, m2):
+        return self.neff >= m2.neff
+
+    def __gt__(self, m2):
+        return self.neff > m2.neff
+
+
+def sortModes(modes):
+    """Sort :class:`list` of :class:`SMode`, *in-place* (list is modified).
+
+    Modes are sorted from highest to lowest effective index.
+    *m* parameters of the modes are adjusted.
+
+    :param modes: Unsorted :class:`list` of :class:`~fibermodes.mode.SMode`
+                  (solved mode) object.
+    :rtype: Sorted :class:`list` of :class:`~fibermodes.mode.SMode`
+            (solved mode) object.
+
+    """
+    modes.sort(reverse=True)
+    mparams = {}
+    for i, m in enumerate(modes):
+        key = (m.family, m.nu)
+        mval = mparams.get(key, 0) + 1
+        modes[i].m = mparams[key] = mval
+    return modes
 
 
 if __name__ == '__main__':

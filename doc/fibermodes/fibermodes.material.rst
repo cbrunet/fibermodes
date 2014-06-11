@@ -3,20 +3,14 @@ fibermodes.material
 
 .. automodule:: fibermodes.material
 
-   
-   
-   
 
-   
-   
-   .. rubric:: Classes
+Submodules list
+---------------
 
-   .. autosummary::
-   
-      Fixed
-   
-   
+.. currentmodule:: fibermodes.material
 
-   
-   
-   
+.. autosummary::
+  :toctree:
+
+  fixed
+  material
