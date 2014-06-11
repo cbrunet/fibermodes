@@ -1,0 +1,30 @@
+{
+	"folders":
+	[
+		{
+			"follow_symlinks": true,
+			"path": "."
+		}
+	],
+	"build_systems":
+	[
+		{
+			"name": "HTML documentation",
+			"shell_cmd": "make html",
+			"selector": "text.restructuredtext",
+		},
+		{
+			"name": "Python",
+			"selector": "source.python",
+			"shell_cmd": "python3 -u \"$file\"",
+			"file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
+
+			"variants": [
+				{
+					"shell_cmd": "python3 -u \"$project_path/runtests.py\"",
+					"name": "Run"
+				}
+			]
+		},
+	]
+}
