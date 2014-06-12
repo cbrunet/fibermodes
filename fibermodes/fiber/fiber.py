@@ -12,9 +12,14 @@ from ..mode import Mode, SMode, Family, sortModes
 
 class Fiber(object):
 
-    '''
-    classdocs
-    '''
+    """This class represents a Fiber, at a given wavelength.
+
+    This is the basis object used to solve for modes.
+
+    :param wl: :class:`~fibermodes.wavelength.Wavelength` object.
+    :param `*args`: variable number of tuples (material, radium, mat_params)
+
+    """
 
     def __init__(self, wl, *args):
         '''
@@ -36,21 +41,67 @@ class Fiber(object):
             self._n[i] = args[i][0].n(self._wl, *args[i][2:])
             self._params.append(args[i][2:])
 
+    def _findBracket(self, mode, fct,
+                     a, b=None, c=None, delta=1e-6):
+        if c is None:
+            if b is None:
+                b = a
+                a = self._n.min()
+                c = self._n.max()
+            else:
+                c = b
+                b = None
+
+        if b is None:  # From bounds to middle
+            s = (fct(c, mode) > 0)
+            n = 1
+            d = c - a
+            sc = (fct(a, mode) > 0)
+            while sc == s:
+                n *= 2
+                d /= 2
+                if d < delta:
+                    raise OverflowError("Cannot find root in given interval.")
+                for i in range(n-1, 0, -2):  # only odd indices, since we
+                                             # already tried the others
+                    b = a + i * d
+                    sc = (fct(b, mode) > 0)
+                    if sc != s:
+                        a = b
+                        c = b + d
+                        break
+            return (a, c)
+
+        else:  # From point to exterior
+            s = (fct(b, mode) > 0)
+            d = 0
+            for n in count(1):
+                d += delta
+                if b + d < c:
+                    if (fct(b + d, mode) > 0) != s:
+                        return (b + d - delta, b + d)
+                elif b - d < a:
+                    break
+                if b - d > a:
+                    if (fct(b - d, mode) > 0) != s:
+                        return (b - d, b - d + delta)
+
+        raise OverflowError("Cannot find root in given interval.")
+
     def solve(self, mode, bound=None, delta=1e-6, epsilon=1e-12):
         """Find root of characteristic equation inside given bound.
 
         It tries to find the first root from the highest index.
         However, it is not guaranteed that the found root is the first root.
         This function does not take into account the *m* parameter of
-        the mode. You need to provide the right interval in order to get
-        the right solution.
+        the mode. You need to provide the right starting point or interval
+        in order to get the right solution.
 
         :class:`OverflowError` is risen if no root is found.
 
         :param mode: :class:`~fibermodes.mode.Mode` object.
-        :param bound: interval (min, max) where to search, or *None*.
-                      If *None*, it will search between min and max index
-                      of the fiber.
+        :param bound: hint to help root search. Can be *None*, start,
+                      (min, max), or (min, start, max).
         :param delta: minimal interval to look in.
         :type delta: float
         :param epsilon: precision for root finding.
@@ -62,34 +113,25 @@ class Fiber(object):
         fct = self._ceq(mode)
 
         if bound is None:
-            bound = [self._n.min() + epsilon, self._n.max() - epsilon]
+            a = self._n.min() + epsilon
+            b = None
+            c = self._n.max() - epsilon
         else:
-            bound = list(bound)
+            try:
+                a = float(bound)
+                b = c = None
+            except TypeError:
+                a = bound[0]
+                b = bound[1] if len(bound) > 1 else None
+                c = bound[2] if len(bound) > 2 else None
+        a, b = self._findBracket(mode, fct, a, b, c, delta=delta)
 
-        s = 1 if fct(bound[1], mode) > 0 else -1
-        n = 1
-        d = bound[1] - bound[0]
-        sc = 1 if fct(bound[0], mode) > 0 else -1
-        while sc == s:
-            n *= 2
-            d /= 2
-            if d < delta:
-                raise OverflowError("Did not found root in given interval.")
-            for i in range(n-1, 0, -2):  # only odd indices, since we
-                                         # already tried the others
-                b = bound[0] + i * d
-                sc = 1 if fct(b, mode) > 0 else -1
-                if sc != s:
-                    bound[0] = b
-                    bound[1] = b + d
-                    break
-
-        neff = brentq(fct, bound[0], bound[1], args=(mode,), xtol=epsilon)
-        if bound[0] < neff < bound[1]:
+        neff = brentq(fct, a, b, args=(mode,), xtol=epsilon)
+        if a <= neff <= b:
             return SMode(self, mode, neff)
         raise OverflowError("Did not found root in given interval.")
 
-    def solveAll(self, mode, delta=1e-6, epsilon=1e-12):
+    def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None):
         """Find all the modes in a given family with a given *ν*.
 
         :param mode: :class:`~fibermodes.mode.Mode` object.
@@ -97,6 +139,7 @@ class Fiber(object):
         :type delta: float
         :param epsilon: precision for root finding.
         :type epsilon: float
+        :param nmax: maximum number of modes to search.
         :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
                 (solved mode) object.
                 Return empty :class:`list` if no mode is found.
@@ -110,6 +153,8 @@ class Fiber(object):
                                    (b[0] + epsilon, b[1] - epsilon),
                                    delta, epsilon)
                 modes.append(smode)
+                if nmax and len(modes) == nmax:
+                    break
                 bounds.append((b[0], smode.neff))
                 bounds.append((smode.neff, b[1]))
             except OverflowError:
@@ -161,47 +206,31 @@ class Fiber(object):
         modes = []
         if lpModes:
             for mode in lpModes:
-                # 5 is arbitrary. Try to find an optimal algorithm to
-                # search for optimal bound
-                bound = (mode.neff - 5 * delta, mode.neff + 5 * delta)
-                if mode.nu == 0:
-                    try:
-                        smode = self.solve(Mode(Family.HE, 1, mode.m),
-                                           bound, delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
-                elif mode.nu == 1:
+                try:
+                    smode = self.solve(Mode(Family.HE,
+                                            mode.nu + 1, mode.m),
+                                       mode.neff, delta, epsilon)
+                    modes.append(smode)
+                except OverflowError:
+                    pass
+                if mode.nu == 1:
                     try:
                         smode = self.solve(Mode(Family.TE, 0, mode.m),
-                                           bound, delta, epsilon)
+                                           mode.neff, delta, epsilon)
                         modes.append(smode)
                     except OverflowError:
                         pass
                     try:
                         smode = self.solve(Mode(Family.TM, 0, mode.m),
-                                           bound, delta, epsilon)
+                                           mode.neff, delta, epsilon)
                         modes.append(smode)
                     except OverflowError:
                         pass
-                    try:
-                        smode = self.solve(Mode(Family.HE, 2, mode.m),
-                                           bound, delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
-                else:
-                    try:
-                        smode = self.solve(Mode(Family.HE,
-                                                mode.nu + 1, mode.m),
-                                           bound, delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
+                elif mode.nu > 1:
                     try:
                         smode = self.solve(Mode(Family.EH,
                                                 mode.nu - 1, mode.m),
-                                           bound, delta, epsilon)
+                                           mode.neff, delta, epsilon)
                         modes.append(smode)
                     except OverflowError:
                         pass
