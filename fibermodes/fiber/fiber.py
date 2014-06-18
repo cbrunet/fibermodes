@@ -131,7 +131,8 @@ class Fiber(object):
             return SMode(self, mode, neff)
         raise OverflowError("Did not found root in given interval.")
 
-    def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None):
+    def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None,
+                 cladding=False):
         """Find all the modes in a given family with a given *ν*.
 
         :param mode: :class:`~fibermodes.mode.Mode` object.
@@ -140,12 +141,16 @@ class Fiber(object):
         :param epsilon: precision for root finding.
         :type epsilon: float
         :param nmax: maximum number of modes to search.
+        :param cladding: do we look for cladding modes too?
         :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
                 (solved mode) object.
                 Return empty :class:`list` if no mode is found.
         """
         modes = []
-        bounds = [(self._n.min(), self._n.max())]
+        n = list(nn for nn in sorted(self._n, reverse=True)
+                 if cladding or nn >= self._n[-1])
+        bounds = [(n[i+1], n[i]) for i in range(len(n)-1)]
+        # bounds = [(self._n.min(), self._n.max())]
         while bounds:
             b = bounds.pop(0)
             try:
@@ -167,13 +172,14 @@ class Fiber(object):
     def cutoff(self, mode):
         pass
 
-    def lpModes(self, delta=1e-6, epsilon=1e-12):
+    def lpModes(self, delta=1e-6, epsilon=1e-12, cladding=False):
         """Find all scalar (lp) modes of the fiber.
 
         :param delta: minimal interval to look in.
         :type delta: float
         :param epsilon: precision for root finding.
         :type epsilon: float
+        :param cladding: do we look for cladding modes too?
         :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
                 (solved mode) object.
                 Return empty :class:`list` if no mode is found.
@@ -181,14 +187,15 @@ class Fiber(object):
         """
         modes = []
         for nu in count():
-            lpModes = self.solveAll(Mode(Family.LP, nu, 1), delta, epsilon)
+            lpModes = self.solveAll(Mode(Family.LP, nu, 1),
+                                    delta, epsilon, cladding)
             if not lpModes:
                 break
             modes += lpModes
         modes.sort(reverse=True)
         return modes
 
-    def vModes(self, lpModes=None, delta=1e-6, epsilon=1e-12):
+    def vModes(self, lpModes=None, delta=1e-6, epsilon=1e-12, cladding=False):
         """Find all vector (hybrid) modes of the fiber.
 
         :param lpModes: :class:`list` of :class:`~fibermodes.mode.SMode`.
@@ -198,6 +205,7 @@ class Fiber(object):
         :type delta: float
         :param epsilon: precision for root finding.
         :type epsilon: float
+        :param cladding: do we look for cladding modes too?
         :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
                 (solved mode) object.
                 Return empty :class:`list` if no mode is found.
@@ -235,16 +243,19 @@ class Fiber(object):
                     except OverflowError:
                         pass
         else:
-            modes += self.solveAll(Mode(Family.TE, 0, 1), delta, epsilon)
-            modes += self.solveAll(Mode(Family.TM, 0, 1), delta, epsilon)
+            modes += self.solveAll(Mode(Family.TE, 0, 1),
+                                   delta, epsilon, cladding)
+            modes += self.solveAll(Mode(Family.TM, 0, 1),
+                                   delta, epsilon, cladding)
             for nu in count(1):
-                heModes = self.solveAll(Mode(Family.HE, nu, 1), delta, epsilon)
+                heModes = self.solveAll(Mode(Family.HE, nu, 1),
+                                        delta, epsilon, cladding)
                 if not heModes:
                     break
                 modes += heModes
                 if nu > 2:
                     ehModes = self.solveAll(Mode(Family.EH, nu-2, 1),
-                                            delta, epsilon)
+                                            delta, epsilon, cladding)
                     if not ehModes:
                         break
                     modes += ehModes

@@ -99,7 +99,7 @@ class TestSSIF(unittest.TestCase):
         wl = Wavelength(0.6328e-6)
 
         fiber = fixedFiber(wl, [rho], [n1, n2])
-        modes = fiber.lpModes(delta=1e-4)
+        modes = fiber.lpModes(delta=1e-5)
 
         sols = {'LP(0,1)': 2.1845,
                 'LP(0,2)': 4.9966,
@@ -116,7 +116,6 @@ class TestSSIF(unittest.TestCase):
                 'LP(5,1)': 7.9096,
                 'LP(6,1)': 8.9390,
                 'LP(7,1)': 9.9451}
-
         self.assertEqual(len(modes), len(sols))
         for m in modes:
             name = str(m)

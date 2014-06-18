@@ -1,8 +1,8 @@
 """Fiber factory module."""
 
 from ..wavelength import Wavelength
-from .fiber import Fiber
 from .ssif import SSIF
+from .mlsif import MLSIF
 from ..material.fixed import Fixed
 
 
@@ -38,8 +38,8 @@ class Factory(list):
 
         if self.nlayers == 2 and n(0) > n(1):
             return SSIF(wl, *params)
-
-        return Fiber(wl, *params)
+        else:
+            return MLSIF(wl, *params)
 
 
 def fixedFiber(wl, r, n):
