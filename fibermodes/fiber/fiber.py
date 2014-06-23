@@ -43,14 +43,10 @@ class Fiber(object):
 
     def _findBracket(self, mode, fct,
                      a, b=None, c=None, delta=1e-6):
+        if a is None:
+            a = self._n.min()
         if c is None:
-            if b is None:
-                b = a
-                a = self._n.min()
-                c = self._n.max()
-            else:
-                c = b
-                b = None
+            c = self._n.max()
 
         if b is None:  # From bounds to middle
             s = (fct(c, mode) > 0)
@@ -101,7 +97,7 @@ class Fiber(object):
 
         :param mode: :class:`~fibermodes.mode.Mode` object.
         :param bound: hint to help root search. Can be *None*, start,
-                      (min, max), or (min, start, max).
+                      or (min, start, max).
         :param delta: minimal interval to look in.
         :type delta: float
         :param epsilon: precision for root finding.
@@ -118,17 +114,21 @@ class Fiber(object):
             c = self._n.max() - epsilon
         else:
             try:
-                a = float(bound)
-                b = c = None
+                b = float(bound)
+                a = c = None
             except TypeError:
                 a = bound[0]
-                b = bound[1] if len(bound) > 1 else None
-                c = bound[2] if len(bound) > 2 else None
+                b = bound[1]
+                c = bound[2]
+
         a, b = self._findBracket(mode, fct, a, b, c, delta=delta)
 
         neff = brentq(fct, a, b, args=(mode,), xtol=epsilon)
-        if a <= neff <= b:
-            return SMode(self, mode, neff)
+        if a <= neff <= b:  # Detect discontinuity
+            v0 = abs(fct(neff, mode))
+            if (abs(fct(neff-epsilon, mode)) >= v0 and
+                    abs(fct(neff+epsilon, mode)) >= v0):
+                return SMode(self, mode, neff)
         raise OverflowError("Did not found root in given interval.")
 
     def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None,
@@ -155,7 +155,7 @@ class Fiber(object):
             b = bounds.pop(0)
             try:
                 smode = self.solve(mode,
-                                   (b[0] + epsilon, b[1] - epsilon),
+                                   (b[0] + epsilon, None, b[1] - epsilon),
                                    delta, epsilon)
                 modes.append(smode)
                 if nmax and len(modes) == nmax:
@@ -238,7 +238,9 @@ class Fiber(object):
                     try:
                         smode = self.solve(Mode(Family.EH,
                                                 mode.nu - 1, mode.m),
-                                           mode.neff, delta, epsilon)
+                                           (self._n.min(),
+                                            mode.neff, smode.neff),
+                                           delta, epsilon)
                         modes.append(smode)
                     except OverflowError:
                         pass
@@ -259,8 +261,7 @@ class Fiber(object):
                     if not ehModes:
                         break
                     modes += ehModes
-        modes.sort(reverse=True)
-        return modes
+        return sortModes(modes)
 
     def _ceq(self, mode):
         M = {Family.LP: self._lpceq,

@@ -36,6 +36,11 @@ class Mode(object):
         """
         return self._family
 
+    @family.setter
+    def family(self, fam):
+        assert isinstance(fam, Family), "fam must be a Family item"
+        self._family = fam
+
     @property
     def nu(self):
         """*ν* parameter of the mode. It often corresponds to the parameter
@@ -151,7 +156,12 @@ def sortModes(modes):
     modes.sort(reverse=True)
     mparams = {}
     for i, m in enumerate(modes):
-        key = (m.family, m.nu)
+        key = (m.family, m.nu) if m.family != Family.EH else (Family.HE, m.nu)
+        if key[0] == Family.HE:
+            k2 = (Family.EH, m.nu)
+            if mparams.get(key, 0) != mparams.get(k2, 0):
+                key = k2
+            modes[i].family = key[0]
         mval = mparams.get(key, 0) + 1
         modes[i].m = mparams[key] = mval
     return modes
