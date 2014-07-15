@@ -25,8 +25,6 @@ class TestSSIF(unittest.TestCase):
         fiber = fixedFiber(wl, [4.5e-6], [1.448918, 1.444418])
         modes = fiber.vModes(delta=1e-4)
 
-        self.assertEqual(len(modes), 7)
-
         sols = [('HE(1,1)', 1.4479082),
                 ('TE(0,1)', 1.44643),
                 ('HE(2,1)', 1.446427),
@@ -34,6 +32,7 @@ class TestSSIF(unittest.TestCase):
                 ('EH(1,1)', 1.444673),
                 ('HE(3,1)', 1.444669),
                 ('HE(1,2)', 1.4444531)]
+        self.assertEqual(len(modes), len(sols))
         for i, (name, neff) in enumerate(sols):
             self.assertEqual(name, str(modes[i]))
             self.assertAlmostEqual(neff, modes[i].neff)
@@ -84,7 +83,6 @@ class TestSSIF(unittest.TestCase):
                 'EH(1,1)': 4.235,
                 'HE(3,1)': 4.507,
                 'HE(1,2)': 4.638}
-
         self.assertEqual(len(modes), len(sols))
         for m in modes:
             name = str(m)

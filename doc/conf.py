@@ -106,7 +106,8 @@ pygments_style = 'sphinx'
 
 autosummary_generate = True
 
-intersphinx_mapping = {'python': ('http://docs.python.org/3.4/', None)}
+intersphinx_mapping = {'python': ('http://docs.python.org/3.4/', None),
+                       'numpy': ('http://docs.scipy.org/doc/numpy/', None)}
 
 # -- Options for HTML output ----------------------------------------------
 

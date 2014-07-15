@@ -13,6 +13,7 @@ Modules list
     fiber
     material
     mode
+    simulator
     wavelength
 
 
@@ -31,6 +32,7 @@ Module contents
         FiberFactory
         ~fibermodes.mode.Mode
         ModeFamily
+        ~fibermodes.simulator.simulator.Simulator
         ~fibermodes.wavelength.Wavelength
 
     .. rubric:: Functions

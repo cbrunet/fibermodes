@@ -17,7 +17,7 @@
 		{
 			"name": "Python",
 			"selector": "source.python",
-			"shell_cmd": "python3 -u \"$file\"",
+			"shell_cmd": "PYTHONPATH=\"$project_path\" python3 -u \"$file\"",
 			"file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
 
 			"variants": [

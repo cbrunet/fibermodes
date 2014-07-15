@@ -34,7 +34,8 @@ class Factory(list):
         def n(i):
             return self[i].n(wl, *args[i][1:])
 
-        params = tuple(((self[i],) + args[i]) for i in range(self.nlayers))
+        params = tuple(((self[i],) + tuple(args[i]))
+                       for i in range(self.nlayers))
 
         if self.nlayers == 2 and n(0) > n(1):
             return SSIF(wl, *params)

@@ -27,6 +27,9 @@ class Mode(object):
         self._nu = nu
         self._m = m
 
+    def __hash__(self):
+        return hash((self._family, self._nu, self._m))
+
     @property
     def family(self):
         """Mode family.
@@ -122,11 +125,19 @@ class SMode(Mode):
         """Propagation constant."""
         return self._fiber._wl.k0 * self._neff
 
+    @property
+    def mode(self):
+        """Return (unsolved) mode object built from this solved mode."""
+        return Mode(self.family, self.nu, self.m)
+
     def __eq__(self, m2):
-        return self.neff == m2.neff
+        try:
+            return self.neff == m2.neff
+        except AttributeError:
+            return super() == m2
 
     def __ne__(self, m2):
-        return self.neff != m2.neff
+        return not self.neff == m2.neff
 
     def __lt__(self, m2):
         return self.neff < m2.neff
