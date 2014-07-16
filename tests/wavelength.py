@@ -13,7 +13,7 @@ class TestWavelength(unittest.TestCase):
     def test1550(self):
         w = Wavelength(1550e-9)
 
-        self.assertEqual(w(), 1550e-9)
+        self.assertEqual(w, 1550e-9)
         self.assertEqual(w.wavelength, 1550e-9)
         self.assertEqual(w.wl, 1550e-9)
 
@@ -74,28 +74,6 @@ class TestWavelength(unittest.TestCase):
         w = Wavelength(k0=4053667.940115862)
         self.assertAlmostEqual(w.wavelength, 1550e-9)
 
-    def testAssign(self):
-        w = Wavelength(1550e-9)
-        w.wavelength = 1550e-9
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.wl = 1550e-9
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.v = 193.41448903225806e12
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.frequency = 193.41448903225806e12
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.w = 1.215259075683131e15
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.omega = 1.215259075683131e15
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
-
-        w.k0 = 4053667.940115862
-        self.assertAlmostEqual(w.wavelength, 1550e-9)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
