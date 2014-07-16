@@ -44,12 +44,12 @@ class Wavelength(float):
     @property
     def k0(self):
         """Wave number."""
-        return tpi / self
+        return tpi / self if self != 0 else float("inf")
 
     @property
     def omega(self):
         """Radial frequency (in rad/s)."""
-        return c * tpi / self
+        return c * tpi / self if self != 0 else float("inf")
 
     w = omega
 
@@ -63,7 +63,7 @@ class Wavelength(float):
     @property
     def frequency(self):
         """Frequency (in Hertz)."""
-        return c / self
+        return c / self if self != 0 else float("inf")
 
     v = frequency
 
