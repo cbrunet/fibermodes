@@ -334,17 +334,19 @@ class Fiber(object):
             modes += self.solveAll(Mode(Family.TM, 0, 1),
                                    delta, epsilon, cladding=cladding)
             idxmax = None
+            nmax = None
             for nu in count(1):
                 heModes = self.solveAll(Mode(Family.HE, nu, 1),
                                         delta, epsilon, cladding=cladding,
-                                        idxmax=idxmax)
+                                        nmax=nmax, idxmax=idxmax)
                 if not heModes:
                     break
                 modes += heModes
+                nmax = heModes[-1].m
                 if nu > 2 and self._ehceq != self._heceq:
                     ehModes = self.solveAll(Mode(Family.EH, nu-2, 1),
                                             delta, epsilon, cladding=cladding,
-                                            idxmax=idxmax)
+                                            nmax=nmax, idxmax=idxmax)
                     if ehModes:
                         modes += ehModes
                 idxmax = heModes[0].neff
