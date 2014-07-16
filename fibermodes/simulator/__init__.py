@@ -7,3 +7,8 @@ for performing different kind of smulations; e.g. for running simulations
 in parallel using multiple processes, or even using MPI.
 
 """
+
+from .simulator import Simulator
+from .psimulator import PSimulator
+
+__all__ = ['Simulator', 'PSimulator']

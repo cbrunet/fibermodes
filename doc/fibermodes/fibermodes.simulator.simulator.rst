@@ -22,6 +22,8 @@ fibermodes.simulator.simulator
      ~Simulator.setRadius
      ~Simulator.setRadiusFct
      ~Simulator.setWavelength
+     ~Simulator.solveLP
+     ~Simulator.solveV
 
 
    .. rubric:: Class details

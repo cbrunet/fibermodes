@@ -121,6 +121,53 @@ class TestSSIF(unittest.TestCase):
                 u = wl.k0 * rho * sqrt(n1**2 - m.neff**2)
                 self.assertAlmostEqual(u, sols[name], 3)
 
+    def testCutoffLP(self):
+        n2 = 4
+        n1 = 5
+        rho = 1e-5 / 3
+        wl = Wavelength(1.55e-6)
+
+        fiber = fixedFiber(wl, [rho], [n1, n2])
+
+        sols = [(Mode('LP', 0, 1), 0),
+                (Mode('LP', 0, 2), 3.8317),
+                (Mode('LP', 0, 3), 7.0156),
+                (Mode('LP', 1, 1), 2.4048),
+                (Mode('LP', 1, 2), 5.5201),
+                (Mode('LP', 2, 1), 3.8317)]
+
+        for mode, V0 in sols:
+            self.assertAlmostEqual(fiber.cutoffV0(mode), V0, 4, msg=str(mode))
+
+    def testCutoffV(self):
+        """Values from Bures, Table 3.6."""
+        delta = 0.3
+        V = 5
+
+        wl = Wavelength(1.55e-6)
+        n2 = 1.444
+
+        n1 = sqrt(n2**2 / (1 - 2 * delta))
+        rho = V / (sqrt(n1**2 - n2**2) * wl.k0)
+
+        fiber = fixedFiber(wl, [rho], [n1, n2])
+
+        sols = [(Mode('TE', 0, 1), 2.4048),
+                (Mode('TM', 0, 1), 2.4048),
+                (Mode('HE', 1, 1), 0),
+                (Mode('EH', 1, 1), 3.8317),
+                (Mode('TE', 0, 2), 5.5201),
+                (Mode('TM', 0, 2), 5.5201),
+                (Mode('HE', 1, 2), 3.8317),
+                (Mode('EH', 1, 2), 7.0156),
+                (Mode('HE', 2, 1), 2.8526),
+                (Mode('EH', 2, 1), 5.1356),
+                (Mode('HE', 3, 1), 4.3423),
+                (Mode('EH', 2, 2), 8.4172)]
+
+        for mode, V0 in sols:
+            self.assertAlmostEqual(fiber.cutoffV0(mode), V0, 4, msg=str(mode))
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testSSIF']
     unittest.main()

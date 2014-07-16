@@ -77,7 +77,7 @@ class Fiber(object):
     def get(self, pname, *args):
         """Get fiber parameter from given parameter name.
 
-        Possible names are: 'wavelength', 'radius', and 'material'.
+        Possible names are: 'wavelength', 'radius', 'material', and 'value'.
 
         For 'wavelength', the optional second parameter is the wavelength
         conversion to apply ('wavelength', 'k0', 'omega', etc. *see*
@@ -88,8 +88,10 @@ class Fiber(object):
 
         For 'material', the third parameter is material parameter index.
 
+        For 'value', the second parameter is the value itself.
+
         :param pname: string representing the parameter ('wavelength',
-                      'radius', of 'material')
+                      'radius', 'material', or 'value')
         :rtype: float
         :raises: :class:`TypeError`
 
@@ -101,8 +103,10 @@ class Fiber(object):
             return self._r[args[0]]
         elif pname == 'material':
             return self._params[args[0]][args[1]]
+        elif pname == 'value':
+            return args[0]
         raise TypeError('pname must be wavelength, radius, '
-                        'or material, not"{}"'.format(pname))
+                        'material or value, not"{}"'.format(pname))
 
     def __getitem__(self, key):
         return self.get(*key)
@@ -244,8 +248,13 @@ class Fiber(object):
     def csolve(self, mode):
         pass
 
-    def cutoff(self, mode):
-        return 0
+    def cutoffWl(self, mode):
+        """Return the cutoff wavelength of given mode.
+
+        :param mode: :class:`~fibermodes.mode.Mode` object
+
+        """
+        raise NotImplementedError
 
     def lpModes(self, delta=1e-6, epsilon=1e-12, cladding=False):
         """Find all scalar (lp) modes of the fiber.

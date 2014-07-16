@@ -13,6 +13,7 @@ Submodules list
   :toctree:
 
   simulator
+  psimulator
 
    
    

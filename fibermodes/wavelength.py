@@ -102,6 +102,11 @@ class Wavelength(object):
     def __gt__(self, wl2):
         return self.wavelength > wl2.wavelength
 
+    def __float__(self):
+        return self.wavelength
+
+    def __int__(self):
+        return int(self.wavelength)
 
 if __name__ == '__main__':
     # Smoke test

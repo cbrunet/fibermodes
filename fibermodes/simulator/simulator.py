@@ -7,9 +7,13 @@ from itertools import product
 from functools import reduce
 from operator import mul
 import numpy
+import shelve
+from distutils.version import StrictVersion
 
 
 class Simulator(object):
+
+    __version__ = "1.0.0"
 
     """Simulator class."""
 
@@ -26,6 +30,9 @@ class Simulator(object):
         self._vModes = {}  # found vModes (fiber: list(smode))
         self._cutoffs = {}  # found cutoffs (fiber: {mode: cutoff})
 
+        self._vsolved = False
+        self._lpsolved = False
+
     def setWavelength(self, wl):
         """Set the wavelengths used for the simulation.
 
@@ -39,6 +46,8 @@ class Simulator(object):
         for i, w in enumerate(self._wl):
             if not isinstance(w, Wavelength):
                 self._wl[i] = Wavelength(w)
+        self._vsolved = False
+        self._lpsolved = False
 
     def setMaterials(self, *args):
         """Set the materials used for the simulation.
@@ -48,6 +57,8 @@ class Simulator(object):
 
         """
         self._f = Factory(args)
+        self._vsolved = False
+        self._lpsolved = False
 
     def setMaterialsParams(self, *args):
         """Set the parameters used in the simulation, for each materials.
@@ -57,6 +68,8 @@ class Simulator(object):
         for params in args:  # for each layer
             self._matparams.append([list(p) if hasattr(p, '__iter__') else [p]
                                     for p in params])
+        self._vsolved = False
+        self._lpsolved = False
 
     def setRadius(self, layer, r):
         """Set the radius of layer to r"""
@@ -64,9 +77,13 @@ class Simulator(object):
             self._r = []
         self._r += [0] * max(0, layer - len(self._r) + 1)
         self._r[layer] = list(r) if hasattr(r, '__iter__') else [r]
+        self._vsolved = False
+        self._lpsolved = False
 
     def setRadiusFct(self, layer, fct, *args):
         self.setRadius(layer, ((fct,) + args,))
+        self._vsolved = False
+        self._lpsolved = False
 
     def setRadii(self, *args):
         """Set the radii of each layer used for the simulation.
@@ -74,6 +91,8 @@ class Simulator(object):
         """
         self._r = list(list(r) if hasattr(r, '__iter__') else [r]
                        for r in args)
+        self._vsolved = False
+        self._lpsolved = False
 
     def addConstraint(self, name, cmp, *args):
         """Add constraint on parameters.
@@ -85,6 +104,8 @@ class Simulator(object):
                      :func:`getParam` for details.
         """
         self._constraints[name] = (cmp, args)
+        self._vsolved = False
+        self._lpsolved = False
 
     def delConstraint(self, name):
         """Delete constraint on parameters.
@@ -92,6 +113,8 @@ class Simulator(object):
         :param name: Unique name of the constraint
         """
         del self._constraints[name]
+        self._vsolved = False
+        self._lpsolved = False
 
     def _testConstraints(self, fiber):
         """Return True if parameters are accepted.
@@ -104,6 +127,53 @@ class Simulator(object):
         else:
             return True
         return False
+
+    def save(self, filename):
+        """Save the current state of the simulator.
+
+        :param filename: file name (string)
+
+        """
+        with shelve.open(filename) as db:
+            db['version'] = self.__version__
+            db['wavelength'] = self._wl
+            db['factory'] = self._f
+            db['matparams'] = self._matparams
+            db['radii'] = self._r
+            db['constraints'] = self._constraints
+            db['lpModes'] = self._lpModes
+            db['vModes'] = self._vModes
+            db['lpsolved'] = self._lpsolved
+            db['vsolved'] = self._vsolved
+
+    def read(self, filename):
+        """Restore from a file the current state of the simulator.
+
+        If db version is lowwer than current version,
+        the database is automatically upgraded to current version.
+
+        :param filename: file name (string)
+
+        """
+        with shelve.open(filename) as db:
+            try:
+                if StrictVersion(db['version']) < StrictVersion(self.__version__):
+                    self._convert(db)
+            except KeyError:
+                raise FileNotFoundError()
+            self._f = db['factory']
+            self._wl = db['wavelength']
+            self._matparams = db['matparams']
+            self._r = db['radii']
+            self._constraints = db['constraints']
+            self._lpModes = db['lpModes']
+            self._vModes = db['vModes']
+            self._lpsolved = db['lpsolved']
+            self._vsolved = db['vsolved']
+
+    def _convert(self, db):
+        """Convert db to current version."""
+        pass
 
     def _iterator(self, wavelengths, matparam, radii):
         if None in (self._wl, self._r, self._matparams):
@@ -157,6 +227,19 @@ class Simulator(object):
         return numpy.fromiter((fiber.get(pname, *args) for fiber in self),
                               numpy.float)
 
+    def filter(self, array, *args):
+        """Filter values in ``array`` from parameters in ``args``.
+
+        :param array: indexable object of len == len(self)
+
+        """
+        for i, fiber in enumerate(self):
+            for filt in args:
+                if fiber.get(filt[0], *filt[1:-1]) != filt[-1]:
+                    break
+            else:
+                yield array[i]
+
     def getLPModes(self):
         """Return the list of modes that exist within simulation parameters.
 
@@ -195,20 +278,38 @@ class Simulator(object):
                 modelist.add(m)
         return modelist
 
+    def solveV(self):
+        if self._vsolved:
+            return
+        for i, fiber in enumerate(self):
+            lpm = self._lpModes[fiber] if fiber in self._lpModes else None
+            if fiber not in self._vModes:
+                self._vModes[fiber] = {smode.mode: smode
+                                       for smode in fiber.vModes(lpm)}
+        self._vsolved = True
+
+    def solveLP(self):
+        if self._lpsolved:
+            return
+        for i, fiber in enumerate(self):
+            if fiber not in self._lpModes:
+                self._lpModes[fiber] = {smode.mode: smode
+                                        for smode in fiber.lpModes()}
+        self._lpsolved = True
+
     def _getModeAttr(self, mode, attr):
         """Generic function to fetch list of ``attr`` from solved modes.
 
         """
         a = numpy.zeros(len(self))
-        modes = self._lpModes if mode.family == Family.LP else self._vModes
+        if mode.family == Family.LP:
+            self.solveLP()
+            modes = self._lpModes
+        else:
+            self.solveV()
+            modes = self._vModes
+
         for i, fiber in enumerate(self):
-            if fiber not in modes:
-                if mode.family == Family.LP:
-                    modes[fiber] = {smode.mode: smode
-                                    for smode in fiber.lpModes()}
-                else:
-                    modes[fiber] = {smode.mode: smode
-                                    for smode in fiber.vModes()}
             if mode in modes[fiber]:
                 a[i] = getattr(modes[fiber][mode], attr)
         return numpy.ma.masked_equal(a, 0)
