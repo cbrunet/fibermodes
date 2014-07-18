@@ -3,6 +3,7 @@
 from ..wavelength import Wavelength
 from .ssif import SSIF
 from .mlsif import MLSIF
+from .acsif import ACSIF
 from ..material.fixed import Fixed
 
 
@@ -39,6 +40,8 @@ class Factory(list):
 
         if self.nlayers == 2 and n(0) > n(1):
             return SSIF(wl, *params)
+        elif self.nlayers == 3 and n(0) == n(2) and n(1) > n(0):
+            return ACSIF(wl, *params)
         else:
             return MLSIF(wl, *params)
 

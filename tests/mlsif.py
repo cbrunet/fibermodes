@@ -26,17 +26,6 @@ class TestMLSIF(unittest.TestCase):
         lpmodes = fiber.lpModes(delta=1e-3)
         self._compareModes(lpmodes, sols)
 
-    def testCase2LP(self):
-        """Annular-core fiber."""
-        wl = Wavelength(1550e-9)
-        fiber = fixedFiber(wl, [4e-6, 10e-6], [1.4444, 1.4489, 1.4444])
-
-        sols = [('LP(0,1)', 1.4472296),
-                ('LP(1,1)', 1.4465947),
-                ('LP(2,1)', 1.4452985)]
-        lpmodes = fiber.lpModes(delta=1e-3)
-        self._compareModes(lpmodes, sols)
-
     def testCase3LP(self):
         wl = Wavelength(1550e-9)
         fiber = fixedFiber(wl, [4e-6, 10e-6], [1.4474, 1.4489, 1.4444])
@@ -74,21 +63,6 @@ class TestMLSIF(unittest.TestCase):
                 ('TM(0,1)', 1.445706197),
                 ('HE(2,1)', 1.445704747),
                 ('EH(1,1)', 1.44452366)]
-        lpmodes = fiber.lpModes(delta=1e-3)
-        vmodes = fiber.vModes(lpmodes, delta=1e-4)
-        self._compareModes(vmodes, sols)
-
-    def testCase2Vector(self):
-        """Annular-core fiber."""
-        wl = Wavelength(1550e-9)
-        fiber = fixedFiber(wl, [4e-6, 10e-6], [1.4444, 1.4489, 1.4444])
-
-        sols = [('HE(1,1)', 1.4472267686),
-                ('TE(0,1)', 1.4465947086),
-                ('HE(2,1)', 1.446591650399142),
-                ('TM(0,1)', 1.446587672894224),
-                ('EH(1,1)', 1.445296246037881),
-                ('HE(3,1)', 1.4452944761507711)]
         lpmodes = fiber.lpModes(delta=1e-3)
         vmodes = fiber.vModes(lpmodes, delta=1e-4)
         self._compareModes(vmodes, sols)

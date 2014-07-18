@@ -168,6 +168,30 @@ class TestSSIF(unittest.TestCase):
         for mode, V0 in sols:
             self.assertAlmostEqual(fiber.cutoffV0(mode), V0, 4, msg=str(mode))
 
+    def testCutoffV2(self):
+        """Values from cutoff acticle, Table III."""
+        wl = Wavelength(1.55e-6)
+        n1 = 1.474
+        n2 = 1.444
+        rho = 10e-6
+
+        fiber = fixedFiber(wl, [rho], [n1, n2])
+
+        sols = [(Mode('TE', 0, 1), 2.4048),
+                (Mode('HE', 2, 1), 2.4221),
+                (Mode('TM', 0, 1), 2.4048),
+                (Mode('EH', 1, 1), 3.8317),
+                (Mode('HE', 3, 1), 3.8533),
+                (Mode('HE', 1, 2), 3.8317),
+                (Mode('EH', 2, 1), 5.1356),
+                (Mode('HE', 4, 1), 5.1597),
+                (Mode('TE', 0, 2), 5.5201),
+                (Mode('HE', 2, 2), 5.5277),
+                (Mode('TM', 0, 2), 5.5201)]
+
+        for mode, V0 in sols:
+            self.assertAlmostEqual(fiber.cutoffV0(mode), V0, 4, msg=str(mode))
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testSSIF']
     unittest.main()

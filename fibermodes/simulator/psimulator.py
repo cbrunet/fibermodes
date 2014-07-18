@@ -1,8 +1,7 @@
 """Parallel simulator module, using multiprocessing. """
 
 from .simulator import Simulator
-from ..mode import Family
-import numpy
+from ..mode import Mode
 import concurrent.futures as cf
 
 
@@ -15,40 +14,27 @@ class PSimulator(Simulator):
 
     """
 
-    def __init__(self, nproc=None):
+    def __init__(self, nproc=None, *args, **kwargs):
         if nproc is None:
             import multiprocessing
             nproc = multiprocessing.cpu_count()
         self._nproc = nproc
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
-    def solveV(self):
-        if self._vsolved:
-            return
+    def _iterSolve(self, fiter, lpHint=None, vHint=None):
         futures = {}
         with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:
-            for fiber in self:
-                lpm = self._lpModes[fiber] if fiber in self._lpModes else None
-                if fiber not in self._vModes:
-                    futures[executor.submit(fiber.vModes, lpm)] = fiber
+            for f in fiter:
+                futures[executor.submit(self._solveFiber, f,
+                                        lpHint, vHint)] = f
 
             for f in cf.as_completed(futures):
                 fiber = futures[f]
-                self._vModes[fiber] = {smode.mode: smode
-                                       for smode in f.result()}
-        self._vsolved = True
+                lpModes, vModes = f.result()
 
-    def solveLP(self):
-        if self._lpsolved:
-            return
-        futures = {}
-        with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:
-            for fiber in self:
-                if fiber not in self._lpModes:
-                    futures[executor.submit(fiber.lpModes)] = fiber
-
-            for f in cf.as_completed(futures):
-                fiber = futures[f]
-                self._lpModes[fiber] = {smode.mode: smode
-                                        for smode in f.result()}
-        self._lpsolved = True
+                if lpModes:
+                    self._lpModes[fiber] = {smode.mode: smode
+                                            for smode in lpModes}
+                if vModes:
+                    self._vModes[fiber] = {smode.mode: smode
+                                           for smode in vModes}

@@ -16,11 +16,13 @@ class Wavelength(float):
         If no keyword is given, value is considered to be wavelength.
 
         """
-        if len(args) + len(kwargs) != 1:
+        nargs = len(args) + len(kwargs)
+        if nargs > 1:
             raise TypeError("Wavelength constructor need exactly one "
                             "parameter")
-
-        if len(args) == 1:
+        if nargs == 0:
+            wl = 0
+        elif len(args) == 1:
             wl = args[0]
         elif 'k0' in kwargs:
             wl = tpi / kwargs['k0']
@@ -37,7 +39,7 @@ class Wavelength(float):
         elif 'v' in kwargs:
             wl = c / kwargs['v']
         else:
-            raise TypeError('Invalid argument')
+            raise TypeError("Invalid argument")
 
         return float.__new__(cls, wl)
 

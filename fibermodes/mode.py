@@ -131,13 +131,13 @@ class SMode(Mode):
         return Mode(self.family, self.nu, self.m)
 
     def __eq__(self, m2):
-        try:
+        if isinstance(m2, SMode):
             return self.neff == m2.neff
-        except AttributeError:
-            return super() == m2
+        else:
+            return self.mode == m2
 
     def __ne__(self, m2):
-        return not self.neff == m2.neff
+        return not self == m2
 
     def __lt__(self, m2):
         return self.neff < m2.neff

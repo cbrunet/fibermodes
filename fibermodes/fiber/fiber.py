@@ -112,9 +112,9 @@ class Fiber(object):
         return self.get(*key)
 
     def _findBracket(self, mode, fct,
-                     a, b=None, c=None, delta=1e-6):
+                     a, b=None, c=None, delta=1e-6, cladding=False):
         if a is None:
-            a = self._n.min()
+            a = self._n.min() if cladding else self._n[-1]
         if c is None:
             c = self._n.max()
 
@@ -139,6 +139,8 @@ class Fiber(object):
             return (a, c)
 
         else:  # From point to exterior
+            if not a < b < c:
+                raise OverflowError()
             s = (fct(b, mode) > 0)
             d = 0
             for n in count(1):
@@ -154,7 +156,8 @@ class Fiber(object):
 
         raise OverflowError("Cannot find root in given interval.")
 
-    def solve(self, mode, bound=None, delta=1e-6, epsilon=1e-12):
+    def solve(self, mode, bound=None, delta=1e-6, epsilon=1e-12,
+              cladding=False):
         """Find root of characteristic equation inside given bound.
 
         It tries to find the first root from the highest index.
@@ -179,7 +182,7 @@ class Fiber(object):
         fct = self._ceq(mode)
 
         if bound is None:
-            a = self._n.min() + epsilon
+            a = self._n.min() + epsilon if cladding else self._n[-1] + epsilon
             b = None
             c = self._n.max() - epsilon
         else:
@@ -191,7 +194,8 @@ class Fiber(object):
                 b = bound[1]
                 c = bound[2]
 
-        a, b = self._findBracket(mode, fct, a, b, c, delta=delta)
+        a, b = self._findBracket(mode, fct, a, b, c, delta=delta,
+                                 cladding=cladding)
 
         neff = brentq(fct, a, b, args=(mode,), xtol=epsilon)
         if a <= neff <= b:  # Detect discontinuity
@@ -235,7 +239,7 @@ class Fiber(object):
             try:
                 smode = self.solve(mode,
                                    (b[0] + epsilon, None, b[1] - epsilon),
-                                   delta, epsilon)
+                                   delta, epsilon, cladding=cladding)
                 modes.append(smode)
                 if nmax and len(modes) == nmax:
                     break
@@ -256,7 +260,7 @@ class Fiber(object):
         """
         raise NotImplementedError
 
-    def lpModes(self, delta=1e-6, epsilon=1e-12, cladding=False):
+    def lpModes(self, delta=1e-6, epsilon=1e-12, cladding=False, nmax=None):
         """Find all scalar (lp) modes of the fiber.
 
         :param delta: minimal interval to look in.
@@ -270,16 +274,21 @@ class Fiber(object):
 
         """
         modes = []
+        nm = nmax
         for nu in count():
             lpModes = self.solveAll(Mode(Family.LP, nu, 1),
-                                    delta, epsilon, cladding)
+                                    delta, epsilon, nmax=nm,
+                                    cladding=cladding)
             if not lpModes:
                 break
             modes += lpModes
+            if nmax:
+                nm = min(nmax, lpModes[-1].m)
         modes.sort(reverse=True)
         return modes
 
-    def vModes(self, lpModes=None, delta=1e-6, epsilon=1e-12, cladding=False):
+    def vModes(self, lpModes=None, delta=1e-6, epsilon=1e-12, cladding=False,
+               nmax=None):
         """Find all vector (hybrid) modes of the fiber.
 
         :param lpModes: :class:`list` of :class:`~fibermodes.mode.SMode`.
@@ -297,24 +306,30 @@ class Fiber(object):
         """
         modes = []
         if lpModes:
+            lpModes.sort(reverse=True)
+            smode = None
             for mode in lpModes:
                 try:
+                    nm = smode.neff if smode else None
                     smode = self.solve(Mode(Family.HE,
                                             mode.nu + 1, mode.m),
-                                       mode.neff, delta, epsilon)
+                                       (None, mode.neff, nm), delta, epsilon,
+                                       cladding=cladding)
                     modes.append(smode)
                 except OverflowError:
                     pass
                 if mode.nu == 1:
                     try:
                         smode = self.solve(Mode(Family.TE, 0, mode.m),
-                                           mode.neff, delta, epsilon)
+                                           mode.neff, delta, epsilon,
+                                           cladding=cladding)
                         modes.append(smode)
                     except OverflowError:
                         pass
                     try:
                         smode = self.solve(Mode(Family.TM, 0, mode.m),
-                                           mode.neff, delta, epsilon)
+                                           mode.neff, delta, epsilon,
+                                           cladding=cladding)
                         modes.append(smode)
                     except OverflowError:
                         pass
@@ -322,9 +337,9 @@ class Fiber(object):
                     try:
                         smode = self.solve(Mode(Family.EH,
                                                 mode.nu - 1, mode.m),
-                                           (self._n.min(),
-                                            mode.neff, smode.neff),
-                                           delta, epsilon)
+                                           mode.neff,
+                                           delta, epsilon,
+                                           cladding=cladding)
                         modes.append(smode)
                     except OverflowError:
                         pass
@@ -334,7 +349,7 @@ class Fiber(object):
             modes += self.solveAll(Mode(Family.TM, 0, 1),
                                    delta, epsilon, cladding=cladding)
             idxmax = None
-            nmax = None
+            nm = nmax
             for nu in count(1):
                 heModes = self.solveAll(Mode(Family.HE, nu, 1),
                                         delta, epsilon, cladding=cladding,
@@ -342,11 +357,12 @@ class Fiber(object):
                 if not heModes:
                     break
                 modes += heModes
-                nmax = heModes[-1].m
+                if nmax:
+                    nm = min(heModes[-1].m, nmax)
                 if nu > 2 and self._ehceq != self._heceq:
                     ehModes = self.solveAll(Mode(Family.EH, nu-2, 1),
                                             delta, epsilon, cladding=cladding,
-                                            nmax=nmax, idxmax=idxmax)
+                                            nmax=nm, idxmax=idxmax)
                     if ehModes:
                         modes += ehModes
                 idxmax = heModes[0].neff
@@ -366,4 +382,10 @@ class Fiber(object):
                 numpy.all(self._r[:-1] == fiber._r[:-1]) and
                 numpy.all(self._n == fiber._n))
 
-    # TODO: __gt__ and __lt__ when we can guess if neff > or <
+    def __str__(self):
+        mats = []
+        for mat, mp in zip(self._mat, self._params):
+            mats.append("{}{}".format(mat.__name__, mp))
+        return "Fiber({}, {}, [{}])".format(self._wl,
+                                            self._r[:-1],
+                                            ", ".join(mats))

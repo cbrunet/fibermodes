@@ -2,13 +2,14 @@
 
 from ..wavelength import Wavelength
 from ..fiber.factory import Factory
-from ..mode import Family
+from ..mode import Family, Mode, sortModes
 from itertools import product
 from functools import reduce
 from operator import mul
 import numpy
 import shelve
 from distutils.version import StrictVersion
+from copy import deepcopy
 
 
 class Simulator(object):
@@ -17,7 +18,8 @@ class Simulator(object):
 
     """Simulator class."""
 
-    def __init__(self):
+    def __init__(self, scalar=True, vectorial=False,
+                 delta=1e-6, cladding=False):
         """Constructor."""
         self._wl = None  # list of wavelengths
         self._f = None  # fiber factory
@@ -30,8 +32,11 @@ class Simulator(object):
         self._vModes = {}  # found vModes (fiber: list(smode))
         self._cutoffs = {}  # found cutoffs (fiber: {mode: cutoff})
 
-        self._vsolved = False
-        self._lpsolved = False
+        self._delta = delta
+        self._nmax = None
+        self._cladding = cladding
+        self._scalar = scalar
+        self._vectorial = vectorial
 
     def setWavelength(self, wl):
         """Set the wavelengths used for the simulation.
@@ -46,8 +51,6 @@ class Simulator(object):
         for i, w in enumerate(self._wl):
             if not isinstance(w, Wavelength):
                 self._wl[i] = Wavelength(w)
-        self._vsolved = False
-        self._lpsolved = False
 
     def setMaterials(self, *args):
         """Set the materials used for the simulation.
@@ -57,8 +60,6 @@ class Simulator(object):
 
         """
         self._f = Factory(args)
-        self._vsolved = False
-        self._lpsolved = False
 
     def setMaterialsParams(self, *args):
         """Set the parameters used in the simulation, for each materials.
@@ -68,8 +69,16 @@ class Simulator(object):
         for params in args:  # for each layer
             self._matparams.append([list(p) if hasattr(p, '__iter__') else [p]
                                     for p in params])
-        self._vsolved = False
-        self._lpsolved = False
+
+    def setMaterialParam(self, layer, pnum, pval):
+        if self._matparams is None:
+            self._matparams = []
+        self._matparams += [[]] * max(0, layer - len(self._r) + 1)
+        self._matparams[layer] += [0] * max(0,
+                                            pnum - self._f[layer].nparams + 1)
+        self._matparams[layer][pnum] = (list(pval)
+                                        if hasattr(pval, '__iter__')
+                                        else [pval])
 
     def setRadius(self, layer, r):
         """Set the radius of layer to r"""
@@ -77,13 +86,9 @@ class Simulator(object):
             self._r = []
         self._r += [0] * max(0, layer - len(self._r) + 1)
         self._r[layer] = list(r) if hasattr(r, '__iter__') else [r]
-        self._vsolved = False
-        self._lpsolved = False
 
     def setRadiusFct(self, layer, fct, *args):
         self.setRadius(layer, ((fct,) + args,))
-        self._vsolved = False
-        self._lpsolved = False
 
     def setRadii(self, *args):
         """Set the radii of each layer used for the simulation.
@@ -91,8 +96,6 @@ class Simulator(object):
         """
         self._r = list(list(r) if hasattr(r, '__iter__') else [r]
                        for r in args)
-        self._vsolved = False
-        self._lpsolved = False
 
     def addConstraint(self, name, cmp, *args):
         """Add constraint on parameters.
@@ -104,8 +107,6 @@ class Simulator(object):
                      :func:`getParam` for details.
         """
         self._constraints[name] = (cmp, args)
-        self._vsolved = False
-        self._lpsolved = False
 
     def delConstraint(self, name):
         """Delete constraint on parameters.
@@ -113,8 +114,6 @@ class Simulator(object):
         :param name: Unique name of the constraint
         """
         del self._constraints[name]
-        self._vsolved = False
-        self._lpsolved = False
 
     def _testConstraints(self, fiber):
         """Return True if parameters are accepted.
@@ -127,6 +126,21 @@ class Simulator(object):
         else:
             return True
         return False
+
+    def setDelta(self, delta):
+        self._delta = delta
+
+    def setNMax(self, nmax):
+        self._nmax = nmax
+
+    def setCladdingModes(self, cladding):
+        self._cladding = cladding
+
+    def setScalar(self, scalar):
+        self._scalar = scalar
+
+    def setVectorial(self, vectorial):
+        self._vectorial = vectorial
 
     def save(self, filename):
         """Save the current state of the simulator.
@@ -143,8 +157,6 @@ class Simulator(object):
             db['constraints'] = self._constraints
             db['lpModes'] = self._lpModes
             db['vModes'] = self._vModes
-            db['lpsolved'] = self._lpsolved
-            db['vsolved'] = self._vsolved
 
     def read(self, filename):
         """Restore from a file the current state of the simulator.
@@ -157,7 +169,8 @@ class Simulator(object):
         """
         with shelve.open(filename) as db:
             try:
-                if StrictVersion(db['version']) < StrictVersion(self.__version__):
+                if (StrictVersion(db['version']) <
+                        StrictVersion(self.__version__)):
                     self._convert(db)
             except KeyError:
                 raise FileNotFoundError()
@@ -168,14 +181,12 @@ class Simulator(object):
             self._constraints = db['constraints']
             self._lpModes = db['lpModes']
             self._vModes = db['vModes']
-            self._lpsolved = db['lpsolved']
-            self._vsolved = db['vsolved']
 
     def _convert(self, db):
         """Convert db to current version."""
         pass
 
-    def _iterator(self, wavelengths, matparam, radii):
+    def _iterator(self, wavelengths, matparam, radii, skipAsNone=False):
         if None in (self._wl, self._r, self._matparams):
             return
         params = [[0]*(self._f[i].nparams+1) for i in range(self._f.nlayers)]
@@ -192,6 +203,8 @@ class Simulator(object):
                     fiber = self._f(wl, *params)
                     if self._testConstraints(fiber):
                         yield fiber
+                    elif skipAsNone:
+                        yield None
 
     def __iter__(self):
         """Generator of each possible fiber, within simulation parameters."""
@@ -202,116 +215,197 @@ class Simulator(object):
         if None in (self._wl, self._r, self._matparams):
             return 0
         if not self._constraints:
-            return len(self._wl) * reduce(mul, (len(r) for r in self._r)) * \
-                reduce(mul, (len(p) for x in self._matparams for p in x))
+            return self.__length_hint__()
         else:
             return sum(1 for _ in self)
 
-    def getParam(self, pname, *args):
-        """Return the array of parameters, for a given parameter name.
+    def __length_hint__(self):
+        return len(self._wl) * reduce(mul, (len(r) for r in self._r)) * \
+            reduce(mul, (len(p) for x in self._matparams for p in x))
 
-        Possible names are: 'wavelength', 'radius', and 'material'.
+    def getDimensions(self):
+        dims = []
+        if len(self._wl) > 1:
+            dims.append(('wavelength',))
+        for i, r in enumerate(self._r):
+            if len(r) > 1:
+                dims.append(('radius', i))
+        for i, mp in enumerate(self._matparams):
+            for j, p in enumerate(mp):
+                if len(p) > 1:
+                    dims.append(('material', i, j))
+        return dims
 
-        For 'wavelength', the optional second parameter is the wavelength
-        conversion to apply ('wavelength', 'k0', 'omega', etc. *see*
-        :class:`~fibermodes.wavelength.Wavelength`). It the second parameter
-        is omitted, wavelength is assumed.
+    def shape(self):
+        return tuple(len(self._getParameter(p)) for p in self.getDimensions())
 
-        For 'radius' and 'material', the second parameter is the layer index.
+    def _getParameter(self, dim):
+        if dim[0] == 'wavelength':
+            return self._wl
+        elif dim[0] == 'radius':
+            return self._r[dim[1]]
+        elif dim[0] == 'material':
+            return self._matparams[dim[1]][dim[2]]
+        else:
+            raise TypeError("Wrong parameter type {}".format(dim))
 
-        For 'material', the third parameter is material parameter index.
+    def getParameters(self, dims=None):
+        if dims is None:
+            dims = self.getDimensions()
+        return [self._getParameter(dim) for dim in dims]
 
-        :raises: :class:`TypeError`
+    def _getMinMaxParams(self):
+        if len(self._wl) > 1:
+            wl = [min(self._wl), max(self._wl)]
+        else:
+            wl = [self._wl[0]]
+        rr = deepcopy(self._r)
+        for i, r in enumerate(rr):
+            if len(r) > 1:
+                rr[i] = [min(r), max(r)]
+        matpar = deepcopy(self._matparams)
+        for i, mp in enumerate(matpar):
+            for j, p in enumerate(mp):
+                if len(p) > 1:
+                    matpar[i][j] = [min(p), max(p)]
+        return wl, matpar, rr
 
-        """
-        return numpy.fromiter((fiber.get(pname, *args) for fiber in self),
-                              numpy.float)
+    def _solveFiber(self, fiber, lpHint=None, vHint=None):
+        lpModes, vModes = [], []
+        if self._scalar and fiber not in self._lpModes:
+            if lpHint:
+                for m in lpHint:
+                    try:
+                        lpModes.append(fiber.solve(m, (m.neff,
+                                                       m.neff - self._delta,
+                                                       None),
+                                                   delta=self._delta))
+                    except OverflowError:
+                        if m == Mode("LP", 0, 1):
+                            lpModes = []
+                            break
+            if not lpModes:
+                lpModes = [smode for smode in fiber.lpModes(delta=self._delta)]
 
-    def filter(self, array, *args):
-        """Filter values in ``array`` from parameters in ``args``.
+        if self._vectorial and fiber not in self._vModes:
+            if lpModes:
+                vModes = [smode for smode in fiber.vModes(lpModes,
+                                                          delta=self._delta)]
+            elif vHint:
+                for m in vHint:
+                    try:
+                        vModes.append(fiber.solve(m, (m.neff,
+                                                      m.neff - self._delta,
+                                                      None),
+                                                  delta=self._delta))
+                    except OverflowError:
+                        if m == Mode("HE", 1, 1):
+                            vModes = []
+                            break
+            if not vModes:
+                vModes = [smode for smode in fiber.vModes(delta=self._delta)]
 
-        :param array: indexable object of len == len(self)
+        return lpModes, vModes
 
-        """
-        for i, fiber in enumerate(self):
-            for filt in args:
-                if fiber.get(filt[0], *filt[1:-1]) != filt[-1]:
-                    break
+    def _solveBetween(self, fiber, param):
+        if len(self._wl) > 1 and param[0] != 'wavelength':
+            wl = [fiber._wl]
+        else:
+            wl = self._wl
+
+        ra = []
+        for i, r in enumerate(self._r):
+            if len(r) > 1 and param != ('radius', i):
+                ra.append([fiber._r[i]])
             else:
-                yield array[i]
+                ra.append(self._r[i])
 
-    def getLPModes(self):
-        """Return the list of modes that exist within simulation parameters.
+        mp = []
+        for i, lp in enumerate(self._matparams):
+            mp.append([])
+            for j, p in enumerate(lp):
+                if len(p) > 1 and param != ('material', i, j):
+                    mp[i].append([fiber._params[i][j]])
+                else:
+                    mp[i].append(self._matparams[i][j])
 
-        :rtype: :class:`set` of :class:`~fibermodes.mode.Mode` object.
+        fibers = list(self._iterator(wl, mp, ra))
+        neff1 = (self._lpModes[fibers[0]][Mode("LP", 0, 1)].neff
+                 if self._scalar
+                 else self._vModes[fibers[0]][Mode("HE", 1, 1)].neff)
+        neff2 = (self._lpModes[fibers[-1]][Mode("LP", 0, 1)].neff
+                 if self._scalar
+                 else self._vModes[fibers[-1]][Mode("HE", 1, 1)].neff)
+        if neff1 > neff2:
+            s = slice(1, -1, 1)
+            fp = fibers[0]
+        else:
+            s = slice(-2, 0, -1)
+            fp = fibers[-1]
+        lpModes = list(self._lpModes[fp].values()) if self._scalar else None
+        vModes = list(self._vModes[fp].values()) if self._vectorial else None
 
-        """
-        modelist = set()
-        wl = min(self._wl)
-        r = max(self._r[self._f.nlayers-2])
-        rr = self._r.copy()
-        rr[self._f.nlayers-2] = [r]
-        for fiber in self._iterator([wl], self._matparams, rr):
-            if fiber not in self._lpModes:
-                self._lpModes[fiber] = {smode.mode: smode
-                                        for smode in fiber.lpModes()}
-            for m in self._lpModes[fiber]:
-                modelist.add(m)
-        return modelist
+        self._iterSolve(fibers[s], lpModes, vModes)
 
-    def getVModes(self):
-        """Return the list of modes that exist within simulation parameters.
+    def _solve(self, mmwl, mmmatparams, mmradii, dims):
+        if dims:
+            p = dims.pop()
+            if p[0] == 'wavelength':
+                mmwl.pop()
+            elif p[0] == 'radius':
+                mmradii[p[1]].pop()
+            elif p[0] == 'material':
+                mmmatparams[p[1]][p[2]].pop()
 
-        :rtype: :class:`set` of :class:`~fibermodes.mode.Mode` object.
+            for fiber in self._iterator(mmwl, mmmatparams, mmradii):
+                self._solveBetween(fiber, p)
 
-        """
-        modelist = set()
-        wl = min(self._wl)
-        r = max(self._r[self._f.nlayers-2])
-        rr = self._r.copy()
-        rr[self._f.nlayers-2] = [r]
-        for fiber in self._iterator([wl], self._matparams, rr):
-            if fiber not in self._vModes:
-                self._vModes[fiber] = {smode.mode: smode
-                                       for smode in fiber.vModes()}
-            for m in self._vModes[fiber]:
-                modelist.add(m)
-        return modelist
+            if p[0] == 'wavelength':
+                mmwl = self._wl
+            elif p[0] == 'radius':
+                mmradii[p[1]] = self._r[p[1]]
+            elif p[0] == 'material':
+                mmmatparams[p[1]][p[2]] = self._matparams[p[1]][p[2]]
+            self._solve(mmwl, mmmatparams, mmradii, dims)
 
-    def solveV(self):
-        if self._vsolved:
-            return
-        for i, fiber in enumerate(self):
-            lpm = self._lpModes[fiber] if fiber in self._lpModes else None
-            if fiber not in self._vModes:
-                self._vModes[fiber] = {smode.mode: smode
-                                       for smode in fiber.vModes(lpm)}
-        self._vsolved = True
+    def _iterSolve(self, fiter, lpModes=None, vModes=None):
+        for f in fiter:
+            lpModes, vModes = self._solveFiber(f, lpModes, vModes)
+            if lpModes:
+                self._lpModes[f] = {smode.mode: smode for smode in lpModes}
+            if vModes:
+                self._vModes[f] = {smode.mode: smode for smode in vModes}
 
-    def solveLP(self):
-        if self._lpsolved:
-            return
-        for i, fiber in enumerate(self):
-            if fiber not in self._lpModes:
-                self._lpModes[fiber] = {smode.mode: smode
-                                        for smode in fiber.lpModes()}
-        self._lpsolved = True
+    def solve(self):
+        wl, matparams, radii = self._getMinMaxParams()
+        self._iterSolve(self._iterator(wl, matparams, radii))
+        self._solve(wl, matparams, radii, self.getDimensions())
+        # TODO: find missing modes
+        # TODO: find wrong modes
 
     def _getModeAttr(self, mode, attr):
         """Generic function to fetch list of ``attr`` from solved modes.
 
         """
-        a = numpy.zeros(len(self))
         if mode.family == Family.LP:
-            self.solveLP()
+            if not self._scalar:
+                raise TypeError()
             modes = self._lpModes
         else:
-            self.solveV()
+            if not self._vectorial:
+                raise TypeError()
             modes = self._vModes
+        self.solve()
 
-        for i, fiber in enumerate(self):
-            if mode in modes[fiber]:
-                a[i] = getattr(modes[fiber][mode], attr)
+        a = numpy.fromiter((getattr(modes[fiber][mode], attr)
+                            if fiber and fiber in modes
+                            and mode in modes[fiber] else 0
+                            for fiber in self._iterator(self._wl,
+                                                        self._matparams,
+                                                        self._r, True)),
+                           numpy.float,
+                           self.__length_hint__())
+        a = a.reshape(self.shape(), order='F')
         return numpy.ma.masked_equal(a, 0)
 
     def getNeff(self, mode):
