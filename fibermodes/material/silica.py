@@ -24,6 +24,7 @@ class Silica(Material):
 
     @classmethod
     def n(cls, wl):
+        cls._testRange(wl)
         return sellmeier(wl, cls.B, cls.C)
 
     @classmethod
