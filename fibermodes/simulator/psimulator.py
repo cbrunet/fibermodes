@@ -4,7 +4,6 @@ from .simulator import Simulator
 from ..mode import Mode, Family
 import concurrent.futures as cf
 import numpy
-import itertools
 
 
 class PSimulator(Simulator):

@@ -443,22 +443,22 @@ def savefile(filename, output):
 
 
 if __name__ == '__main__':
-    savefile('tablen.tex', latexNTable())
-    savefile('tablegeom.tex', latexTable1())
-    savefile('tableneff.tex', latexTable2())
-    savefile('tabledneff.tex', latexTableSep())
-    savefile('tableng.tex', latexTable3())
-    savefile('tabled.tex', latexTableD())
-    savefile('tables.tex', latexTableS())
+    # savefile('tablen.tex', latexNTable())
+    # savefile('tablegeom.tex', latexTable1())
+    # savefile('tableneff.tex', latexTable2())
+    # savefile('tabledneff.tex', latexTableSep())
+    # savefile('tableng.tex', latexTable3())
+    # savefile('tabled.tex', latexTableD())
+    # savefile('tables.tex', latexTableS())
 
     # print(latexTable3())
 
-    # plotBendCmap(R=0.01)
-    # plotBvsV0()
-    # plotDvsb()
-    # plotRhoVsV0()
+    plotBendCmap(R=0.01)
+    plotBvsV0()
+    plotDvsb()
+    plotRhoVsV0()
     # plotRfield()
-    # pyplot.show()
+    pyplot.show()
 
     # D
     # S

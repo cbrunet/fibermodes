@@ -249,135 +249,6 @@ class Simulator(object):
             dims = self.getDimensions()
         return [self._getParameter(dim) for dim in dims]
 
-    # def _getMinMaxParams(self):
-    #     if len(self._wl) > 1:
-    #         wl = [min(self._wl), max(self._wl)]
-    #     else:
-    #         wl = [self._wl[0]]
-    #     rr = deepcopy(self._r)
-    #     for i, r in enumerate(rr):
-    #         if len(r) > 1:
-    #             rr[i] = [min(r), max(r)]
-    #     matpar = deepcopy(self._matparams)
-    #     for i, mp in enumerate(matpar):
-    #         for j, p in enumerate(mp):
-    #             if len(p) > 1:
-    #                 matpar[i][j] = [min(p), max(p)]
-    #     return wl, matpar, rr
-
-    # def _solveFiber(self, fiber, lpHint=None, vHint=None):
-    #     lpModes, vModes = [], []
-    #     if self._scalar and fiber not in self._lpModes:
-    #         if lpHint:
-    #             for m in lpHint:
-    #                 try:
-    #                     lpModes.append(fiber.solve(m, (m.neff,
-    #                                                    m.neff - self._delta,
-    #                                                    None),
-    #                                                delta=self._delta))
-    #                 except OverflowError:
-    #                     if m == Mode("LP", 0, 1):
-    #                         lpModes = []
-    #                         break
-    #         if not lpModes:
-    #             lpModes = [smode for smode in fiber.lpModes(delta=self._delta)]
-
-    #     if self._vectorial and fiber not in self._vModes:
-    #         if lpModes:
-    #             vModes = [smode for smode in fiber.vModes(lpModes,
-    #                                                       delta=self._delta)]
-    #         elif vHint:
-    #             for m in vHint:
-    #                 try:
-    #                     vModes.append(fiber.solve(m, (m.neff,
-    #                                                   m.neff - self._delta,
-    #                                                   None),
-    #                                               delta=self._delta))
-    #                 except OverflowError:
-    #                     if m == Mode("HE", 1, 1):
-    #                         vModes = []
-    #                         break
-    #         if not vModes:
-    #             vModes = [smode for smode in fiber.vModes(delta=self._delta)]
-
-    #     return lpModes, vModes
-
-    # def _solveBetween(self, fiber, param):
-    #     if len(self._wl) > 1 and param[0] != 'wavelength':
-    #         wl = [fiber._wl]
-    #     else:
-    #         wl = self._wl
-
-    #     ra = []
-    #     for i, r in enumerate(self._r):
-    #         if len(r) > 1 and param != ('radius', i):
-    #             ra.append([fiber._r[i]])
-    #         else:
-    #             ra.append(self._r[i])
-
-    #     mp = []
-    #     for i, lp in enumerate(self._matparams):
-    #         mp.append([])
-    #         for j, p in enumerate(lp):
-    #             if len(p) > 1 and param != ('material', i, j):
-    #                 mp[i].append([fiber._params[i][j]])
-    #             else:
-    #                 mp[i].append(self._matparams[i][j])
-
-    #     fibers = list(self._iterator(wl, mp, ra))
-    #     neff1 = (self._lpModes[fibers[0]][Mode("LP", 0, 1)].neff
-    #              if self._scalar
-    #              else self._vModes[fibers[0]][Mode("HE", 1, 1)].neff)
-    #     neff2 = (self._lpModes[fibers[-1]][Mode("LP", 0, 1)].neff
-    #              if self._scalar
-    #              else self._vModes[fibers[-1]][Mode("HE", 1, 1)].neff)
-    #     if neff1 > neff2:
-    #         s = slice(1, -1, 1)
-    #         fp = fibers[0]
-    #     else:
-    #         s = slice(-2, 0, -1)
-    #         fp = fibers[-1]
-    #     lpModes = list(self._lpModes[fp].values()) if self._scalar else None
-    #     vModes = list(self._vModes[fp].values()) if self._vectorial else None
-
-    #     self._iterSolve(fibers[s], lpModes, vModes)
-
-    # def _solve(self, mmwl, mmmatparams, mmradii, dims):
-    #     if dims:
-    #         p = dims.pop()
-    #         if p[0] == 'wavelength':
-    #             mmwl.pop()
-    #         elif p[0] == 'radius':
-    #             mmradii[p[1]].pop()
-    #         elif p[0] == 'material':
-    #             mmmatparams[p[1]][p[2]].pop()
-
-    #         for fiber in self._iterator(mmwl, mmmatparams, mmradii):
-    #             self._solveBetween(fiber, p)
-
-    #         if p[0] == 'wavelength':
-    #             mmwl = self._wl
-    #         elif p[0] == 'radius':
-    #             mmradii[p[1]] = self._r[p[1]]
-    #         elif p[0] == 'material':
-    #             mmmatparams[p[1]][p[2]] = self._matparams[p[1]][p[2]]
-    #         self._solve(mmwl, mmmatparams, mmradii, dims)
-
-    # def _iterSolve(self, fiter, lpModes=None, vModes=None):
-    #     for f in fiter:
-    #         lpModes, vModes = self._solveFiber(f, lpModes, vModes)
-    #         if lpModes:
-    #             self._lpModes[f] = {smode.mode: smode for smode in lpModes}
-    #         if vModes:
-    #             self._vModes[f] = {smode.mode: smode for smode in vModes}
-
-    # def solve(self):
-    #     wl, matparams, radii = self._getMinMaxParams()
-    #     self._iterSolve(self._iterator(wl, matparams, radii))
-    #     self._solve(wl, matparams, radii, self.getDimensions())
-    #     # TODO: find missing modes
-    #     # TODO: find wrong modes
-
     def _findNeighbors(self, fiber):
         fmin = []
         fmax = []
@@ -488,8 +359,7 @@ class Simulator(object):
         if nmax > nmin:
             for delta in (self._delta, self._delta / 2):
                 try:
-                    smode = fiber.solve2(mode, nmin, nmax, delta,
-                                         self._epsilon)
+                    smode = fiber.solve(mode, nmin, nmax, delta, self._epsilon)
                     break
                 except OverflowError:
                     pass
@@ -594,18 +464,7 @@ class Simulator(object):
             neff[i+2, :] = self.getNeff(mode).ravel()
         self._wl = wl
 
-        # else:
-        #     h = wl[1] - wl[0]
-        #     wl = numpy.hstack(([wl[0] - 2 * h, wl[0] - h],
-        #                        wl,
-        #                        [wl[-1] + h, wl[-1] + 2 * h]))
-        #     for i in (0, 1, 3, 4):
-        #         self._wl = wl[i:-4+i if i < 4 else None]
-        #         neff[i, :] = self.getNeff(mode).ravel()
-        #     self._wl = wl[2:-2]
-
         return neff, h
-
 
     def _calcBeta(self, mode):
         neff, h = self._get5points(mode)

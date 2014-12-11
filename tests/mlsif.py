@@ -23,7 +23,7 @@ class TestMLSIF(unittest.TestCase):
         sols = [('LP(0,1)', 1.4472309),
                 ('LP(1,1)', 1.4457064),
                 ('LP(0,2)', 1.4445245)]
-        lpmodes = fiber.lpModes(delta=1e-3)
+        lpmodes = fiber.lpModes(delta=1e-4)
         self._compareModes(lpmodes, sols)
 
     def testCase3LP(self):
@@ -34,7 +34,7 @@ class TestMLSIF(unittest.TestCase):
                 ('LP(1,1)', 1.44675879),
                 ('LP(2,1)', 1.44534443),
                 ('LP(0,2)', 1.44452950)]
-        lpmodes = fiber.lpModes(delta=1e-3)
+        lpmodes = fiber.lpModes(delta=1e-4)
         self._compareModes(lpmodes, sols)
 
     def testCase4LP(self):
@@ -43,7 +43,7 @@ class TestMLSIF(unittest.TestCase):
 
         sols = [('LP(0,1)', 1.447761788),
                 ('LP(1,1)', 1.447424556)]
-        lpmodes = fiber.lpModes(delta=1e-3)
+        lpmodes = fiber.lpModes(delta=1e-5)
         self._compareModes(lpmodes, sols)
 
     def testCase5LP(self):
@@ -63,7 +63,7 @@ class TestMLSIF(unittest.TestCase):
                 ('TM(0,1)', 1.445706197),
                 ('HE(2,1)', 1.445704747),
                 ('EH(1,1)', 1.44452366)]
-        lpmodes = fiber.lpModes(delta=1e-3)
+        lpmodes = fiber.lpModes(delta=1e-4)
         vmodes = fiber.vModes(lpmodes, delta=1e-4)
         self._compareModes(vmodes, sols)
 

@@ -14,16 +14,16 @@ class TestSSIF(unittest.TestCase):
     def testFundamental(self):
         wl = Wavelength(1550e-9)
         fiber = fixedFiber(wl, [4.5e-6], [1.448918, 1.444418])
-        he11 = fiber.solve(Mode('HE', 1, 1))
+        he11 = fiber.solve(Mode('HE', 1, 1), 1.444418, 1.448918)
         self.assertAlmostEqual(he11.neff, 1.4464045, places=5)
 
-        lp01 = fiber.solve(Mode('LP', 0, 1))
+        lp01 = fiber.solve(Mode('LP', 0, 1), 1.444418, 1.448918)
         self.assertAlmostEqual(he11.neff, lp01.neff, places=5)
 
     def testvModes(self):
         wl = Wavelength(800e-9)
         fiber = fixedFiber(wl, [4.5e-6], [1.448918, 1.444418])
-        modes = fiber.vModes(delta=1e-4)
+        modes = fiber.vModes(delta=1e-5)
 
         sols = [('HE(1,1)', 1.4479082),
                 ('TE(0,1)', 1.44643),
@@ -40,14 +40,14 @@ class TestSSIF(unittest.TestCase):
     def testlpModes(self):
         wl = Wavelength(800e-9)
         fiber = fixedFiber(wl, [4.5e-6], [1.448918, 1.444418])
-        modes = fiber.lpModes(delta=1e-4)
+        modes = fiber.lpModes(delta=1e-5)
 
         self.assertEqual(len(modes), 4)
 
     def testvModesFromlpModes(self):
         wl = Wavelength(800e-9)
         fiber = fixedFiber(wl, [4.5e-6], [1.448918, 1.444418])
-        lpModes = fiber.lpModes(delta=1e-4)
+        lpModes = fiber.lpModes(delta=1e-5)
         modes = fiber.vModes(lpModes, delta=1e-5)
 
         sols = [('HE(1,1)', 1.4479082),
