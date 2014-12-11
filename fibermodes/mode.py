@@ -2,6 +2,11 @@
 
 from enum import Enum
 
+import numpy
+from scipy.special import jn, yn, kn, iv, jvp, yvp, ivp, kvp
+from math import sqrt
+from fibermodes.constants import eta0
+
 #: Constants for identifying mode family. Can be
 #: LP, HE, EH, TE, or TM.
 Family = Enum('Family', 'LP HE EH TE TM', module=__name__)
@@ -68,6 +73,15 @@ class Mode(object):
         assert int(mparam) == mparam, "m must be a positive integer."
         self._m = int(mparam)
 
+    def lpEq(self):
+        """Equivalent LP mode."""
+        if self.family == Family.LP:
+            return self
+        elif self.family == Family.HE:
+            return Mode(Family.LP, self.nu - 1, self.m)
+        else:
+            return Mode(Family.LP, self.nu + 1, self.m)
+
     def __str__(self):
         return "{}({},{})".format(self.family.name, self.nu, self.m)
 
@@ -77,24 +91,49 @@ class Mode(object):
 
     def __eq__(self, m2):
         s1, s2 = str(self), str(m2)
-        if set((s1, s2)) <= set(('HE(1,1)', 'LP(0,1)')):
-            return True
+        # if set((s1, s2)) <= set(('HE(1,1)', 'LP(0,1)')):
+        #     return True
         return s1 == s2
 
     def __ne__(self, m2):
-        return not self == m2
+        return not (self == m2)
 
     def __lt__(self, m2):
-        return False
+        if self.m == m2.m:
+            if self.family == m2.family:
+                result = self.nu < m2.nu
+            else:
+                if self.family == Family.HE:
+                    nu1 = self.nu - 1
+                elif self.family == Family.LP:
+                    nu1 = self.nu
+                else:
+                    nu1 = self.nu + 1
+                if m2.family == Family.HE:
+                    nu2 = m2.nu - 1
+                elif m2.family == Family.LP:
+                    nu2 = m2.nu
+                else:
+                    nu2 = m2.nu + 1
+                if nu1 == nu2:
+                    fams = [Family.LP, Family.EH, Family.TE,
+                            Family.HE, Family.TM]
+                    result = fams.index(self.family) < fams.index(m2.family)
+                else:
+                    result = nu1 < nu2
+
+        else:
+            result = self.m < m2.m
+        return result
 
     def __le__(self, m2):
-        return self == m2
+        return (self == m2) or (self < m2)
 
     def __ge__(self, m2):
-        return self == m2
+        return m2 <= self
 
     def __gt__(self, m2):
-        return False
+        return m2 < self
 
 
 class SMode(Mode):
@@ -114,16 +153,24 @@ class SMode(Mode):
 
         self._fiber = fiber
         self._neff = neff
+        self._beta = None
+
+    def beta(self, order=0):
+        if self._beta:
+            return self._beta[order]
+        else:
+            return None
+
+    @property
+    def bnorm(self):
+        """Normalized propagation constant"""
+        return ((self.neff - self._fiber._n[-1]) /
+                (max(self._fiber._n) - self._fiber._n[-1]))
 
     @property
     def neff(self):
         """Effective index of the mode."""
         return self._neff
-
-    @property
-    def beta(self):
-        """Propagation constant."""
-        return self._fiber._wl.k0 * self._neff
 
     @property
     def mode(self):
@@ -150,6 +197,66 @@ class SMode(Mode):
 
     def __gt__(self, m2):
         return self.neff > m2.neff
+
+    def rfield(self, R):
+        coefs = self._fiber._constants(self._neff, self)
+
+        # print(str(self))
+        # for c in coefs:
+        #     print(c)
+        # print()
+
+        F = numpy.empty((6, 0))
+        for i in range(self._fiber._r.size):
+            rho = self._fiber._r[i]
+            if i == 0:
+                r = R[R < rho]
+            elif i + 1 < self._fiber._r.size:
+                r = R[(R >= self._fiber._r[i-1]) & (R < rho)]
+            else:
+                r = R[R >= rho]
+
+            A, B, C, D = coefs[4*i:4*i+4]
+            k0 = self._fiber._wl.k0
+            u2 = k0**2 * (self._fiber._n[i]**2 - self._neff**2)
+            u = sqrt(abs(u2))
+            ur = u * r
+
+            if u2 > 0:
+                f1 = jn(self._nu, ur)
+                f2 = yn(self._nu, ur) if i else 0
+                f1p = jvp(self._nu, ur)
+                f2p = yvp(self._nu, ur) if i else 0
+            else:
+                f1 = iv(self._nu, ur)
+                f2 = kn(self._nu, ur) if i else 0
+                f1p = ivp(self._nu, ur)
+                f2p = kvp(self._nu, ur) if i else 0
+
+            n2 = self._fiber._n[i]**2
+
+            ez = A * f1 + B * f2
+            hz = C * f1 + D * f2
+
+            er = k0 / u * (self._neff * (A * f1p + B * f2p) -
+                           eta0 * self._nu / ur * hz)
+            ep = k0 / u * (self._neff * self._nu / ur * ez -
+                           eta0 * (C * f1p + D * f2p))
+
+            hr = k0 / u * (self._neff * (C * f1p + D * f2p) -
+                           n2 * self._nu / ur / eta0 * ez)
+            hp = k0 / u * (self._neff * self._nu / ur * hz -
+                           n2 / eta0 * (A * f1p + B * f2p))
+            if (u2 < 0):
+                er *= -1
+                ep *= -1
+                hr *= -1
+                hp *= -1
+
+            # I = numpy.square(ez) + numpy.square(er) + numpy.square(ep)
+            I = numpy.vstack((ez, er, ep, hz, hr, hp))
+            F = numpy.hstack((F, I))
+        return F
 
 
 def sortModes(modes):

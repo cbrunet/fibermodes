@@ -1,0 +1,665 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"Jpu",
+				"Jpu2a"
+			],
+			[
+				"_sol",
+				"_solvefibers	function"
+			],
+			[
+				"exe",
+				"executor	statement"
+			],
+			[
+				"_mode",
+				"_modeIsFound	function"
+			],
+			[
+				"Fa",
+				"Family	import"
+			],
+			[
+				"delta",
+				"_delta"
+			],
+			[
+				"getMO",
+				"getModeAttr	function"
+			],
+			[
+				"lin",
+				"linalg	module"
+			],
+			[
+				"F",
+				"Family	statement"
+			],
+			[
+				"cuto",
+				"cutoffTE"
+			],
+			[
+				"_iter",
+				"_iterSolve	function"
+			],
+			[
+				"_get",
+				"_getParameter	function"
+			],
+			[
+				"__len",
+				"__length_hint__	function"
+			],
+			[
+				"_so",
+				"_solveFiber	function"
+			],
+			[
+				"setR",
+				"setRadii	function"
+			],
+			[
+				"_sel",
+				"_solveBetween	function"
+			],
+			[
+				"matpa",
+				"matparams	statement"
+			],
+			[
+				"_ver",
+				"_vectorial	statement"
+			],
+			[
+				"_v",
+				"_vModes	statement"
+			],
+			[
+				"lpm",
+				"lpmodes	statement"
+			],
+			[
+				"_cut",
+				"_cutoffTE	function"
+			],
+			[
+				"bre",
+				"brentq	function"
+			],
+			[
+				"cutoff",
+				"cutoffV0	function"
+			],
+			[
+				"NotIm",
+				"NotImplementedError	class"
+			],
+			[
+				"File",
+				"FileNotFoundError	class"
+			],
+			[
+				"distu",
+				"distutils	module"
+			],
+			[
+				"solve",
+				"solveV	function"
+			],
+			[
+				"sol",
+				"solveLP	function"
+			],
+			[
+				"_lp",
+				"_lpModes	statement"
+			],
+			[
+				"setRadiu",
+				"setRadiusFct	function"
+			],
+			[
+				"w",
+				"wavelength"
+			],
+			[
+				"fi",
+				"fixedFiber	function"
+			],
+			[
+				"mat",
+				"_matparams"
+			],
+			[
+				"setMa",
+				"setMaterials	function"
+			],
+			[
+				"set",
+				"setMaterialsParams	function"
+			],
+			[
+				"is",
+				"isinstance	function"
+			],
+			[
+				"fib",
+				"fibermodes"
+			],
+			[
+				"_ma",
+				"_matparams	statement"
+			],
+			[
+				"sort",
+				"sortModes	function"
+			],
+			[
+				"fam",
+				"family"
+			],
+			[
+				"assert",
+				"assertEqual	function"
+			],
+			[
+				"asse",
+				"assertEqual	function"
+			],
+			[
+				"epsilon",
+				"epsilon_0	statement"
+			],
+			[
+				"test",
+				"testRunner	statement"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/icc2015charles.tex",
+			"settings":
+			{
+				"buffer_size": 35071,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/LaTeXTools/LaTeX.sublime-build",
+	"command_palette":
+	{
+		"height": 201.0,
+		"selected_items":
+		[
+			[
+				"git br",
+				"Git: New Branch"
+			],
+			[
+				"git stat",
+				"Git: Status"
+			],
+			[
+				"git lo",
+				"Git: Log All"
+			],
+			[
+				"git com",
+				"Git: Commit"
+			],
+			[
+				"git sta",
+				"Git: Status"
+			],
+			[
+				"Package Control: ",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"packa",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"ins",
+				"Package Control: Install Package"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"build",
+				"Build: Build"
+			]
+		],
+		"width": 458.0
+	},
+	"console":
+	{
+		"height": 132.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015"
+	],
+	"file_history":
+	[
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tablen.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tablegeom.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tableneff.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tabledneff.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tableng.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tabled.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/tables.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/icc2015charles.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/standalone/icc2015charles.tex",
+		"/home/cbrunet/.config/sublime-text-3/Packages/LaTeXTools/builders/traditionalBuilder.py",
+		"/home/cbrunet/.config/sublime-text-3/Packages/User/LaTeXTools.sublime-settings",
+		"/home/cbrunet/websites/scgsm/typo3conf/ext/vibeo/Resources/Private/Templates/Media/List.html",
+		"/home/cbrunet/Copy/PhD/Mes articles/3. coupure/coupure.tex",
+		"/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/icc2015charles.log",
+		"/home/cbrunet/Copy/PhD/Reports/14. coupure2/coupure2.tex",
+		"/home/cbrunet/Études/Software/FiberModes/scripts/coupure",
+		"/home/cbrunet/Copy/PhD/Mes articles/4. air-core fiber/aircorefiber.tex",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/simulator/psimulator.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/simulator/simulator.py",
+		"/home/cbrunet/Études/Software/FiberModes/tests/simulator.py",
+		"/home/cbrunet/Études/Software/FiberModes/scripts/coupure3",
+		"/home/cbrunet/Études/Software/FiberModes/tests/mlsif.py",
+		"/home/cbrunet/Études/Software/FiberModes/tests/acsif.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/mlsif.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/acsif.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/fiber.py",
+		"/home/cbrunet/Études/Software/FiberModes/tests/ssif.py",
+		"/home/cbrunet/Études/Software/MultiLayerFiber/misc/cutoff.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.fiber.acsif.rst",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/__init__.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/mode.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/factory.py",
+		"/home/cbrunet/Études/Software/FiberModes/tests/factory.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/wavelength.py",
+		"/home/cbrunet/Études/Software/FiberModes/tests/wavelength.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/fiber/ssif.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.simulator.simulator.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.simulator.psimulator.rst",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/simulator/__init__.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.fiber.fiber.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.fiber.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/conf.py",
+		"/home/cbrunet/Études/Software/FiberModes/scripts/coupure.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/index.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.simulator.rst",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/__init__.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes.sublime-project",
+		"/home/cbrunet/Études/Software/FiberModes/plots/mlsif.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/constants.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.mode.rst",
+		"/home/cbrunet/Études/Software/FiberModes/plots/bures_4_2_8.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.wavelength.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.constants.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.fiber.mlsif.rst",
+		"/home/cbrunet/Études/Software/FiberModes/runtests.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/modules.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.material.fixed.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.material.material.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.fiber.factory.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.material.rst",
+		"/home/cbrunet/Études/Software/FiberModes/tests/mode.py",
+		"/home/cbrunet/Études/Software/FiberModes/plots/ssif.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fiber/fibermodes.fiber.factory.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes.fiber.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes.material.rst",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/smode.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/fibermodes/fibermodes.smode.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api/fibermodes.Mode.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api/fibermodes.smode.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api/fibermodes.Wavelength.rst",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/material/fixed.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/material/material.py",
+		"/home/cbrunet/Études/Software/FiberModes/doc/Makefile",
+		"/home/cbrunet/Études/Software/FiberModes/__init__.py",
+		"/home/cbrunet/Études/Software/FiberModes/fibermodes/material/__init__.py",
+		"/home/cbrunet/.config/sublime-text-3/Packages/User/Python.sublime-settings",
+		"/home/cbrunet/Études/Software/FiberModes/doc/code.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api/fibermodes.fixedFiber.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/api/fibermodes.rst",
+		"/home/cbrunet/Études/Software/FiberModes/doc/Makefile~",
+		"/home/cbrunet/Études/Software/FiberModes/doc/_build/html/index.html",
+		"/home/cbrunet/.config/sublime-text-3/Packages/User/MakeHtmlDoc.sublime-build",
+		"/home/cbrunet/websites/op-dma/typo3conf/ext/wt_spamshield/Configuration/TypoScript/setup.txt",
+		"/home/cbrunet/websites/op-dma/typo3conf/ext/wt_spamshield/Configuration/TypoScript/constants.txt",
+		"/home/cbrunet/websites/op-dma/typo3conf/ext/wt_spamshield/ext_localconf.php",
+		"/home/cbrunet/websites/op-dma/typo3conf/ext/wt_spamshield/ext_emconf.php",
+		"/home/cbrunet/websites/op-dma/typo3conf/ext/wt_spamshield/ext_autoload.php",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Layouts/Page.html",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/ext_emconf.php",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Public/JavaScript/svgfallback.js",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Configuration/TypoScript/setup.txt",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Configuration/TypoScript/constants.txt",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Templates/Page/Accueil.html",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Scss/msc.scss",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/TSConfig/page.ts",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Layouts/Content.html",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Public/Css/fonts.css",
+		"/home/cbrunet/websites/msc/typo3conf/ext/cb_foundation/Resources/Private/Scss/foundation/foundation/components/_buttons.scss",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/config.rb",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Templates/Page/Default.html",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Scss/_settings.scss",
+		"/home/cbrunet/websites/scgsm/typo3conf/ext/stthomas/Resources/Private/scss/stthomas.scss",
+		"/home/cbrunet/websites/msc/typo3conf/ext/vhs/Classes/ViewHelpers/Content/RenderViewHelper.php",
+		"/home/cbrunet/websites/msc/typo3conf/ext/msc/Resources/Private/Templates/Page/MyPageTemplate.html",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Sites/Cbrunet.Cbrunet/Resources/Private/TypoScripts/Library/Root.ts2",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Sites/Cbrunet.Cbrunet/Resources/Private/Templates/TypoScriptObjects/LocalMenu.html",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Sites/Cbrunet.Cbrunet/Resources/Private/scss/_settings.scss",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Sites/Cbrunet.Cbrunet/Resources/Private/scss/cbrunet.scss",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Sites/Cbrunet.Cbrunet/Resources/Private/Templates/TypoScriptObjects/Menu.html",
+		"/home/cbrunet/stthomas/index.html",
+		"/home/cbrunet/stthomas/stylesheets/app.css",
+		"/home/cbrunet/stthomas/config.rb",
+		"/home/cbrunet/stthomas/js/app.js",
+		"/home/cbrunet/stthomas/bower.json",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Application/TYPO3.Neos.NodeTypes/Resources/Private/Templates/NodeTypes/Headline.html",
+		"/home/cbrunet/websites/neos-1.0.0/Packages/Application/TYPO3.Neos.NodeTypes/Resources/Private/TypoScript/Root.ts2",
+		"/home/cbrunet/.config/sublime-text-3/Packages/User/Preferences.sublime-settings",
+		"/home/cbrunet/.config/sublime-text-3/Packages/Default/Preferences.sublime-settings",
+		"/home/cbrunet/Bureau/text.py"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"python",
+			"0.1",
+			"0.01",
+			"0.001",
+			"SI",
+			"\\text",
+			"c",
+			"C",
+			"c",
+			"C",
+			"c",
+			"C",
+			"equation",
+			"f",
+			"equation",
+			"n_\\eff",
+			"B",
+			"equation",
+			"os",
+			"table",
+			"u2*b",
+			"u2*a",
+			"u2 * b",
+			"u1*a",
+			"mode",
+			"_nu",
+			":\n",
+			"        futures = {}\n            with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:\n                for f in fibers:\n                    if mode not in self._modes[fiber]:\n                        futures[executor.submit(self._solveForMode, f, mode)] = f\n                for f in cf.as_completed(futures):\n                    fiber = futures[f]\n                    self._modes[fiber][mode] = f.result()",
+			"2a",
+			"u2b",
+			"u2a",
+			"jap",
+			"1",
+			"^",
+			"ua",
+			"va",
+			"I(ua)",
+			"n1^2",
+			"n2^2",
+			"ua",
+			"va",
+			"^",
+			"I(ua)",
+			"n1^2",
+			"j11",
+			"n11",
+			"u1b",
+			"u1a",
+			"ua",
+			"y1(u2b)",
+			"j1(u2b)",
+			"Modes",
+			"\"coupure2\"",
+			"mode.neff",
+			"f",
+			"_solveNextFiber",
+			"_solveFiber",
+			"solve",
+			"_findBracket",
+			"solve",
+			"_findBracket",
+			"!\")\n",
+			", d",
+			"print",
+			"Simulator",
+			"_lpModes",
+			"lc",
+			"mode.m+2",
+			"mode.m",
+			"omega",
+			"2.4048",
+			"fiber.cutoffV0(mode)",
+			"        V0 = co.k0 * rho * 3\n",
+			"co = fiber.cutoffV0(mode)",
+			"cutoffWl",
+			"=",
+			"vModes",
+			"        self._solved = False\n",
+			"Fiber",
+			"ziffct",
+			"args[1]",
+			"`\n",
+			"neff",
+			"[:-1]",
+			"solve",
+			"self._nu",
+			"sqrt_e_m",
+			"sqrt_m_e",
+			"self.U",
+			"self._rho",
+			"sqrt_m_e",
+			"self._rho",
+			"self.U",
+			"self.C",
+			"sqrt_e_m",
+			"self.C",
+			"self._rho",
+			"self._k",
+			"self.U",
+			"LP",
+			"cladding",
+			"epsilon",
+			"self._nu",
+			"self.U",
+			"self._rho",
+			"self._nu",
+			"self.C",
+			"3",
+			"bound",
+			"(mode.neff - delta,\n                                            mode.neff + delta)",
+			"modes",
+			"epsilon",
+			"fixedFiber",
+			"permittivity",
+			"rst",
+			"10",
+			"Cabin",
+			"319be4",
+			"5dbfef",
+			"div",
+			"nav"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/home/cbrunet/Copy/PhD/Mes articles/5. ICC2015/icc2015charles.tex",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 35071,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								34370,
+								34370
+							]
+						],
+						"settings":
+						{
+							"WordCountShouldRun": true,
+							"WordCountSyntax": "latex",
+							"syntax": "Packages/LaTeX/LaTeX.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 11426.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 25.0
+	},
+	"input":
+	{
+		"height": 32.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 213.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"output.git":
+	{
+		"height": 100.0
+	},
+	"project": "icc2015.sublime-project",
+	"replace":
+	{
+		"height": 46.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 244.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

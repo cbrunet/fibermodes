@@ -9,12 +9,12 @@ a specialized fiber class using either a
 However, you should referer at the documentation of this class,
 as it contains all the functions you need to solve for modes.
 
-
 """
 
 import numpy
 from scipy.optimize import brentq
 from itertools import count
+from math import sqrt
 
 from ..mode import Mode, SMode, Family, sortModes
 
@@ -54,9 +54,9 @@ class Fiber(object):
         self._n = numpy.empty(n)
         self._params = []
 
-        for i in range(n):
-            self._mat.append(args[i][0])
-            self._r[i] = niffct(args[i][1])
+        for i in range(n):  # For each layer
+            self._mat.append(args[i][0])  # Material
+            self._r[i] = niffct(args[i][1])  # Radius
             self._n[i] = args[i][0].n(self._wl, *args[i][2:])
             self._params.append(args[i][2:])
         self._r[-1] = self._r[-2]  # last layer radius
@@ -73,6 +73,30 @@ class Fiber(object):
         """Allow to use Fiber as dictionary key."""
         return hash((self._wl.wavelength,) + tuple(self._r[:-1]) +
                     tuple(self._n))
+
+    @property
+    def na(self):
+        """Numerical aperture.
+
+        NA is only relevant for :class:`~fibermodes.fiber.ssif.SSIF`.
+        However, it is useful when calculating
+        :attr:`~fibermodes.fiber.fiber.Fiber.V0`. Therefore, we define it
+        as :math:`\\text{NA} = \sqrt{n_{\max}^2 - n_{cl}^2}`, where
+        :math:`n_{\max}` is the highest refractive index inside the fiber,
+        and :math:`n_{cl}` is the refractive index of the cladding.
+
+        """
+        return sqrt(max(self._n)**2 - self._n[-1]**2)
+
+    @property
+    def V0(self):
+        """Normalized frequency.
+
+        We define it as :math:`V_0 = k_0 r_{cl} \\text{NA}`,
+        where :math:`r_{cl}` is the inner radius of the cladding.
+
+        """
+        return self._wl.k0 * self._r[-1] * self.na
 
     def get(self, pname, *args):
         """Get fiber parameter from given parameter name.
@@ -103,6 +127,8 @@ class Fiber(object):
             return self._r[args[0]]
         elif pname == 'material':
             return self._params[args[0]][args[1]]
+        elif pname == 'index':
+            return self._n[args[0]]
         elif pname == 'value':
             return args[0]
         raise TypeError('pname must be wavelength, radius, '
@@ -205,6 +231,46 @@ class Fiber(object):
                 return SMode(self, mode, neff)
         raise OverflowError("Did not found root in given interval.")
 
+    def solve2(self, mode, nmin, nmax, delta=1e-6, epsilon=1e-12):
+        """Find root of characteristic equation inside given bound.
+
+        It tries to find the first root from the highest index.
+        However, it is not guaranteed that the found root is the first root.
+        This function does not take into account the *m* parameter of
+        the mode. You need to provide the right starting point or interval
+        in order to get the right solution.
+
+        :class:`OverflowError` is risen if no root is found.
+
+        :param mode: :class:`~fibermodes.mode.Mode` object.
+        :param bound: hint to help root search. Can be *None*, start,
+                      or (min, start, max).
+        :param delta: minimal interval to look in.
+        :type delta: float
+        :param epsilon: precision for root finding.
+        :type epsilon: float
+        :rtype: :class:`~fibermodes.mode.SMode` (solved mode) object.
+        :raises: :class:`OverflowError`
+
+        """
+        fct = self._ceq(mode)
+
+        a = nmax - epsilon
+        fa = fct(a, mode)
+        while a > nmin + delta + epsilon:
+            b, fb = a, fa
+            a = b - delta
+            fa = fct(a, mode)
+            if (fa < 0 and fb > 0) or (fa > 0 and fb < 0):
+                neff = brentq(fct, a, b, args=(mode,), xtol=epsilon)
+                if a <= neff <= b:  # Detect discontinuity
+                    v0 = abs(fct(neff, mode))
+                    if (abs(fct(neff-epsilon, mode)) >= v0 and
+                            abs(fct(neff+epsilon, mode)) >= v0):
+                        return SMode(self, mode, neff)
+        else:
+            raise OverflowError("Did not found root in given interval.")
+
     def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None,
                  cladding=False, idxmax=None):
         """Find all the modes in a given family with a given *ν*.
@@ -252,10 +318,23 @@ class Fiber(object):
     def csolve(self, mode):
         pass
 
-    def cutoffWl(self, mode):
-        """Return the cutoff wavelength of given mode.
+    def cutoffV0(self, mode):
+        """Gives cutoff of given mode, in term of V0.
 
-        :param mode: :class:`~fibermodes.mode.Mode` object
+        This is an abstract method, that can be implemented for specific
+        fiber layouts.
+
+        :param mode: :class:`~fibermodes.mode.Mode` object.
+        :param V0min: Minimal value for returned V0 (dafault: 2).
+        :type V0min: integer
+        :param V0max: Maximal value for returned V0 (default: inf).
+        :type V0max: integer
+        :param delta: Increment used for searching roots (default: 0.25).
+                      Decrease it if it is not able to find a given cutoff.
+                      Increase it to et faster calculation.
+        :type delta: float
+        :rtype: float
+        :raise: NotImplementedError
 
         """
         raise NotImplementedError

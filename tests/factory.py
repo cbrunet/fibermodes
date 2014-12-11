@@ -19,9 +19,9 @@ class TestFactory(unittest.TestCase):
         fiber = fixedFiber(wl, [4e-6], [1.474, 1.444])
         self.assertTrue(isinstance(fiber, SSIF), msg="SSIF")
 
-        # ACSIF
+        # TLSIF
         fiber = fixedFiber(wl, [4e-6, 10e-6], [1.444, 1.474, 1.444])
-        self.assertTrue(isinstance(fiber, ACSIF), msg="ACSIF")
+        self.assertTrue(isinstance(fiber, TLSIF), msg="TLSIF")
 
         # MLSIF
         fiber = fixedFiber(wl, [4e-6, 10e-6, 15e-6],

@@ -1,7 +1,7 @@
-fibermodes.fiber.acsif
+fibermodes.fiber.tlsif
 ======================
 
-.. automodule:: fibermodes.fiber.acsif
+.. automodule:: fibermodes.fiber.tlsif
     :members:
     :undoc-members:
    

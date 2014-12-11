@@ -6,8 +6,10 @@ from ..mode import Family
 
 from math import sqrt
 import numpy
-from scipy.special import j0, y0, j1, y1, jn, yn, jnyn_zeros
+from scipy.special import j0, y0, j1, y1, jn, yn, jnyn_zeros, iv, kn
+from scipy.special import ivp, jvp, yvp, kvp
 from scipy.optimize import brentq
+from ..constants import eta0
 
 
 class ACSIF(MLSIF):
@@ -30,6 +32,131 @@ class ACSIF(MLSIF):
     @property
     def rho(self):
         return self._r[0] / self._r[1]
+
+    def _heceq(self, neff, mode):
+        a = self._r[0]
+        b = self._r[1]
+
+        u = self._wl.k0 * numpy.sqrt(numpy.abs(self._n*self._n - neff*neff))
+        nubeta = mode.nu * self._wl.k0 * neff
+
+        if 0 in u:
+            return float("inf")
+
+        u1a = u[0] * a
+        u2a = u[1] * a
+        u2b = u[1] * b
+        u3b = u[2] * b
+
+        n12 = self._n[0] * self._n[0]
+        n22 = self._n[1] * self._n[1]
+        n32 = self._n[2] * self._n[2]
+
+        Xnubeta = (1 / u1a**2 + 1 / u2a**2) * nubeta
+        Ynubeta = (1 / u2b**2 + 1 / u3b**2) * nubeta
+
+        M = numpy.empty((4, 4))
+
+        Ju2a = jn(mode.nu, u2a)
+        Nu2a = yn(mode.nu, u2a)
+        Ju2b = jn(mode.nu, u2b)
+        Nu2b = yn(mode.nu, u2b)
+
+        Jpu2a = jvp(mode.nu, u2a) / u2a
+        Npu2a = yvp(mode.nu, u2a) / u2a
+        Jpu2b = jvp(mode.nu, u2b) / u2b
+        Npu2b = yvp(mode.nu, u2b) / u2b
+
+        I = ivp(mode.nu, u1a) / (u1a * iv(mode.nu, u1a))
+        K = kvp(mode.nu, u3b) / (u3b * kn(mode.nu, u3b))
+
+        M[0, 0] = Xnubeta * Ju2a
+        M[0, 1] = Xnubeta * Nu2a
+        M[0, 2] = -self._wl.k0 * (Jpu2a + I * Ju2a)
+        M[0, 3] = -self._wl.k0 * (Npu2a + I * Nu2a)
+        M[1, 0] = -self._wl.k0 * (n22 * Jpu2a + n12 * I * Ju2a)
+        M[1, 1] = -self._wl.k0 * (n22 * Npu2a + n12 * I * Nu2a)
+        M[1, 2] = M[0, 0]
+        M[1, 3] = M[0, 1]
+        M[2, 0] = Ynubeta * Ju2b
+        M[2, 1] = Ynubeta * Nu2b
+        M[2, 2] = -self._wl.k0 * (Jpu2b + K * Ju2b)
+        M[2, 3] = -self._wl.k0 * (Npu2b + K * Nu2b)
+        M[3, 0] = -self._wl.k0 * (n22 * Jpu2b + n32 * K * Ju2b)
+        M[3, 1] = -self._wl.k0 * (n22 * Npu2b + n32 * K * Nu2b)
+        M[3, 2] = M[2, 0]
+        M[3, 3] = M[2, 1]
+
+        return numpy.linalg.det(M)
+
+    def _constants(self, neff, mode):
+        a = self._r[0]
+        b = self._r[1]
+
+        u = self._wl.k0 * numpy.sqrt(numpy.abs(self._n*self._n - neff*neff))
+        nubeta = mode.nu * self._wl.k0 * neff
+
+        if 0 in u:
+            return float("inf")
+
+        u1a = u[0] * a
+        u2a = u[1] * a
+        u2b = u[1] * b
+        u3b = u[2] * b
+
+        n12 = self._n[0] * self._n[0]
+        n22 = self._n[1] * self._n[1]
+        n32 = self._n[2] * self._n[2]
+
+        Xnubeta = (1 / u1a**2 + 1 / u2a**2) * nubeta
+        Ynubeta = (1 / u2b**2 + 1 / u3b**2) * nubeta
+
+        M = numpy.empty((4, 4))
+
+        Ju2a = jn(mode.nu, u2a)
+        Nu2a = yn(mode.nu, u2a)
+        Ju2b = jn(mode.nu, u2b)
+        Nu2b = yn(mode.nu, u2b)
+
+        Jpu2a = jvp(mode.nu, u2a) / u2a
+        Npu2a = yvp(mode.nu, u2a) / u2a
+        Jpu2b = jvp(mode.nu, u2b) / u2b
+        Npu2b = yvp(mode.nu, u2b) / u2b
+
+        Iu1a = iv(mode.nu, u1a)
+        Ku3b = kn(mode.nu, u3b)
+        I = ivp(mode.nu, u1a) / (u1a * Iu1a)
+        K = kvp(mode.nu, u3b) / (u3b * Ku3b)
+
+        M[0, 0] = Xnubeta * Ju2a
+        M[0, 1] = Xnubeta * Nu2a
+        M[0, 2] = -self._wl.k0 * (Jpu2a + I * Ju2a)
+        M[0, 3] = -self._wl.k0 * (Npu2a + I * Nu2a)
+        M[1, 0] = -self._wl.k0 * (n22 * Jpu2a + n12 * I * Ju2a)
+        M[1, 1] = -self._wl.k0 * (n22 * Npu2a + n12 * I * Nu2a)
+        M[1, 2] = M[0, 0]
+        M[1, 3] = M[0, 1]
+        M[2, 0] = Ynubeta * Ju2b
+        M[2, 1] = Ynubeta * Nu2b
+        M[2, 2] = -self._wl.k0 * (Jpu2b + K * Ju2b)
+        M[2, 3] = -self._wl.k0 * (Npu2b + K * Nu2b)
+        M[3, 0] = -self._wl.k0 * (n22 * Jpu2b + n32 * K * Ju2b)
+        M[3, 1] = -self._wl.k0 * (n22 * Npu2b + n32 * K * Nu2b)
+        M[3, 2] = M[2, 0]
+        M[3, 3] = M[2, 1]
+
+        coefs = numpy.linalg.solve(numpy.dot(M[:, 1:].T, M[:, 1:]),
+                                   -numpy.dot(M[:, 1:].T, M[:, 0]))
+
+        C1 = (Ju2a + coefs[0] * Nu2a) / Iu1a
+        C2 = (coefs[1] * Ju2a + coefs[2] * Nu2a) / Iu1a / eta0
+
+        D1 = (Ju2b + coefs[0] * Nu2b) / Ku3b
+        D2 = (coefs[1] * Ju2b + coefs[2] * Nu2b) / Ku3b / eta0
+
+        return numpy.array([C1, 0, C2, 0,
+                            1, coefs[0], coefs[1] / eta0, coefs[2] / eta0,
+                            0, D1, 0, D2])
 
     def _cutoffTE(self, V0, nu, n02):
         ua = self.rho * V0

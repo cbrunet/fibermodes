@@ -2,6 +2,6 @@
 
 from .ssif import SSIF
 from .mlsif import MLSIF
-from .acsif import ACSIF
+from .tlsif import TLSIF
 
-__all__ = ['SSIF', 'MLSIF', 'ACSIF']
+__all__ = ['SSIF', 'MLSIF', 'TLSIF']

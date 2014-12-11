@@ -1,8 +1,10 @@
 """Parallel simulator module, using multiprocessing. """
 
 from .simulator import Simulator
-from ..mode import Mode
+from ..mode import Mode, Family
 import concurrent.futures as cf
+import numpy
+import itertools
 
 
 class PSimulator(Simulator):
@@ -21,20 +23,55 @@ class PSimulator(Simulator):
         self._nproc = nproc
         super().__init__(*args, **kwargs)
 
-    def _iterSolve(self, fiter, lpHint=None, vHint=None):
-        futures = {}
-        with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:
-            for f in fiter:
-                futures[executor.submit(self._solveFiber, f,
-                                        lpHint, vHint)] = f
+    def _solvefibers(self, fibers, mode):
+        smodes = {}
+        for fiber in fibers:
+            smodes[fiber] = self._solveForMode(fiber, mode)
+        return smodes
 
-            for f in cf.as_completed(futures):
-                fiber = futures[f]
-                lpModes, vModes = f.result()
+    def _psolve(self, fibers, mode):
+        pm = None
+        if mode.family in (Family.TE, Family.TM, Family.LP) and mode.m > 1:
+            pm = Mode(mode.family, mode.nu, mode.m-1)
+        elif mode.family == Family.EH:
+            pm = Mode(Family.HE, mode.nu, mode.m)
+        elif mode.family == Family.HE and mode.m > 1:
+            pm = Mode(Family.EH, mode.nu, mode.m-1)
 
-                if lpModes:
-                    self._lpModes[fiber] = {smode.mode: smode
-                                            for smode in lpModes}
-                if vModes:
-                    self._vModes[fiber] = {smode.mode: smode
-                                           for smode in vModes}
+        solvepm = False
+        solvem = False
+        for fiber in fibers:
+            if fiber not in self._modes:
+                self._modes[fiber] = {}
+            if mode not in self._modes[fiber]:
+                if pm is not None:
+                    solvepm = True
+                solvem = True  # Something missing, so solve for it
+
+        # Recursive parallel solve for previous modes
+        if solvepm:
+            self._psolve(fibers, pm)
+
+        # Parallel solve for mode
+        if solvem:
+            futures = {}
+            with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:
+                for i in range(self._nproc):
+                    ff = fibers[i::self._nproc]
+                    futures[executor.submit(self._solvefibers, ff, mode)] = i
+                for f in cf.as_completed(futures):
+                    for fiber, smode in f.result().items():
+                        self._modes[fiber][mode] = smode
+
+    def _getModesAttr(self, mode, attr):
+        """Generic function to fetch list of ``attr`` from solved modes.
+
+        """
+        fibers = list(iter(self))
+        self._psolve(fibers, mode)
+        a = numpy.fromiter((self._getModeAttr(fiber, mode, attr, 0)
+                            for fiber in fibers),
+                           numpy.float,
+                           self.__length_hint__())
+        a = a.reshape(self.shape(), order='F')
+        return numpy.ma.masked_less_equal(a, 0)
