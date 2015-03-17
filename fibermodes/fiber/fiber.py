@@ -15,6 +15,7 @@ import numpy
 from scipy.optimize import brentq
 from itertools import count
 from math import sqrt
+from copy import copy
 
 from ..mode import Mode, SMode, Family, sortModes
 
@@ -30,13 +31,14 @@ class Fiber(object):
 
     """
 
-    def __init__(self, wl, *args):
+    def __init__(self, wl, *args, **kwargs):
         '''
         Constructor
 
         args are: (material, radius, mat_params)
         '''
         hasfct = False
+        self._rna = kwargs.pop('rna', None)
 
         def niffct(x):
             nonlocal hasfct
@@ -71,7 +73,7 @@ class Fiber(object):
 
     def __hash__(self):
         """Allow to use Fiber as dictionary key."""
-        return hash((self._wl.wavelength,) + tuple(self._r[:-1]) +
+        return hash((self._wl,) + tuple(self._r[:-1]) +
                     tuple(self._n))
 
     @property
@@ -96,7 +98,10 @@ class Fiber(object):
         where :math:`r_{cl}` is the inner radius of the cladding.
 
         """
-        return self._wl.k0 * self._r[-1] * self.na
+        if self._rna is None:
+            return self._wl.k0 * self._r[-1] * self.na
+        else:
+            return self._wl.k0 * self._rna
 
     def get(self, pname, *args):
         """Get fiber parameter from given parameter name.
@@ -224,7 +229,7 @@ class Fiber(object):
     def csolve(self, mode):
         pass
 
-    def cutoffV0(self, mode):
+    def cutoffV0(self, mode, V0min=2, V0max=float('inf'), delta=0.25):
         """Gives cutoff of given mode, in term of V0.
 
         This is an abstract method, that can be implemented for specific
@@ -395,6 +400,12 @@ class Fiber(object):
              Family.HE: self._heceq,
              Family.EH: self._ehceq}
         return M[mode.family]
+
+    def _fwl0(self):
+        """Copy of self with wl == 0"""
+        f0 = copy(self)
+        f0._wl = 0
+        return f0
 
     def __eq__(self, fiber):
         return (self._wl == fiber._wl and

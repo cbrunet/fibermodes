@@ -4,7 +4,7 @@ Created on 2014-09-08
 @author: cbrunet
 '''
 
-from .material import Material, sellmeier
+from .material import Material, claussiusMossotti
 from .silica import Silica
 from .germania import Germania
 from scipy.optimize import brentq
@@ -17,21 +17,20 @@ class SiO2GeO2(Material):
     classdocs
     '''
 
-    name = "Silica doped with Germania"
+    name = "Silica doped with Germania (Claussius-Mossotti version)"
     nparams = 1
     WLRANGE = (0.6e-6, 1.8e-6)
-    XRANGE = 1
+    XRANGE = 0.2
 
-    B = numpy.array(Silica.B)
-    Bp = numpy.array(Germania.B) - B
-    C = numpy.array(Silica.C)
-    Cp = numpy.array(Germania.C) - C
+    A = numpy.array([0.2045154578, 0.06451676258, 0.1311583151])
+    B = numpy.array([-0.1011783769, 0.1778934999, -0.1064179581])
+    Z = numpy.array([0.06130807320e-6, 0.1108859848e-6, 8.964441861e-6])
 
     @classmethod
     def n(cls, wl, x):
         cls._testRange(wl)
         cls._testConcentration(x)
-        return sellmeier(wl, cls.B + x * cls.Bp, cls.C + x * cls.C)
+        return claussiusMossotti(wl, cls.A, cls.B, cls.Z, x)
 
     @classmethod
     def info(cls):
@@ -44,10 +43,6 @@ class SiO2GeO2(Material):
         assert nSi <= n <= nGe
 
         return brentq(lambda x: cls.n(wl, x)-n, 0, cls.XRANGE)
-
-# J. W. Fleming, “Dispersion in geo2–sio2 glasses,” Appl. Opt.,
-# vol. 23, no. 24, pp. 4486–4493, Dec 1984. [Online]. Available:
-# http://ao.osa.org/abstract.cfm?URI=ao-23-24-4486
 
 # Article (Sunak1989)
 # Sunak, H. & Bastien, S.

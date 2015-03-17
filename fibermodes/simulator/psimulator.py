@@ -72,5 +72,5 @@ class PSimulator(Simulator):
                             for fiber in fibers),
                            numpy.float,
                            self.__length_hint__())
-        a = a.reshape(self.shape(), order='F')
+        a = a.reshape(self.shape())
         return numpy.ma.masked_less_equal(a, 0)

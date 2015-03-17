@@ -1,10 +1,10 @@
 """Fiber factory module."""
 
-from ..wavelength import Wavelength
-from .ssif import SSIF
-from .mlsif import MLSIF
-from .tlsif import TLSIF
-from ..material.fixed import Fixed
+from fibermodes.wavelength import Wavelength
+from fibermodes.fiber.ssif import SSIF
+from fibermodes.fiber.mlsif import MLSIF
+from fibermodes.fiber.tlsif import TLSIF
+from fibermodes.material.fixed import Fixed
 
 
 class Factory(list):
@@ -17,6 +17,10 @@ class Factory(list):
     begin from the center.
 
     """
+
+    def __init__(self, *args, **kwargs):
+        self._rna = None
+        super().__init__(*args, **kwargs)
 
     @property
     def nlayers(self):
@@ -35,18 +39,32 @@ class Factory(list):
         def n(i):
             return self[i].n(wl, *args[i][1:])
 
-        params = tuple(((self[i],) + tuple(args[i]))
-                       for i in range(self.nlayers))
+        params = [((self[0],) + tuple(args[0]))]
+        ln = n0 = n(0)
+        n1 = None
+        for i in range(1, self.nlayers):
+            cn = n(i)
+            if cn == ln:
+                params[-1] = (self[i],) + tuple(args[i])
+            else:
+                params.append((self[i],) + tuple(args[i]))
+                ln = cn
+                if n1 is None:
+                    n1 = cn
+        nlayers = len(params)
 
-        if self.nlayers == 2 and n(0) > n(1):
-            return SSIF(wl, *params)
-        elif self.nlayers == 3:
-            return TLSIF(wl, *params)
+        if nlayers < 2:
+            return None
+
+        if nlayers == 2 and n0 > n1:
+            return SSIF(wl, *params, rna=self._rna)
+        elif nlayers == 3:
+            return TLSIF(wl, *params, rna=self._rna)
         else:
-            return MLSIF(wl, *params)
+            return MLSIF(wl, *params, rna=self._rna)
 
 
-def fixedFiber(wl, r, n):
+def fixedFiber(wl, r, n, rna=None):
     """Build a step-index fiber with fixed indices, from given parameters.
 
     :param wl: wavelength
@@ -56,8 +74,24 @@ def fixedFiber(wl, r, n):
 
     """
     ff = Factory()
+    ff._rna = rna
     params = []
     for i in range(len(n)):
         ff.append(Fixed)
         params.append((r[i], n[i]) if i < len(r) else (r[i - 1], n[i]))
+        # TODO: Detect subsequent layers with same n
     return ff(wl, *params)
+
+
+if __name__ == '__main__':
+    fact = Factory((Fixed, Fixed))
+    fiber = fact(1550e-9, (4e-6, 1.6), (6e-6, 1.4))
+    print(fiber.__class__, fiber)
+
+    fact = Factory((Fixed, Fixed, Fixed))
+    fiber = fact(1550e-9, (4e-6, 1.6), (5e-6, 1.6), (6e-6, 1.4))
+    print(fiber.__class__, fiber)
+
+    fact = Factory((Fixed, Fixed, Fixed))
+    fiber = fact(1550e-9, (4e-6, 1.4), (5e-6, 1.6), (6e-6, 1.4))
+    print(fiber.__class__, fiber)

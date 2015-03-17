@@ -19,19 +19,6 @@ class SSIF(Fiber):
 
     """
 
-    @property
-    def NA(self):
-        """Numerical aperture, given by :math:`NA = \sqrt{n_1^2 - n_2^2}`."""
-        return sqrt(self._n[0]*self._n[0] - self._n[1]*self._n[1])
-
-    @property
-    def V0(self):
-        """Normalized frequency, given by
-        :math:`V_0 = k_0 \\rho \sqrt{n_1^2 - n_2^2}`.
-
-        """
-        return self._wl.k0 * self._r[0] * self.NA
-
     def _u(self, neff):
         return self._r[0] * self._wl.k0 * sqrt(self._n[0]**2 - neff**2)
 
@@ -79,7 +66,7 @@ class SSIF(Fiber):
                                       ((mode.nu * neff * v2 * kn(mode.nu, w)) /
                                        (self._n[0] * u * w))**2))
 
-    def cutoffV0(self, mode):
+    def cutoffV0(self, mode, V0min=2, V0max=float('inf'), delta=0.25):
         """Give `V0` parameter at cutoff, for given mode.
 
         :param mode: :class:`~fibermodes.mode.Mode` object
@@ -106,6 +93,10 @@ class SSIF(Fiber):
             V0 = jn_zeros(mode.nu, mode.m)[mode.m-1]
         else:
             V0 = jn_zeros(mode.nu, mode.m)[mode.m-1]
+
+        if self._rna is not None:
+            V0 /= self._r[0] * self.na / self._rna
+
         return V0
 
     def _cutoffHE(self, V0, nu, n02):

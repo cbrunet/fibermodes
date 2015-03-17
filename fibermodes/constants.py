@@ -13,3 +13,6 @@ eV = constants.eV  #: Electron charge (C).
 tpi = 2 * pi  #: Two times pi
 eta0 = sqrt(mu0 / epsilon0)  #: Impedance of free-space.
 Y0 = sqrt(epsilon0 / mu0)  #: Admitance of free-space.
+
+if __name__ == '__main__':
+    print("eta0", eta0)

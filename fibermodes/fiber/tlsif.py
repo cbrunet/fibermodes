@@ -64,6 +64,9 @@ class TLSIF(MLSIF):
         :rtype: float
 
         """
+        if str(mode) in ("LP(0,1)", "HE(1,1)"):
+            return 0
+
         nu = mode.nu
         fct = self._coeq(mode)
 
@@ -81,12 +84,13 @@ class TLSIF(MLSIF):
             fa = fb
             v0b += delta
             fb = fct(v0b, nu)
+        return None
 
     def __params(self, v0):
         r1, r2, _ = self._r
         Nsq = numpy.square(self._n)
         n1sq, n2sq, n3sq = Nsq
-        k0 = v0 / (self.na * r2)
+        k0 = v0 / (self.na * r2) if not self._rna else v0 / self._rna
         Usq = [k0**2 * (nsq - n3sq) for nsq in Nsq]
         s1, s2, s3 = numpy.sign(Usq)
         u1, u2, u3 = numpy.sqrt(numpy.abs(Usq))
@@ -168,9 +172,12 @@ class TLSIF(MLSIF):
     def _ehcoeq(self, v0, nu):
         u1r1, u2r1, u2r2, s1, s2, n1sq, n2sq, n3sq = self.__params(v0)
         if s1 == 0:
-            delta0 = (n2sq - n3sq) / (n3sq + n2sq)
+            delta0 = (n3sq - n2sq) / (n3sq + n2sq)
         else:
             s3 = 1 if s1 > 0 and u1r1 < u2r1 else -1
+            if nu == 1 and n1sq > n2sq > n3sq:
+                s3 *= -1
+            # s3 = 1 if s1 == s2 and nu == 1 else -1
             delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
 
         if s1 == 0:  # e
@@ -194,6 +201,9 @@ class TLSIF(MLSIF):
             f21a, f21b = jn(nu, u2r1), yn(nu, u2r1)
         else:
             s3 = -1 if s1 > 0 and u1r1 < u2r1 else 1
+            if nu == 1 and n1sq > n2sq > n3sq:
+                s3 *= -1
+            # s3 = -1 if s1 == s2 and nu == 1 else 1
             delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
             if s2 > 0:
                 f21a = jn(nu, u2r1) * delta0 - jn(nu+1, u2r1)
@@ -203,10 +213,10 @@ class TLSIF(MLSIF):
                 f21b = kn(nu, u2r1) * delta0 - kn(nu+1, u2r1)
         n0sq = (n3sq - n2sq) / (n2sq + n3sq)
 
-        if s2 > 0:  # a
+        if s2 > 0:
             f2a = jn(nu-2, u2r2) * f21b - yn(nu-2, u2r2) * f21a
             f2b = jn(nu, u2r2) * f21b - yn(nu, u2r2) * f21a
-        else:
+        else:  # a
             f2a = iv(nu-2, u2r2) * f21b - kn(nu-2, u2r2) * f21a
             f2b = -iv(nu, u2r2) * f21b + kn(nu, u2r2) * f21a
 

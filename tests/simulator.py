@@ -10,12 +10,15 @@ from math import sqrt
 
 class TestSimulator(unittest.TestCase):
 
+    def setUp(self):
+        self.simulator = Simulator
+
     def testLenEmpty(self):
-        sim = Simulator()
+        sim = self.simulator()
         self.assertEqual(len(sim), 0)
 
     def testLenOne(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6, 10e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -23,7 +26,7 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(sim), 1)
 
     def testLenOneDim(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setRadii(4e-6, 10e-6)
         sim.setMaterials(Fixed, Fixed)
         sim.setMaterialsParams((1.474,), (1.444,))
@@ -39,7 +42,7 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(sim), 25)
 
     def testLenMultiDim(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setRadii((2e-6, 3e-6, 4e-6), [5e-6, 10e-6])  # 3 * 2 = 6
         sim.setMaterials(Fixed, Fixed)
         sim.setMaterialsParams((numpy.linspace(1.444, 1.474, 10),),
@@ -48,12 +51,12 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(sim), 30000)
 
     def testIterEmpty(self):
-        sim = Simulator()
+        sim = self.simulator()
         fibers = list(sim)
         self.assertEqual(len(fibers), 0)
 
     def testIterOne(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6, 10e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -65,8 +68,8 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(fiber[0], fiber2)
 
     def testConstraints(self):
-        n = numpy.linspace(4e-6, 10e-6)
-        sim = Simulator()
+        n = numpy.linspace(1.4, 1.6)
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -83,14 +86,14 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(sim), 2500)
 
         sim.addConstraint('equal',
-                          lambda x, y: x == y,
+                          lambda x, y: abs(x - y + 0.2 / 49) < 1e-5,
                           ('material', 0, 0),
                           ('material', 1, 0))
-        self.assertEqual(len(sim), 50)
+        self.assertEqual(len(sim), 49)
 
     def testFctParam(self):
         r = numpy.linspace(4e-6, 10e-6)
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadius(1, r)
         sim.setRadiusFct(0, lambda x: .25*x, ('radius', 1))
@@ -101,7 +104,7 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(sim), sum(1 for _ in sim))
 
     def testGetDimensions(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -132,7 +135,7 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(d[2][2], 0)
 
     def testGetWavelength(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -163,7 +166,7 @@ class TestSimulator(unittest.TestCase):
         n1 = n2 + dn
         X = SiO2GeO2.xFromN(wl, n1)
 
-        sim = Simulator(delta=1e-4)
+        sim = self.simulator(delta=1e-4)
         sim.setWavelength(wl)
         sim.setMaterials(Silica, SiO2GeO2, Silica)
         sim.setRadius(1, b * 1e-6)
@@ -177,44 +180,8 @@ class TestSimulator(unittest.TestCase):
         for va, vb in zip(V0t, V0s):
             self.assertAlmostEqual(va, vb)
 
-
-    # def testGetMinMaxParams(self):
-    #     sim = Simulator()
-    #     sim.setWavelength(1550e-9)
-    #     sim.setRadii(4e-6)
-    #     sim.setMaterials(Fixed, Fixed)
-    #     sim.setMaterialsParams((1.454,), (1.444,))
-    #     w, m, r = sim._getMinMaxParams()
-    #     self.assertEqual(w[0], 1550e-9)
-    #     self.assertEqual(r[0][0], 4e-6)
-    #     self.assertEqual(m[0][0][0], 1.454)
-
-    #     sim.setWavelength(numpy.linspace(800e-9, 1580e-9))
-    #     w, m, r = sim._getMinMaxParams()
-    #     self.assertEqual(w[0], 800e-9)
-    #     self.assertEqual(w[1], 1580e-9)
-    #     self.assertEqual(r[0][0], 4e-6)
-    #     self.assertEqual(m[0][0][0], 1.454)
-
-    #     sim.setRadius(0, numpy.linspace(2e-6, 10e-6))
-    #     w, m, r = sim._getMinMaxParams()
-    #     self.assertEqual(w[0], 800e-9)
-    #     self.assertEqual(w[1], 1580e-9)
-    #     self.assertEqual(r[0][0], 2e-6)
-    #     self.assertEqual(r[0][1], 10e-6)
-    #     self.assertEqual(m[0][0][0], 1.454)
-
-    #     sim.setMaterialParam(0, 0, numpy.linspace(1.445, 1.465))
-    #     w, m, r = sim._getMinMaxParams()
-    #     self.assertEqual(w[0], 800e-9)
-    #     self.assertEqual(w[1], 1580e-9)
-    #     self.assertEqual(r[0][0], 2e-6)
-    #     self.assertEqual(r[0][1], 10e-6)
-    #     self.assertEqual(m[0][0][0], 1.445)
-    #     self.assertEqual(m[0][0][1], 1.465)
-
     def testShape(self):
-        sim = Simulator()
+        sim = self.simulator()
         sim.setWavelength(1550e-9)
         sim.setRadii(4e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -233,7 +200,7 @@ class TestSimulator(unittest.TestCase):
     def testSolveLP0(self):
         wl = Wavelength(1550e-9)
 
-        sim = Simulator(delta=1e-4)
+        sim = self.simulator(delta=1e-4)
         sim.setWavelength(wl)
         sim.setRadii(4.5e-6)
         sim.setMaterials(Fixed, Fixed)
@@ -253,64 +220,32 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(modes), 1)
         self.assertTrue(Mode("HE", 1, 1) in modes)
 
+    def testResultArrayOrder(self):
+        """Test the order of the resulting array when there are many dimensions
 
+        """
+        rho = 0.35
+        phiclad = numpy.array([110, 125, 140, 160, 180])
+        a = 1.4 * phiclad / phiclad[-1]
+        b = a / rho
+        wl = numpy.linspace(800e-9, 1600e-9, 9)
 
-    # def testSolveLP1(self):
-    #     sim = Simulator(delta=1e-3)
-    #     sim.setWavelength(numpy.linspace(800e-9, 1580e-9))
-    #     sim.setRadii(4e-6)
-    #     sim.setMaterials(Fixed, Fixed)
-    #     sim.setMaterialsParams((1.454,), (1.444,))
-    #     sim.solve()
+        sim = self.simulator(delta=1e-3)
+        sim.setWavelength(wl)
+        sim.setMaterials(Silica, SiO2GeO2, Silica)
+        sim.setRadius(1, b * 1e-6)
+        sim.setRadiusFct(0, mul, ('value', rho), ('radius', 1))
+        sim.setMaterialParam(1, 0, 0.19)
 
-    #     for f in sim:
-    #         self.assertTrue(f in sim._lpModes)
-    #         self.assertTrue(Mode("LP", 0, 1) in sim._lpModes[f])
+        neff = sim.getNeff(Mode("HE", 1, 1))
 
-    #     sim.setVectorial(True)
-    #     sim.solve()
-    #     for f in sim:
-    #         self.assertTrue(f in sim._vModes)
-    #         self.assertTrue(Mode("HE", 1, 1) in sim._vModes[f])
+        for fiber in range(5):
+            if fiber:
+                for w in range(9):
+                    self.assertLess(neff[w, fiber-1], neff[w, fiber])
+            for w in range(1, 9):
+                self.assertLess(neff[w, fiber], neff[w-1, fiber])
 
-    # def testSolveLP2(self):
-    #     sim = Simulator(delta=1e-3)
-    #     sim.setWavelength(numpy.linspace(800e-9, 1580e-9, 10))
-    #     sim.setRadius(0, numpy.linspace(2e-6, 10e-6, 10))
-    #     sim.setMaterials(Fixed, Fixed)
-    #     sim.setMaterialsParams((1.454,), (1.444,))
-    #     sim.solve()
-
-    #     for f in sim:
-    #         self.assertTrue(f in sim._lpModes)
-    #         self.assertTrue(Mode("LP", 0, 1) in sim._lpModes[f])
-
-    #     sim.setVectorial(True)
-    #     sim.solve()
-    #     for f in sim:
-    #         self.assertTrue(f in sim._vModes)
-    #         self.assertTrue(Mode("HE", 1, 1) in sim._vModes[f])
-
-    # @unittest.skip("Long test")
-    # def testSolveLP3(self):
-    #     sim = Simulator(delta=1e-3)
-    #     sim.setWavelength(numpy.linspace(800e-9, 1580e-9, 10))
-    #     sim.setRadius(0, numpy.linspace(2e-6, 10e-6, 9))
-    #     sim.setMaterials(Fixed, Fixed)
-    #     sim.setMaterialsParams((numpy.linspace(1.445, 1.465, 5),), (1.444,))
-    #     sim.solve()
-
-    #     for f in sim:
-    #         self.assertTrue(f in sim._lpModes)
-    #         self.assertTrue(Mode("LP", 0, 1) in sim._lpModes[f])
-
-    #     sim.setVectorial(True)
-    #     sim.solve()
-    #     for f in sim:
-    #         self.assertTrue(f in sim._vModes)
-    #         if Mode("HE", 1, 1) not in sim._vModes[f]:
-    #             print(f)
-    #         # self.assertTrue(Mode("HE", 1, 1) in sim._vModes[f])
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

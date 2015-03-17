@@ -1,5 +1,10 @@
 __pycache__/
 *.pyc
+*.npy
 _build/
 fibermodes.sublime-workspace
 scripts/*.tex
+*.tab
+*.txt
+*.zip
+*.pdf

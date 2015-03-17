@@ -95,6 +95,14 @@ class Simulator(object):
         self._r = list(list(r) if hasattr(r, '__iter__') else [r]
                        for r in args)
 
+    def setV0Param(self, rna):
+        """Set parameter for normalizing V0.
+
+        :param rna: :math:`r \sqrt{n^2 - n_{cl}^2}`
+
+        """
+        self._f._rna = rna
+
     def addConstraint(self, name, cmp, *args):
         """Add constraint on parameters.
 
@@ -196,7 +204,7 @@ class Simulator(object):
                     for i in range(self._f.nlayers-1):  # skip last layer
                         params[i][0] = r[i]
                     fiber = self._f(wl, *params)
-                    if self._testConstraints(fiber):
+                    if fiber and self._testConstraints(fiber):
                         yield fiber
                     elif skipAsNone:
                         yield None
@@ -365,12 +373,46 @@ class Simulator(object):
                     pass
         return smode
 
+    def getCutoffV0(self, fiber, mode):
+        if str(mode) in ("HE(1,1)", "LP(0,1)"):
+            return 0
+
+        fwl0 = fiber._fwl0()
+        if fwl0 not in self._modes:
+            self._modes[fwl0] = {}
+        if mode in self._modes[fwl0]:
+            cutoff = self._modes[fwl0][mode]
+        else:
+            c2 = 1
+            if mode.m > 1:
+                if str(mode) in ("HE(1,2)", "LP(0,2)"):
+                    m2 = Mode("TE", 0, 1)
+                else:
+                    m2 = Mode(mode.family, mode.nu, mode.m - 1)
+                c2 = self.getCutoffV0(fiber, m2)
+            if c2:
+                try:
+                    cutoff = fiber.cutoffV0(mode, c2)
+                except NotImplementedError:
+                    cutoff = 0
+            else:
+                cutoff = 0
+            self._modes[fwl0][mode] = cutoff
+        return cutoff
+
     def getMode(self, fiber, mode):
+        # Test for already solved modes
         if fiber not in self._modes:
             self._modes[fiber] = {}
         if mode in self._modes[fiber]:
             return self._modes[fiber][mode]
-        smode = self._solveForMode(fiber, mode)
+
+        # Test for cutoff
+        cutoff = self.getCutoffV0(fiber, mode)
+        if not cutoff or cutoff < fiber.V0:
+            smode = self._solveForMode(fiber, mode)
+        else:
+            smode = None
 
         self._modes[fiber][mode] = smode
         return smode
@@ -425,7 +467,7 @@ class Simulator(object):
                             for fiber in iter(self)),
                            numpy.float,
                            self.__length_hint__())
-        a = a.reshape(self.shape(), order='F')
+        a = a.reshape(self.shape())
         return numpy.ma.masked_less_equal(a, 0)
 
     def getNeff(self, mode):

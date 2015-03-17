@@ -9,18 +9,6 @@
 		},
 		{
 			"file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
-			"name": "Python",
-			"selector": "source.python",
-			"shell_cmd": "PYTHONPATH=\"$project_path\" python3 -u \"$file\"",
-			"variants":
-			[
-				{
-					"name": "Run",
-					"shell_cmd": "python3 -u \"$project_path/runtests.py\""
-				}
-			]
-		},
-		{
 			"name": "Anaconda Python Builder",
 			"selector": "source.python",
 			"shell_cmd": "python3 -u \"$file\""
@@ -32,5 +20,10 @@
 			"follow_symlinks": true,
 			"path": "."
 		}
-	]
+	],
+	"settings":
+	{
+		"test_command": "python3 -m unittest",
+		"test_project_path": "discover -p \"*.py\" tests"
+	}
 }

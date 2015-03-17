@@ -14,193 +14,99 @@ from scipy.optimize import brentq, brent
 from fibermodes.constants import eta0
 
 
+def findCutoffs(fiber, nu, V0):
+    f = numpy.fromiter((coeq(v0, nu, fiber) for v0 in V0),
+                       dtype=float,
+                       count=V0.size)
+    cutoffs = []
+    for i in range(1, f.size):
+        if (f[i-1] > 0 and f[i] < 0) or (f[i-1] < 0 and f[i] > 0):
+                r = brentq(coeq, V0[i-1], V0[i], args=(nu, fiber))
+                cr = abs(coeq(r, nu, fiber))
+                if (abs(f[i-1]) > cr) and (abs(f[i]) > cr):
+                    cutoffs.append(r)
+                    return cutoffs
+    return cutoffs
+
+
+def coeq(v0, nu, fiber):
+    r1, r2 = fiber.rho
+    n1, n2, n3 = fiber.n
+
+    na = sqrt(max(fiber.n)**2 - n3**2)
+    K0 = v0 / (na * r2)
+    beta = K0 * n3
+
+    if n1 > n3:
+        u1 = K0**2 * (n1**2 - n3**2)
+        s1 = 1
+    else:
+        u1 = K0**2 * (n3**2 - n1**2)
+        s1 = -1
+    if n2 > n3:
+        u2 = K0**2 * (n2**2 - n3**2)
+        s2 = 1
+    else:
+        u2 = K0**2 * (n3**2 - n2**2)
+        s2 = -1
+    s = -s1 * s2
+
+    u1r1 = u1 * r1
+    u2r1 = u2 * r1
+    u2r2 = u2 * r2
+
+    X = (u2r1**2 + s * u1r1**2) * nu * beta
+    if s1 == 1:
+        Y = jvp(nu, u1r1) / jn(nu, u1r1)
+    else:
+        Y = ivp(nu, u1r1) / iv(nu, u1r1)
+
+    ju2r1 = jn(nu, u2r1) if s2 == 1 else iv(nu, u2r1)
+    nu2r1 = yn(nu, u2r1) if s2 == 1 else kn(nu, u2r1)
+    jpu2r1 = jvp(nu, u2r1) if s2 == 1 else ivp(nu, u2r1)
+    npu2r1 = yvp(nu, u2r1) if s2 == 1 else kvp(nu, u2r1)
+    ju2r2 = jn(nu, u2r2) if s2 == 1 else iv(nu, u2r2)
+    nu2r2 = yn(nu, u2r2) if s2 == 1 else kn(nu, u2r2)
+    j1u2r2 = jn(nu+1, u2r2)
+    n1u2r2 = yn(nu+1, u2r2)
+
+    M = numpy.empty((4, 4))
+    M[0, 0] = X * ju2r1
+    M[0, 1] = X * nu2r1
+    M[0, 2] = -K0 * (jpu2r1 * u1r1 + s * Y * ju2r1 * u2r1) * u1r1 * u2r1
+    M[0, 3] = -K0 * (npu2r1 * u1r1 + s * Y * nu2r1 * u2r1) * u1r1 * u2r1
+    M[1, 0] = -K0 * (n2**2 * jpu2r1 * u1r1 +
+                     s * n1**2 * Y * ju2r1 * u2r1) * u1r1 * u2r1
+    M[1, 1] = -K0 * (n2**2 * npu2r1 * u1r1 +
+                     s * n1**2 * Y * nu2r1 * u2r1) * u1r1 * u2r1
+    M[1, 2] = X * ju2r1
+    M[1, 3] = X * nu2r1
+
+    D201 = nu * n3 / u2r2 * (j1u2r2 * nu2r2 - ju2r2 * yn(nu+1, u2r2))
+    D202 = -((n2**2 + n3**2) * nu * n1u2r2 * nu2r2 / u2r2 +
+             n3**2 * nu * nu2r2**2 / (nu - 1))
+    D203 = -(n2**2 * nu * ju2r2 * n1u2r2 / u2r2 +
+             n3**2 * nu * nu2r2 * j1u2r2 / u2r2 +
+             n3**2 * nu * (j1u2r2 * nu2r2 +
+                           n1u2r2 * ju2r2) / (2 * (nu - 1)))
+    D212 = -(n2**2 * nu * nu2r2 * j1u2r2 / u2r2 +
+             n3**2 * nu * ju2r2 * n1u2r2 / u2r2 +
+             n3**2 * nu * (n1u2r2 * ju2r2 +
+                           j1u2r2 * nu2r2) / (2 * (nu - 1)))
+    D213 = -((n2**2 + n3**2) * nu * j1u2r2 * ju2r2 / u2r2 +
+             n3**2 * nu * ju2r2**2 / (nu - 1))
+    D223 = nu * n2**2 * n3 / u2r2 * (j1u2r2 * nu2r2 - ju2r2 * n1u2r2)
+
+    D30 = M[1, 1] * D201 - M[1, 2] * D202 + M[1, 3] * D203
+    D31 = M[1, 0] * D201 - M[1, 2] * D212 + M[1, 3] * D213
+    D32 = M[1, 0] * D202 - M[1, 1] * D212 + M[1, 3] * D223
+    D33 = M[1, 0] * D203 - M[1, 1] * D213 + M[1, 2] * D223
+
+    return M[0, 0] * D30 - M[0, 1] * D31 + M[0, 2] * D32 - M[0, 3] * D33
+
+
 class COFiber(object):
     delta = 1e-3
-
-    @classmethod
-    def _params(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        # beta = K0 * cls.n[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-
-        if U2[0] > 0:
-            u1 = sqrt(U2[0])
-            u1r1 = u1 * cls.rho[0]
-            g = jn(nu, u1r1)
-            gp = -jn(nu+1, u1r1)
-        else:
-            u1 = sqrt(-U2[0])
-            u1r1 = u1 * cls.rho[0]
-            g = iv(nu, u1r1)
-            gp = -iv(nu+1, u1r1)
-
-        if U2[1] > 0:
-            u2 = sqrt(U2[1])
-            u2r1 = u2 * cls.rho[0]
-            u2r2 = u2 * cls.rho[1]
-            F = yn(nu, u2r2) * jn(nu, u2r1) - jn(nu, u2r2) * yn(nu, u2r1)
-            Fp = yn(nu, u2r2) * jn(nu+1, u2r1) - jn(nu, u2r2) * yn(nu+1, u2r1)
-        else:
-            u2 = sqrt(-U2[1])
-            u2r1 = u2 * cls.rho[0]
-            u2r2 = u2 * cls.rho[1]
-            F = kn(nu, u2r2) * iv(nu, u2r1) - iv(nu, u2r2) * kn(nu, u2r1)
-            Fp = kn(nu, u2r2) * iv(nu+1, u2r1) + iv(nu, u2r2) * kn(nu+1, u2r1)
-
-        return F, Fp, g, gp, u1r1, u2r1
-
-    @classmethod
-    def kappaparams(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(abs(U2[0])) * cls.rho[0]
-        u2r1 = sqrt(abs(U2[1])) * cls.rho[0]
-        u2r2 = sqrt(abs(U2[1])) * cls.rho[1]
-        n1sq, n2sq, n3sq = numpy.square(cls.n)
-
-        if n1sq < n3sq:
-            f = ivp(nu, u1r1) / iv(nu, u1r1) / u1r1  # c
-        # elif n2sq < n3sq:
-        #     f = nu / u1r1**2 + jn(nu+1, u1r1) / jn(nu, u1r1) / u1r1  # a
-        else:
-            f = jvp(nu, u1r1) / jn(nu, u1r1) / u1r1  # b d
-
-        if U2[0] > 1 and U2[1] > 1:
-            # b d
-            kappa1 = (n1sq + n2sq) * f / n2sq
-            kappa2 = (n1sq * f * f / n2sq -
-                      nu**2 * n3sq / n2sq * (1 / u1r1**2 - 1 / u2r1**2)**2)
-        else:
-            # a c
-            kappa1 = -(n1sq + n2sq) * f / n2sq
-            kappa2 = (n1sq * f * f / n2sq -
-                      nu**2 * n3sq / n2sq * (1 / u1r1**2 + 1 / u2r1**2)**2)
-
-        return kappa1, kappa2, u1r1, u2r1, u2r2
-
-    @classmethod
-    def _gammaparams(cls, nu, u1a, u2a):
-        n12 = cls.n[0]**2
-        n22 = cls.n[1]**2
-
-        if cls.n[0] < cls.n[-1]:
-            Inu = iv(nu, u1a)
-            Inu1 = iv(nu+1, u1a)
-        else:
-            Inu = jn(nu, u1a)
-            Inu1 = jn(nu+1, u1a)
-        f0 = Inu1 / u1a / Inu
-
-        if cls.n[0] < cls.n[-1] or cls.n[1] < cls.n[-1]:
-            Gamma0 = u2a / n22 * (2 * nu * n22 / u2a**2 +
-                                  nu * (n12 + n22) / u1a**2 +
-                                  (n12 + n22) * f0)
-            Gamma = u2a**2 / n22 * (f0 * (nu * (n12 + n22) / u2a**2 +
-                                          2 * nu * n12 / u1a**2 +
-                                          n12 * f0))
-        else:
-            Gamma0 = u2a / n22 * (2 * nu * n22 / u2a**2 -
-                                  nu * (n12 + n22) / u1a**2 +
-                                  (n12 + n22) * f0)
-            Gamma = u2a**2 / n22 * (f0 * (nu * (n12 + n22) / u2a**2 -
-                                          2 * nu * n12 / u1a**2 +
-                                          n12 * f0))
-
-        return Gamma0, Gamma
-
-    @classmethod
-    def lpcutoff(cls, v0, nu):
-        F, Fp, g, gp, u1r1, u2r1 = cls._params(v0, nu-1)
-        return Fp / u2r1 * g + F / u1r1 * gp
-
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        F, Fp, g, gp, u1r1, u2r1 = cls._params(v0, nu)
-        return Fp / u2r1 * g + F / u1r1 * gp
-
-    @classmethod
-    def tmcutoff(cls, v0, nu):
-        F, Fp, g, gp, u1r1, u2r1 = cls._params(v0, nu)
-        return cls.n[1]**2 * Fp / u2r1 * g + cls.n[0]**2 * F / u1r1 * gp
-
-
-    @classmethod
-    def ehcutoff2(cls, v0, nu):
-        kappa1, kappa2, u1r1, u2r1, u2r2 = cls.kappaparams(v0, nu)
-
-        d = kappa1**2 - 4 * kappa2
-        if d > 0:
-            if cls.n[1] < cls.n[2]: # a
-                f1 = iv(nu+1, u2r1) * kn(nu, u2r2) + kn(nu+1, u2r1) * iv(nu, u2r2)
-                f2 = iv(nu, u2r1) * kn(nu, u2r2) - kn(nu, u2r1) * iv(nu, u2r2)
-            else: # b c d
-                f1 = jn(nu+1, u2r1) * yn(nu, u2r2) - yn(nu+1, u2r1) * jn(nu, u2r2)
-                f2 = jn(nu, u2r1) * yn(nu, u2r2) - yn(nu, u2r1) * jn(nu, u2r2)
-        else:
-            return numpy.nan
-
-        if cls.n[1] > cls.n[0] > cls.n[2]:
-            d0 = u2r1 * (nu / u2r1**2 - (kappa1 - sqrt(d)) / 2)  # d
-        elif cls.n[1] < cls.n[2]:  # a
-            d0 = u2r1 * (-nu / u2r1**2 + (kappa1 + sqrt(d)) / 2)
-        else:
-            d0 = u2r1 * (nu / u2r1**2 - (kappa1 + sqrt(d)) / 2)
-
-        # print(Delta0 - d0)
-
-        return f1 - d0 * f2
-
-
-    @classmethod
-    def hecutoff2(cls, v0, nu):
-        kappa1, kappa2, u1r1, u2r1, u2r2 = cls.kappaparams(v0, nu)
-        n1sq, n2sq, n3sq = numpy.square(cls.n)
-
-        d = kappa1**2 - 4 * kappa2
-        if d < 0:
-            return numpy.nan
-
-        if cls.n[1] > cls.n[0] > cls.n[2]:
-            d0 = u2r1 * (nu / u2r1**2 - (kappa1 + sqrt(d)) / 2)  # d
-        elif cls.n[1] < cls.n[2]:  # a
-            d0 = u2r1 * (-nu / u2r1**2 + (kappa1 - sqrt(d)) / 2)
-        else:
-            d0 = u2r1 * (nu / u2r1**2 - (kappa1 - sqrt(d)) / 2)
-
-        if nu == 1:
-            if cls.n[1] < cls.n[2]:  # a
-                f1 = iv(nu+1, u2r1) * kn(nu, u2r2) + kn(nu+1, u2r1) * iv(nu, u2r2)
-                f2 = iv(nu, u2r1) * kn(nu, u2r2) - kn(nu, u2r1) * iv(nu, u2r2)
-            else:  # b c d
-                f1 = jn(nu+1, u2r1) * yn(nu, u2r2) - yn(nu+1, u2r1) * jn(nu, u2r2)
-                f2 = jn(nu, u2r1) * yn(nu, u2r2) - yn(nu, u2r1) * jn(nu, u2r2)
-            return f1 - d0 * f2
-
-        else:
-            n0sq = (n2sq - n3sq) / (n2sq + n3sq)
-            if cls.n[1] < cls.n[2]:  # a
-                n0sq = (n3sq - n2sq) / (n2sq + n3sq)
-                g1 = d0 * iv(nu, u2r1) - iv(nu + 1, u2r1)
-                g2 = d0 * kn(nu, u2r1) + kn(nu + 1, u2r1)
-                f1 = iv(nu-2, u2r2) * g2 - kn(nu-2, u2r2) * g1
-                f2 = iv(nu, u2r2) * g2 - kn(nu, u2r2) * g1
-
-            elif cls.n[0] < cls.n[2]:  # c
-                g1 = d0 * jn(nu, u2r1) - jn(nu + 1, u2r1)
-                g2 = d0 * yn(nu, u2r1) - yn(nu + 1, u2r1)
-                f1 = jn(nu-2, u2r2) * g2 - yn(nu-2, u2r2) * g1
-                f2 = jn(nu, u2r2) * g2 - yn(nu, u2r2) * g1
-
-            else:  # b d
-                g1 = d0 * jn(nu, u2r1) - jn(nu + 1, u2r1)
-                g2 = d0 * yn(nu, u2r1) - yn(nu + 1, u2r1)
-                f1 = jn(nu-2, u2r2) * g2 - yn(nu-2, u2r2) * g1
-                f2 = jn(nu, u2r2) * g2 - yn(nu, u2r2) * g1
-
-            return f1 + n0sq * f2
-
 
 
 class FiberA(COFiber):
@@ -209,17 +115,6 @@ class FiberA(COFiber):
     n = [1.47, 1.43, 1.44]
     name = "Fiber (a)"
 
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(U2[0]) * cls.rho[0]
-        u2r1 = sqrt(-U2[1]) * cls.rho[0]
-        u2r2 = sqrt(-U2[1]) * cls.rho[1]
-        return (j0(u1r1) * (iv(2, u2r1) * k0(u2r2) - kn(2, u2r1) * i0(u2r2)) +
-                jn(2, u1r1) * (i0(u2r1) * k0(u2r2) - k0(u2r1) * i0(u2r2)))
-
 
 class FiberB(COFiber):
     delta = 1e-4
@@ -227,48 +122,11 @@ class FiberB(COFiber):
     n = [1.47, 1.45, 1.44]
     name = "Fiber (b)"
 
-    @classmethod
-    def lpcutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(U2[0]) * cls.rho[0]
-        u2r1 = sqrt(U2[1]) * cls.rho[0]
-        u2r2 = sqrt(U2[1]) * cls.rho[1]
-
-        nu -= 1
-        Fl1 = jn(nu, u2r1) * yn(nu, u2r2) - yn(nu, u2r1) * jn(nu, u2r2)
-        Fl2 = jn(nu+1, u2r1) * yn(nu, u2r2) - yn(nu+1, u2r1) * jn(nu, u2r2)
-
-        return u2r1 * Fl1 * jn(nu+1, u1r1) - u1r1 * Fl2 * jn(nu, u1r1)
-
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(U2[0]) * cls.rho[0]
-        u2r1 = sqrt(U2[1]) * cls.rho[0]
-        u2r2 = sqrt(U2[1]) * cls.rho[1]
-        jn00 = j0(u2r1) * y0(u2r2) - y0(u2r1) * j0(u2r2)
-        return (j0(u1r1) * (jn(2, u2r1) * y0(u2r2) - yn(2, u2r1) * j0(u2r2)) -
-                jn(2, u1r1) * jn00)
-
 
 class FiberC(COFiber):
     rho = [4e-6, 6e-6]
     n = [1.43, 1.47, 1.44]
     name = "Fiber (c)"
-
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(-U2[0]) * cls.rho[0]
-        u2r1 = sqrt(U2[1]) * cls.rho[0]
-        return (i0(u1r1) * (-jn(2, u2r1) * y0(v0) + yn(2, u2r1) * j0(v0)) -
-                iv(2, u1r1) * (j0(u2r1) * y0(v0) - y0(u2r1) * j0(v0)))
 
 
 class FiberD(COFiber):
@@ -277,96 +135,29 @@ class FiberD(COFiber):
     n = [1.45, 1.47, 1.44]
     name = "Fiber (d)"
 
-    @classmethod
-    def lpcutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(U2[0]) * cls.rho[0]
-        u2r1 = sqrt(U2[1]) * cls.rho[0]
-        u2r2 = sqrt(U2[1]) * cls.rho[1]
-
-        nu -= 1
-        Fl1 = jn(nu, u2r1) * yn(nu, u2r2) - yn(nu, u2r1) * jn(nu, u2r2)
-        Fl2 = jn(nu+1, u2r1) * yn(nu, u2r2) - yn(nu+1, u2r1) * jn(nu, u2r2)
-
-        return u2r1 * Fl1 * jn(nu+1, u1r1) - u1r1 * Fl2 * jn(nu, u1r1)
-
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        na = sqrt(max(cls.n)**2 - cls.n[-1]**2)
-        K0 = v0 / na / cls.rho[-1]
-        U2 = [K0**2 * (n**2 - cls.n[-1]**2) for n in cls.n]
-        u1r1 = sqrt(U2[0]) * cls.rho[0]
-        u2r1 = sqrt(U2[1]) * cls.rho[0]
-        jn00 = j0(u2r1) * y0(v0) - y0(u2r1) * j0(v0)
-        return (j0(u1r1) * (jn(2, u2r1) * y0(v0) - yn(2, u2r1) * j0(v0)) -
-                jn(2, u1r1) * jn00)
-
 
 class FiberE(COFiber):
     rho = [4e-6, 6e-6]
     n = [1.44, 1.47, 1.44]
     name = "Fiber (e)"
 
-    @classmethod
-    def tecutoff(cls, v0, nu):
-        u2r1 = v0 * cls.rho[0] / cls.rho[1]
-        return jn(2, u2r1) * y0(v0) - yn(2, u2r1) * j0(v0)
 
-    @classmethod
-    def tmcutoff(cls, v0, nu):
-        u2r1 = v0 * cls.rho[0] / cls.rho[1]
-        n02 = cls.n[1]**2 / cls.n[0]**2
-        return (j0(v0) * yn(2, u2r1) - y0(v0) * jn(2, u2r1) -
-                (1 - n02) / n02 * (j0(v0) * y0(u2r1) - j0(u2r1) * y0(v0)))
-
-    @classmethod
-    def hecutoff(cls, v0, nu):
-        u2r1 = v0 * cls.rho[0] / cls.rho[1]
-        n02 = cls.n[1]**2 / cls.n[0]**2
-        if nu == 1:
-            return j1(v0) * y1(u2r1) - j1(u2r1) * y1(v0)
-        else:
-            return (jn(nu-2, v0) * yn(nu, u2r1) - jn(nu, u2r1) * yn(nu-2, v0) -
-                    (1 - n02) / (1 + n02) * (jn(nu, v0) * yn(nu, u2r1) -
-                                             jn(nu, u2r1) * yn(nu, v0)))
-
-    @classmethod
-    def ehcutoff(cls, v0, nu):
-        u2r1 = v0 * cls.rho[0] / cls.rho[1]
-        n02 = cls.n[1]**2 / cls.n[0]**2
-        return (jn(nu+2, u2r1) * yn(nu, v0) - jn(nu, v0) * yn(nu+2, u2r1) +
-                (1 - n02) / (1 + n02) * (jn(nu, u2r1) * yn(nu, v0) -
-                                         jn(nu, v0) * yn(nu, u2r1)))
+class RCF_ref(COFiber):
+    rho = [4e-6, 6e-6]
+    n = [1, 1.5, 1]
+    # n = [1.5, 2, 1.5]
+    name = "RCF (reference)"
 
 
-def findRoots(fiber, mode, V0):
-    nu = mode.nu
+class RCF_low(RCF_ref):
+    n = [1, 2, 1.5]
+    name = "RCF (lower)"
 
-    if mode.family == ModeFamily.LP:
-        fct = fiber.lpcutoff
-    elif mode.family == ModeFamily.TE:
-        fct = fiber.tecutoff
-    elif mode.family == ModeFamily.TM:
-        fct = fiber.tmcutoff
-    elif mode.family == ModeFamily.EH:
-        fct = fiber.ehcutoff2
-    elif mode.family == ModeFamily.HE:
-        fct = fiber.hecutoff2
 
-    roots = []
-    cf = numpy.fromiter((fct(v0, nu) for v0 in V0),
-                        numpy.float,
-                        V0.size)
-
-    for i in range(V0.size - 1):
-        if (cf[i] > 0 and cf[i+1] < 0) or (cf[i] < 0 and cf[i+1] > 0):
-            r = brentq(fct, V0[i], V0[i+1], args=(nu))
-            cr = fct(r, nu)
-            if (abs(cf[i]) > abs(cr)) and (abs(cf[i+1]) > abs(cr)):
-                roots.append(r)
-    return roots
+class RCF_high(RCF_ref):
+    delta = 1e-4
+    n = [1.75, 2, 1.5]
+    name = "RCF (higher)"
 
 
 def plotProfile(f):
@@ -388,7 +179,9 @@ def plotProfile(f):
 
 def analyseFiber(f):
     print(f.name)
-    wl = numpy.linspace(1000e-9, 5000e-9, 100)
+    # wl = numpy.linspace(2100e-9, 2400e-9, 1000)
+    wl = numpy.linspace(1500e-9, 5000e-9, 100)
+    # wl = numpy.linspace(7000e-9, 20000e-9, 50)
     sim = Simulator(delta=f.delta)
     sim.setWavelength(wl)
     sim.setMaterials(*[Fixed] * len(f.n))
@@ -396,36 +189,40 @@ def analyseFiber(f):
     for i, idx in enumerate(f.n):
         sim.setMaterialParam(i, 0, idx)
 
+    V0 = sim.getV0()
+    # print(V0[0], V0[-1])
+    # return
+
     # modes = sim.findLPModes()
     modes = sim.findVModes()
     # modes = [Mode("TM", 0, 1), Mode("TM", 0, 2)]
-    # fiber = next(iter(sim))
-    V0 = sim.getV0()
+    fiber = next(iter(sim))
 
     for m in modes:
-        # if m.nu != 0:
-        #     continue
+        cutoff = sim.getCutoffV0(fiber, m)
+        if cutoff < V0[-1]:
+            continue
 
         # pyplot.plot(V0, sim.getNeff(m), label=str(m))
         pl, = pyplot.plot(V0, sim.getBnorm(m), label=str(m))
         c = pl.get_color()
 
-        # if m.family != ModeFamily.EH:
-        #     continue
-        roots = findRoots(f, m, V0)[::-1]
-        for j, r in enumerate(roots, 1):
-            if m.nu == 1 and m.family == ModeFamily.HE and j+1 == m.m:
-                pyplot.axvline(r, ls=':', color=c)
-                print(str(m), roots[j-1])
-            elif (m.nu != 1 or m.family != ModeFamily.HE) and j == m.m:
-                pyplot.axvline(r, ls=':', color=c)
-                print(str(m), roots[j-1])
-        # print(str(m), roots[::-1] if roots else '')
+        if str(m) in ("HE(1,1)", "LP(0,1)"):
+            continue
 
-    pyplot.legend()
-    pyplot.ylim((0, 1))
-    pyplot.xlabel("Normalized frequency ($V_0$)")
-    pyplot.ylabel("Normalized propagation constant ($b$)")
+        print(str(m), cutoff)
+        pyplot.axvline(cutoff, ls=':', color=c)
+        # if m.nu > 1:
+        #     cutoffs = findCutoffs(f, m.nu, V0)
+        #     for c in cutoffs:
+        #         pyplot.axvline(c, ls=':', color='k')
+
+    # pyplot.legend(loc="best")
+    pyplot.xlim((2.5, 7))
+    # pyplot.ylim((0, 1))
+    pyplot.ylim((0, 0.3))
+    # pyplot.xlabel("Normalized frequency ($V_0$)")
+    # pyplot.ylabel("Normalized propagation constant ($b$)")
     pyplot.title(f.name)
 
 
@@ -464,18 +261,26 @@ def plotcutoff(f):
 
 
 def main():
-    for fiber in (
-            # FiberA,
-            # FiberB,
-            # FiberC,
+    for i, fiber in enumerate((
+            FiberA,
+            FiberB,
+            FiberC,
             FiberD,
-            # FiberE,
-            ):
+            FiberE,
+            # RCF_ref,
+            # , RCF_low, RCF_high
+            ), 1):
         # pyplot.figure("profile " + fiber.name)
         # plotProfile(fiber)
-        pyplot.figure(fiber.name)
+        # pyplot.figure(fiber.name)
+        pyplot.subplot(5, 1, i)
         analyseFiber(fiber)
         # plotcutoff(fiber)
+
+        if i == 5:
+            pyplot.xlabel("Normalized frequency ($V_0$)")
+        if i == 3:
+            pyplot.ylabel("Normalized propagation constant ($b$)")
 
 
 if __name__ == '__main__':
