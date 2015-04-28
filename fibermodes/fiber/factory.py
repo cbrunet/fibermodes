@@ -1,97 +1,266 @@
 """Fiber factory module."""
 
-from fibermodes.wavelength import Wavelength
-from fibermodes.fiber.ssif import SSIF
-from fibermodes.fiber.mlsif import MLSIF
-from fibermodes.fiber.tlsif import TLSIF
-from fibermodes.material.fixed import Fixed
+import json
+import time
+from distutils.version import StrictVersion as Version
+from operator import mul
+from functools import reduce
+from itertools import product, islice
+from .fiber import Fiber
 
 
-class Factory(list):
+__version__ = "0.0.1"
 
-    """Creates a :py:class:`~fibermodes.fiber.fiber.Fiber` object from given
-    arguments.
 
-    The Factory is a :py:class:`list`, and expect to contains
-    :py:class:`~fibermodes.material.Material` of each fiber layer,
-    begin from the center.
+class FiberFactoryValidationError(Exception):
+    pass
 
-    """
 
-    def __init__(self, *args, **kwargs):
-        self._rna = None
-        super().__init__(*args, **kwargs)
+class Factory(object):
+
+    def __init__(self, filename=None):
+        self._fibers = {
+            "version": __version__,
+            "name": "",
+            "description": "",
+            "author": "",
+            "crdate": time.time(),
+            "tstamp": time.time(),
+            "layers": []
+        }
+        if filename:
+            with open(filename, 'r') as f:
+                self.load(f)
+        else:
+            self.addLayer(name="core", radius=4e-6)
+            self.addLayer(pos=1, name="cladding")
 
     @property
-    def nlayers(self):
-        """Number of layers in the fiber."""
-        return len(self)
+    def name(self):
+        return self._fibers["name"]
 
-    def __call__(self, wl, *args):
-        """
-        args are (radius, `*mat_params`)
-        """
-        assert len(args) == self.nlayers, "Wrong number of arguments"
+    @property
+    def author(self):
+        return self._fibers["author"]
 
-        if not isinstance(wl, Wavelength):
-            wl = Wavelength(wl)
+    @property
+    def description(self):
+        return self._fibers["description"]
 
-        def n(i):
-            return self[i].n(wl, *args[i][1:])
+    @property
+    def crdate(self):
+        return self._fibers["crdate"]
 
-        params = [((self[0],) + tuple(args[0]))]
-        ln = n0 = n(0)
-        n1 = None
-        for i in range(1, self.nlayers):
-            cn = n(i)
-            if cn == ln:
-                params[-1] = (self[i],) + tuple(args[i])
+    @property
+    def tstamp(self):
+        return self._fibers["tstamp"]
+
+    @property
+    def layers(self):
+        return self._fibers["layers"]
+
+    def addLayer(self, pos=None, name="", radius=0):
+        if pos is None:
+            pos = len(self._fibers["layers"])
+        layer = {
+            "name": name,
+            "type": "StepIndex",
+            "tparams": [radius],
+            "material": "Fixed",
+            "mparams": [1.444],
+        }
+        self._fibers["layers"].insert(pos, layer)
+
+    def dump(self, fp, **kwargs):
+        fp.write(self.dumps(**kwargs))
+
+    def dumps(self, **kwargs):
+        self._fibers["tstamp"] = time.time()
+        return json.dumps(self._fibers, **kwargs)
+
+    def load(self, fp, **kwargs):
+        self.loads(fp.read(), **kwargs)
+
+    def loads(self, s, **kwargs):
+        fibers = json.loads(s, **kwargs)
+        self.validate(fibers)
+        self._fibers = fibers
+
+    def validate(self, obj):
+        for key in ("version", "name", "description",
+                    "author", "crdate", "tstamp", "layers"):
+            if key not in obj.keys():
+                raise FiberFactoryValidationError(
+                    "Missing '{}' parameter".format(key))
+
+        if Version(obj["version"]) > Version(__version__):
+            raise FiberFactoryValidationError("Version of loaded object "
+                                              "is higher that version "
+                                              "of current library")
+        elif Version(obj["version"]) < Version(__version__):
+            self._upgrade(obj)
+
+        for layernum, layer in enumerate(obj["layers"], 1):
+            self._validateLayer(layer, layernum)
+
+    def _validateLayer(self, layer, layernum):
+        for key in ("name", "type", "tparams", "material", "mparams"):
+            if key not in layer.keys():
+                raise FiberFactoryValidationError(
+                    "Missing '{}' parameter for layer {}".format(key,
+                                                                 layernum))
+
+    def _upgrade(self, obj):
+        obj["version"] = __version__
+
+    def __iter__(self):
+        self._buildFiberList()
+        g = product(*(range(i) for i in self._nitems))
+        return (self._buildFiber(i) for i in g)
+
+    def __len__(self):
+        self._buildFiberList()
+        return reduce(mul, self._nitems)
+
+    def __getitem__(self, key):
+        self._buildFiberList()
+        return self._buildFiber(self._getIndexes(key))
+
+    def _buildFiberList(self):
+        self._nitems = []
+        for layer in self._fibers["layers"]:
+            for key in ("tparams", "mparams"):
+                for tp in layer[key]:
+                    if isinstance(tp, list):
+                        self._nitems.append(len(tp))
+                    elif isinstance(tp, dict):
+                        self._nitems.append(tp["num"])
+                    else:
+                        self._nitems.append(1)
+
+    def _getIndexes(self, index):
+        """Get list of indexes from a single index."""
+        g = product(*(range(i) for i in self._nitems))
+        return next(islice(g, index, None))
+
+    rglobals = {
+        '__builtins__': {
+            'abs': abs,
+            'all': all,
+            'any': any,
+            'bool': bool,
+            'complex': complex,
+            'dict': dict,
+            'divmod': divmod,
+            'enumerate': enumerate,
+            'filter': filter,
+            'float': float,
+            'frozenset': frozenset,
+            'int': int,
+            'iter': iter,
+            'len': len,
+            'list': list,
+            'map': map,
+            'max': max,
+            'min': min,
+            'next': next,
+            'pow': pow,
+            'range': range,
+            'reversed': reversed,
+            'round': round,
+            'set': set,
+            'slice': slice,
+            'sorted': sorted,
+            'str': str,
+            'sum': sum,
+            'tuple': tuple,
+            'zip': zip
+        }
+    }
+
+    def _buildFiber(self, indexes):
+        """Build Fiber object from list of indexes"""
+
+        def __get(param, index):
+            if isinstance(param, list):
+                return param[index]
+            elif isinstance(param, dict):
+                low = param['start']
+                high = param['end']
+                n = param['num']
+                return low + index*(high-low)/(n-1)
             else:
-                params.append((self[i],) + tuple(args[i]))
-                ln = cn
-                if n1 is None:
-                    n1 = cn
-        nlayers = len(params)
+                assert index == 0
+                try:
+                    return float(param)
+                except ValueError:
+                    code = "def f(r, fp, mp):\n"
+                    for line in param.splitlines():
+                        code += "    {}\n".format(line)
+                    loc = {}
+                    exec(code, self.rglobals, loc)
+                    return loc['f']
 
-        if nlayers < 2:
-            return None
+        r = []
+        f = []
+        fp = []
+        m = []
+        mp = []
+        names = []
 
-        if nlayers == 2 and n0 > n1:
-            return SSIF(wl, *params, rna=self._rna)
-        elif nlayers == 3:
-            return TLSIF(wl, *params, rna=self._rna)
-        else:
-            return MLSIF(wl, *params, rna=self._rna)
+        # Get parameters for selected fiber
+        ii = 0
+        for i, layer in enumerate(self._fibers["layers"], 1):
+            name = layer["name"] if layer["name"] else "layer {}".format(i+1)
+            names.append(name)
 
+            if i < len(self._fibers["layers"]):
+                r.append(__get(layer["tparams"][0], indexes[ii]))
+            ii += 1  # we count radius of cladding, even if we don't use it
 
-def fixedFiber(wl, r, n, rna=None):
-    """Build a step-index fiber with fixed indices, from given parameters.
+            f.append(layer["type"])
+            fp_ = []
+            for p in layer["tparams"][1:]:
+                fp_.append(__get(p, indexes[ii]))
+                ii += 1
+            fp.append(fp_)
 
-    :param wl: wavelength
-    :param r: list of layer radii (from inner to outer)
-    :param n: list of layer indices (from inner to outer)
-    :rtype: :py:class:`~fibermodes.fiber.fiber.Fiber` object
+            m.append(layer["material"])
+            mp_ = []
+            for p in layer["mparams"]:
+                mp_.append(__get(p, indexes[ii]))
+                ii += 1
+            mp.append(mp_)
 
-    """
-    ff = Factory()
-    ff._rna = rna
-    params = []
-    for i in range(len(n)):
-        ff.append(Fixed)
-        params.append((r[i], n[i]) if i < len(r) else (r[i - 1], n[i]))
-        # TODO: Detect subsequent layers with same n
-    return ff(wl, *params)
+        # Execute code parts
+        for i, p in enumerate(r):
+            if callable(p):
+                r[i] = float(p(r, fp, mp))
+        for i, pp in enumerate(fp):
+            for j, p in enumerate(pp):
+                if callable(p):
+                    fp[i][j] = float(p(r, fp, mp))
+            fp[i] = tuple(fp[i])
+        for i, pp in enumerate(mp):
+            for j, p in enumerate(pp):
+                if callable(p):
+                    mp[i][j] = float(p(r, fp, mp))
+            mp[i] = tuple(mp[i])
 
+        # Remove unneeded layers
+        i = len(m)-2
+        while i >= 0 and len(m) > 1:
+            if (r[i] == 0 or
+                    (i > 0 and r[i] <= r[i-1]) or
+                    (f[i] == f[i+1] == 'StepIndex' and
+                     m[i] == m[i+1] and
+                     mp[i] == mp[i+1])):
+                del r[i]
+                del f[i]
+                del fp[i]
+                del m[i]
+                del mp[i]
+                del names[i]
+            i -= 1
 
-if __name__ == '__main__':
-    fact = Factory((Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
-
-    fact = Factory((Fixed, Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.6), (5e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
-
-    fact = Factory((Fixed, Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.4), (5e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
+        return Fiber(r, f, fp, m, mp, names)
