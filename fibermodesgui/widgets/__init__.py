@@ -1,6 +1,6 @@
 
 from .appwindow import AppWindow
-from .slrc import SLRC
+from .slrc import SLRCWidget
 
 
-__all__ = ['AppWindow', 'SLRC']
+__all__ = ['AppWindow', 'SLRCWidget']

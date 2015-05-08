@@ -64,7 +64,7 @@ class FiberSelector(QtGui.QFrame):
 
     def editFiber(self):
         win = FiberEditor(self)
-        if self._filename:
+        if self._doc.filename:
             win.actionOpen(self._doc.filename)
         # win.setWindowModality(QtCore.Qt.WindowModal)
         win.saved.connect(self.updateFiber)

@@ -9,6 +9,6 @@ in parallel using multiple processes, or even using MPI.
 """
 
 from .simulator import Simulator
-from .psimulator import PSimulator
+# from .psimulator import PSimulator
 
-__all__ = ['Simulator', 'PSimulator']
+__all__ = ['Simulator']  # , 'PSimulator']

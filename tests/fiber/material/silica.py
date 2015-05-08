@@ -1,15 +1,14 @@
-'''
-Created on 2014-09-08
+"""Test suite for fibermodes.fiber.material.silica module"""
 
-@author: cbrunet
-'''
 import unittest
 
 from fibermodes import Wavelength
-from fibermodes.material import Silica
+from fibermodes.fiber.material import Silica
 
 
 class TestSilica(unittest.TestCase):
+
+    """Test suite for Silica class."""
 
     def testIndex(self):
         self.assertAlmostEqual(Silica.n(Wavelength(0.5876e-6)), 1.45846, 5)
@@ -17,5 +16,4 @@ class TestSilica(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

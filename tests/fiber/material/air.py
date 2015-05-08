@@ -1,15 +1,14 @@
-'''
-Created on 2014-09-08
+"""Test suite for module fiber.material.air"""
 
-@author: cbrunet
-'''
 import unittest
 
 from fibermodes import Wavelength
-from fibermodes.material import Air
+from fibermodes.fiber.material import Air
 
 
 class TestAir(unittest.TestCase):
+
+    """Test suite for Air class"""
 
     def testIndex(self):
         self.assertAlmostEqual(Air.n(Wavelength(0.5876e-6)), 1.00027717)
@@ -17,5 +16,4 @@ class TestAir(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

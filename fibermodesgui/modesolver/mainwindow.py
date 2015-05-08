@@ -1,12 +1,11 @@
 
 from PySide import QtGui, QtCore
-from fibermodesgui.widgets import AppWindow, SLRC
+from fibermodesgui.widgets import AppWindow, SLRCWidget
 from .solverdocument import SolverDocument
 from .fiberselector import FiberSelector
 from .fiberslider import FiberSlider
 from .wavelengthslider import WavelengthSlider
 from .modetable import ModeTable
-from fibermodes.fiber import factory
 
 
 class ModeSolver(AppWindow):
@@ -107,11 +106,11 @@ class ModeSolver(AppWindow):
         self.fiberSelector.fileLoaded.connect(self.updateFiber)
         self.fiberSelector.fiberEdited.connect(self.updateFiber)
 
-        self.wavelengthInput = SLRC()
+        self.wavelengthInput = SLRCWidget()
         self.wavelengthInput.setSuffix(" nm")
-        self.wavelengthInput.setRange(500, 3000)
-        self.wavelengthInput.setSingleStep(5)
         self.wavelengthInput.setScaleFactor(1e9)
+        self.wavelengthInput.setRange(500, 3000)
+        self.wavelengthInput.setSingleStep(1)
         self.wavelengthInput.valueChanged.connect(self.updateWavelengths)
 
         self.modeSelector = QtGui.QComboBox()
@@ -216,25 +215,13 @@ class ModeSolver(AppWindow):
         self.statusBar().showMessage(self.tr("Fiber factory loaded"), 5000)
 
     def updateWavelengths(self):
-        wlv = self.wavelengthInput.value()
-        if isinstance(wlv, list):
-            self.doc.wavelengths = wlv
-        elif isinstance(wlv, dict):
-            low = wlv['start']
-            high = wlv['end']
-            n = wlv['num']
-            self.doc.wavelengths = [low + i*(high-low)/(n-1) for i in range(n)]
-        else:
-            try:
-                self.doc.wavelengths = [float(wlv)]
-            except ValueError:
-                code = "def f():\n"
-                for line in wlv.splitlines():
-                    code += "    {}\n".format(line)
-                loc = {}
-                exec(code, factory.rglobals, loc)
-                self.doc.wavelengths = loc['f']()
-        self.wavelengthSlider.setNum(len(self.doc.wavelengths))
+        wl = self.wavelengthInput()
+        try:
+            wl = [float(wl)]
+        except TypeError:
+            pass
+        self.doc.wavelengths = wl
+        self.wavelengthSlider.setNum(len(wl))
         self.setWavelength(self.wavelengthSlider.value())
         self._updateFiberCount()
         self.setDirty(True)
@@ -250,7 +237,7 @@ class ModeSolver(AppWindow):
 
     def setWavelength(self, value):
         if 0 <= value - 1 < len(self.doc.wavelengths):
-            wl = self.doc.wavelengths[value-1] * 1e9
+            wl = self.doc.wavelengths[value-1]
             self.wavelengthSlider.wlLabel.setText(
                 "{:.5f} nm".format(wl))
             self.modeTable.setWavelength(wl)

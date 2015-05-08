@@ -1,97 +1,42 @@
-"""Three-layers step-index fiber module."""
 
-from .mlsif import MLSIF
-from ..mode import Family
-
-import numpy
-from scipy.optimize import brentq
-from scipy.special import jn, yn, iv, kn, j0, y0, i0, k0, j1, y1, i1, k1
-from scipy.special import jvp, ivp
+from .solver import FiberSolver
+from fibermodes import Mode, ModeFamily
 from math import sqrt
+import numpy
+from scipy.special import j0, y0, i0, k0
+from scipy.special import j1, y1, i1, k1
+from scipy.special import jn, yn, iv, kn
+from scipy.special import jvp, ivp
 
 
-class TLSIF(MLSIF):
+class TLSIFSolver(FiberSolver):
 
-    """Three-layers step-index fiber class.
-
-    This inherits from :class:`~fibermodes.fiber.mlsif.MLSIF`, adding
-    cutoff calculation to it. You usually do not need to instanciate directly
-    this class, as :class:`~fibermodes.fiber.factory.Factory` will do it for
-    you.
-
-    .. seealso:: Documentation of :class:`~fibermodes.fiber.fiber.Fiber` class.
-
-    """
-
-    @property
-    def rho(self):
-        """Ratio between first and second layer radius.
-
-        If rho is 0, then the fiber is a standard two-layers step-index fiber.
-        If rho approaches 1, then the fiber middle layer thickness approaches
-        zero.
-        """
-        return self._r[0] / self._r[1]
-
-    def _coeq(self, mode):
-        """Cutoff equation."""
-        M = {Family.LP: self._lpcoeq,
-             Family.TE: self._tecoeq,
-             Family.TM: self._tmcoeq,
-             Family.HE: self._hecoeq,
-             Family.EH: self._ehcoeq
-             }
-        return M[mode.family]
-
-    def cutoffV0(self, mode, V0min=2, V0max=float('inf'), delta=0.25):
-        """Gives cutoff of given mode, in term of V0.
-
-        The search begins at V0min, and step-increment by delta until it
-        finds a root. By default, the function finds the first root (i.e.
-        for m=1, excepted for HE(1,2)). Usually, you find the first root,
-        then you specify a higher value for V0min, based on the previous
-        root, to find the next root (i.e. cutoff for the next value of m).
-
-        :param mode: :class:`~fibermodes.mode.Mode` object.
-        :param V0min: Minimal value for returned V0 (dafault: 2).
-        :type V0min: integer
-        :param V0max: Maximal value for returned V0 (default: inf).
-        :type V0max: integer
-        :param delta: Increment used for searching roots (default: 0.25).
-                      Decrease it if it is not able to find a given cutoff.
-                      Increase it to et faster calculation.
-        :type delta: float
-        :rtype: float
-
-        """
-        if str(mode) in ("LP(0,1)", "HE(1,1)"):
-            return 0
-
-        nu = mode.nu
-        fct = self._coeq(mode)
-
-        v0a = V0min
-        fa = fct(v0a, nu)
-        v0b = V0min + delta
-        fb = fct(v0b, nu)
-        while v0b < V0max:
-            if (fa > 0 and fb < 0) or (fa < 0 and fb > 0):
-                r = brentq(fct, v0a, v0b, args=(nu))
-                cr = abs(fct(r, nu))
-                if (abs(fa) > cr) and (abs(fb) > cr):
-                    return r
-            v0a = v0b
-            fa = fb
-            v0b += delta
-            fb = fct(v0b, nu)
-        return None
+    def _cutoff(self, mode):
+        delta = 0.25
+        fct = {ModeFamily.LP: self._lpcoeq,
+               ModeFamily.TE: self._tecoeq,
+               ModeFamily.TM: self._tmcoeq,
+               ModeFamily.HE: self._hecoeq,
+               ModeFamily.EH: self._ehcoeq
+               }
+        if mode.m > 1:
+            pm = Mode(mode.family, mode.nu, mode.m - 1)
+            lowbound = self.cutoff(pm) + delta
+        else:
+            lowbound = delta
+        return self._findFirstRoot(fct[mode.family],
+                                   args=(mode.nu,),
+                                   lowbound=lowbound,
+                                   delta=delta)
 
     def __params(self, v0):
-        r1, r2, _ = self._r
-        Nsq = numpy.square(self._n)
+        wl = self.fiber.toWl(v0)
+        r1, r2 = self.fiber._r
+        Nsq = numpy.square(numpy.fromiter(
+                           (self.fiber.minIndex(i, wl)
+                            for i in range(3)), dtype=float, count=3))
         n1sq, n2sq, n3sq = Nsq
-        k0 = v0 / (self.na * r2) if not self._rna else v0 / self._rna
-        Usq = [k0**2 * (nsq - n3sq) for nsq in Nsq]
+        Usq = [wl.k0**2 * (nsq - n3sq) for nsq in Nsq]
         s1, s2, s3 = numpy.sign(Usq)
         u1, u2, u3 = numpy.sqrt(numpy.abs(Usq))
         return u1*r1, u2*r1, u2*r2, s1, s2, n1sq, n2sq, n3sq

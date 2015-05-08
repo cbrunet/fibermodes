@@ -9,3 +9,5 @@ scripts/*.tex
 *.zip
 *.pdf
 *.fiber
+*.xmi
+*.dump

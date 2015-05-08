@@ -1,7 +1,7 @@
 
 from PySide import QtCore
 from multiprocessing import Pool
-from fibermodes.fiber.factory import Factory
+from fibermodes.fiber.factory import FiberFactory
 from fibermodes import Mode
 
 
@@ -28,7 +28,7 @@ class SolverDocument(QtCore.QObject):
 
     def load(self):
         """Reset fiber factory data. Reload fiber factory file."""
-        self.factory = Factory(self.filename)
+        self.factory = FiberFactory(self.filename)
         self.numfibers = len(self.factory)
         self.cutoffs = [{} for _ in range(self.numfibers)]
         self.modes = [{} for _ in range(self.numfibers)]

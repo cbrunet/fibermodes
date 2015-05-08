@@ -1,8 +1,8 @@
-'''
-Created on 2014-05-01
+"""Module for fiber materials.
 
-@author: cbrunet
-'''
+A material gives a refractive index, as function of the wavelength.
+
+"""
 
 import warnings
 from math import sqrt
@@ -10,12 +10,14 @@ import numpy
 
 
 class OutOfRangeWarning(UserWarning):
+
+    """Warning raised when a material parameter is out of the allowed range.
+
+    If this warning is raised, it means that results are possibily
+    innacurate.
+
+    """
     pass
-
-
-def sellmeier(wl, b, c):
-    x2 = wl * wl * 1e12
-    return sqrt(1 + x2 * sum(b[i] / (x2 - c[i]**2) for i in range(3)))
 
 
 def claussiusMossotti(wl, a, b, z, x):
@@ -36,15 +38,18 @@ def claussiusMossotti(wl, a, b, z, x):
 
 class Material(object):
 
-    '''
-    classdocs
-    '''
+    """Material abstract class.
 
-    name = "Abstract Material"
-    nparams = 0
-    URL = None
-    WLRANGE = None
-    XRANGE = None
+    This gives the interface for the different materials, as well as
+    some common functions. All methods in that class are class methods.
+
+    """
+
+    name = "Abstract Material"  # English name for the mateial
+    nparams = 0  # Number of material parameters
+    info = None  # Info about the material
+    url = None  # URL for the reference about the material
+    WLRANGE = None  # Acceptable range for the wavelength
 
     @classmethod
     def _testRange(cls, wl):
@@ -63,32 +68,9 @@ class Material(object):
         warnings.warn(msg, OutOfRangeWarning)
 
     @classmethod
-    def _testConcentration(cls, x):
-        if cls.XRANGE is None:
-            return
-        if x <= cls.XRANGE:
-            return
-        msg = ("Concentration {} out of supported range for material {}. "
-               "Concentration should be below {}. "
-               "Results could be innacurate.").format(
-            str(x),
-            cls.name,
-            cls.XRANGE)
-        warnings.warn(msg, OutOfRangeWarning)
-
-    @classmethod
     def n(cls, wl, *args, **kwargs):
         raise NotImplementedError(
-            "This method must be implemented in super class.")
-
-    @classmethod
-    def info(cls):
-        raise NotImplementedError(
-            "This method must be implemented in super class.")
-
-    @classmethod
-    def refUrl(cls):
-        return cls.URL
+            "This method must be implemented in derived class.")
 
     @classmethod
     def __str__(cls):

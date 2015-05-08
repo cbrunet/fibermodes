@@ -13,3 +13,5 @@ fibermodes.fiber.factory
       .. automethod:: __call__
  
     .. autofunction:: fixedFiber
+
+    .. autoclass:: FiberFactoryValidationError

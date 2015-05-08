@@ -1,32 +1,31 @@
 from PySide import QtGui, QtCore
 from decimal import Decimal
+from fibermodes.slrc import SLRC
+from fibermodesgui import blockSignals
 
 
-class SLRC(QtGui.QFrame):
+class SLRCWidget(QtGui.QFrame, SLRC):
 
     valueChanged = QtCore.Signal(object)
 
     def __init__(self, parent=None, f=0):
-        super().__init__(parent, f)
-
-        self._initTypeButton()
-        self._initScalarControl()
-        self._initListControl()
-        self._initRangeControl()
-        self._initCodeControl()
+        QtGui.QFrame.__init__(self, parent, f)
+        SLRC.__init__(self)
+        self.scale = 1.
 
         self.innerLayout = QtGui.QHBoxLayout()
 
+        self._initTypeButton()
         layout = QtGui.QHBoxLayout()
         layout.addLayout(self.innerLayout)
         layout.addWidget(self.typeButton)
         self.setLayout(layout)
 
-        self._type = -1
-        self._scale = 1
-        self._list = []
-        self._code = "return 0"
-        self.setScalarLayout()  # default type: scalar
+        self._initScalarControl()
+        self._initListControl()
+        self._initRangeControl()
+        self._initCodeControl()
+
         self.setDecimals(5)
 
     def _initTypeButton(self):
@@ -49,52 +48,33 @@ class SLRC(QtGui.QFrame):
         self.typeButton.setPopupMode(QtGui.QToolButton.InstantPopup)
         self.typeButton.setMenu(self.typeMenu)
 
-    def _setType(self, typenum):
-        if typenum == self._type:
-            return
+    def _setType(self, kind):
+        if kind == self.kind:
+            return False
 
-        # convert values
-        if self._type == 0:
-            if typenum == 1:  # scalar to list
-                self._list = [self.value()]
-            elif typenum == 2:  # scalar to range
-                self.rstartInput.setValue(self.value())
-                v = self.value() * 10
-                self.rendInput.setValue(v if v else 1)
-        elif self._type == 1:
-            if len(self._list) > 0:
-                if typenum == 0:  # list to scalar
-                    self.numberInput.setValue(self._list[0])
-                elif typenum == 2:  # list to range
-                    self.rstartInput.setValue(self._list[0])
-                    self.rendInput.setValue(self._list[-1])
-                    if len(self._list) >= 2:
-                        self.rnumInput.setValue(len(self._list))
-        elif self._type == 2:
-            if typenum == 0:  # range to scalar
-                self.numberInput.setValue(self.rstartInput.value())
-            elif typenum == 1:  # range to list
-                n = self.rnumInput.value()
-                if n > 100:
-                    n = 100
-                low = self.rstartInput.value()
-                high = self.rendInput.value()
-                self._list = [low + x*(high-low)/(n-1) for x in range(n)]
+        self.kind = kind
 
-        self._type = typenum
         while self.innerLayout.count():  # remove layout items
             layoutItem = self.innerLayout.takeAt(0)
             layoutItem.widget().setParent(None)
 
         self._emitValueChanged()
+        return True
 
     def _initScalarControl(self):
         self.numberInput = QtGui.QDoubleSpinBox()
-        self.numberInput.valueChanged.connect(self._emitValueChanged)
+        self.numberInput.valueChanged.connect(self._updateScalarValue)
+        self.innerLayout.addWidget(self.numberInput)
+        self.numberInput.setValue(self._value * self.scale)
+
+    def _updateScalarValue(self, value):
+        self._value = value / self.scale
+        self._emitValueChanged()
 
     def setScalarLayout(self):
-        self._setType(0)
-        self.innerLayout.addWidget(self.numberInput)
+        if self._setType('scalar'):
+            self.innerLayout.addWidget(self.numberInput)
+        self.numberInput.setValue(self._value * self.scale)
 
     def _initListControl(self):
         self.listLabel = QtGui.QLabel()
@@ -102,88 +82,93 @@ class SLRC(QtGui.QFrame):
         self.listButton.clicked.connect(self.editList)
 
     def setListLayout(self):
-        self._setType(1)
-        self.innerLayout.addWidget(self.listLabel)
-        self.innerLayout.addWidget(self.listButton)
+        if self._setType('list'):
+            self.innerLayout.addWidget(self.listLabel)
+            self.innerLayout.addWidget(self.listButton)
         self._updateListCount()
 
     def _updateListCount(self):
-        nitemstext = "{} items" if len(self._list) > 1 else "{} item"
-        self.listLabel.setText(self.tr(nitemstext).format(len(self._list)))
+        nitemstext = "{} items" if len(self) > 1 else "{} item"
+        self.listLabel.setText(self.tr(nitemstext).format(len(self)))
 
     def editList(self):
-        ledialog = ListEditor(self._list.copy())
+        oldvals = [v * self.scale for v in self._value]
+        ledialog = ListEditor(oldvals.copy())
         ret = ledialog.exec_()
         if ret == QtGui.QDialog.Accepted:
-            if self._list != ledialog.numlist:
-                self._list = ledialog.numlist
+            if oldvals != ledialog.numlist:
+                self._value = [v / self.scale for v in ledialog.numlist]
                 self._updateListCount()
                 self._emitValueChanged()
 
     def _initRangeControl(self):
         self.rstartInput = QtGui.QDoubleSpinBox()
-        self.rstartInput.valueChanged.connect(self._emitValueChanged)
+        self.rstartInput.valueChanged.connect(self._updateRange)
         self.rendInput = QtGui.QDoubleSpinBox()
-        self.rendInput.valueChanged.connect(self._emitValueChanged)
+        self.rendInput.valueChanged.connect(self._updateRange)
         self.rnumInput = QtGui.QSpinBox()
         self.rnumInput.setValue(10)
-        self.rnumInput.setRange(2, 32000)
-        self.rnumInput.valueChanged.connect(self._emitValueChanged)
+        self.rnumInput.setRange(1, 32000)
+        self.rnumInput.valueChanged.connect(self._updateRange)
+
+    def _updateRange(self, value):
+        if self.kind == 'range':
+            self._value['start'] = self.rstartInput.value() / self.scale
+            self._value['end'] = self.rendInput.value() / self.scale
+            self._value['num'] = self.rnumInput.value()
+            self._emitValueChanged()
 
     def setRangeLayout(self):
-        self._setType(2)
-        self.innerLayout.addWidget(self.rstartInput)
-        self.innerLayout.addWidget(self.rendInput)
-        self.innerLayout.addWidget(self.rnumInput)
+        if self._setType('range'):
+            self.innerLayout.addWidget(self.rstartInput)
+            self.innerLayout.addWidget(self.rendInput)
+            self.innerLayout.addWidget(self.rnumInput)
+        with blockSignals(self.rstartInput):
+            self.rstartInput.setValue(self._value['start'] * self.scale)
+        with blockSignals(self.rendInput):
+            self.rendInput.setValue(self._value['end'] * self.scale)
+        with blockSignals(self.rnumInput):
+            self.rnumInput.setValue(self._value['num'])
 
     def _initCodeControl(self):
         self.codeButton = QtGui.QPushButton(self.tr("Edit code"))
         self.codeButton.clicked.connect(self.editCode)
 
     def setCodeLayout(self):
-        self._setType(3)
-        self.innerLayout.addWidget(self.codeButton)
+        if self._setType('code'):
+            self.innerLayout.addWidget(self.codeButton)
 
     def editCode(self):
-        cedialog = CodeEditor(self._code)
+        cedialog = CodeEditor(self._value)
         ret = cedialog.exec_()
         if ret == QtGui.QDialog.Accepted:
-            if self._code != cedialog.code:
-                self._code = cedialog.code
+            if self._value != cedialog.code:
+                self._value = cedialog.code
                 self._emitValueChanged()
 
     def _emitValueChanged(self):
-        self.valueChanged.emit(self.value())
+        self.valueChanged.emit(self())
+
+    @property
+    def value(self):
+        return SLRC.value.fget(self)
+
+    @value.setter
+    def value(self, value):
+        self.setValue(value)
 
     def setValue(self, value):
-        if isinstance(value, list):
-            self._list = [v * self._scale for v in value]
-            self.setListLayout()
-        elif isinstance(value, dict):
-            self.rstartInput.setValue(value["start"] * self._scale)
-            self.rendInput.setValue(value["end"] * self._scale)
-            self.rnumInput.setValue(value["num"])
-            self.setRangeLayout()
-        else:
-            try:
-                value = float(value) * self._scale
-                self.numberInput.setValue(value)
-                self.setScalarLayout()
-            except ValueError:
-                self._code = value
-                self.setCodeLayout()
+        SLRC.value.fset(self, value)
+        kind = self.kind
 
-    def value(self):
-        if self._type == 0:
-            return self.numberInput.value() / self._scale
-        elif self._type == 1:
-            return [v / self._scale for v in self._list]
-        elif self._type == 2:
-            return {'start': self.rstartInput.value() / self._scale,
-                    'end': self.rendInput.value() / self._scale,
-                    'num': self.rnumInput.value()}
-        else:
-            return self._code
+        if kind == 'scalar':
+            self.setScalarLayout()
+        elif kind == 'list':
+            self.setListLayout()
+        elif kind == 'range':
+            self.setRangeLayout()
+        elif kind == 'code':
+            self.setCodeLayout()
 
     def setSuffix(self, suffix):
         self.numberInput.setSuffix(suffix)
@@ -214,8 +199,8 @@ class SLRC(QtGui.QFrame):
         self.rstartInput.setSingleStep(val)
         self.rendInput.setSingleStep(val)
 
-    def setScaleFactor(self, scale):
-        self._scale = scale
+    def setScaleFactor(self, value):
+        self.scale = value
 
 
 class ListEditor(QtGui.QDialog):

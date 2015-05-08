@@ -1,9 +1,10 @@
 
 from PySide import QtGui, QtCore
 from fibermodes import FiberFactory
+from fibermodes.fiber import material
 from fibermodesgui import util
 from fibermodesgui.widgets import AppWindow
-from fibermodesgui.widgets import SLRC
+from fibermodesgui.widgets import SLRCWidget
 from .fiberproperties import FiberPropertiesWindow
 from .infotable import FiberInfoTable
 import os
@@ -100,10 +101,13 @@ class FiberEditor(AppWindow):
         self.initToolbars(toolbars)
         self._initLayout()
         self.setDirty(False)
+        self.actionNew()
 
     def actionNew(self):
         if self._closeDocument():
             self.factory = FiberFactory()
+            self.factory.addLayer(name="core", radius=4e-6, index=1.454)
+            self.factory.addLayer(name="cladding", index=1.444)
             self.initLayerList()
 
     def actionOpen(self, filename=None):
@@ -164,11 +168,12 @@ class FiberEditor(AppWindow):
     def setDirty(self, df):
         super().setDirty(df)
         self.actions['save'].setEnabled(df)
-        self.fnumInput.setMaximum(len(self.factory))
-        self.fnumSlider.setMaximum(self.fnumInput.maximum())
-        self.infoTable.updateInfo(
-            self.factory[self.fnumInput.value()-1],
-            self.wlInput.value() * 1e-9)
+        self.fnumInput.setRange(1, len(self.factory))
+        self.fnumSlider.setRange(1, self.fnumInput.maximum())
+        if self.factory.layers:
+            self.infoTable.updateInfo(
+                self.factory[self.fnumInput.value()-1],
+                self.wlInput.value() * 1e-9)
 
     def _initLayout(self):
         self.layerName = QtGui.QLineEdit()
@@ -202,7 +207,7 @@ class FiberEditor(AppWindow):
         self.wlInput = QtGui.QDoubleSpinBox()
         self.wlInput.setSuffix(" nm")
         self.wlInput.setRange(500, 3000)
-        self.wlInput.setSingleStep(5)
+        self.wlInput.setSingleStep(1)
         self.wlInput.setValue(1550)
         self.wlInput.valueChanged.connect(self.wlChanged)
         self.fnumInput = QtGui.QSpinBox()
@@ -221,9 +226,9 @@ class FiberEditor(AppWindow):
         self.fnumSlider.setMaximum(self.fnumInput.maximum())
         self.fnumSlider.valueChanged.connect(self.fnumChanged)
         self.infoTable = FiberInfoTable()
-        self.infoTable.updateInfo(
-            self.factory[self.fnumInput.value()-1],
-            self.wlInput.value() * 1e-9)
+        # self.infoTable.updateInfo(
+        #     self.factory[self.fnumInput.value()-1],
+        #     self.wlInput.value() * 1e-9)
         infoTab = QtGui.QTabWidget()
         infoTab.addTab(self.infoTable, self.tr("Info"))
         layout3 = QtGui.QVBoxLayout()
@@ -255,13 +260,20 @@ class FiberEditor(AppWindow):
 
     def _initMatFrame(self):
         self.matType = QtGui.QComboBox()
-        self.matType.addItems(["Fixed", "Silica", "SiO2GeO2", "SiO2Fl"])
+        self.matType.addItems(material.__all__)
         self.matType.setEnabled(False)
         self.matType.setCurrentIndex(-1)
         self.matType.currentIndexChanged.connect(self.selectMatType)
+        self.matPropBut = QtGui.QPushButton(
+                            QtGui.QIcon.fromTheme('help-about'), "")
+        self.matPropBut.clicked.connect(self.aboutFiberMaterial)
+        self.matPropBut.setEnabled(False)
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget(self.matType)
+        layout.addWidget(self.matPropBut)
         self.matLayout = QtGui.QFormLayout()
         self.matLayout.addRow(QtGui.QLabel(self.tr("Material type:")),
-                              self.matType)
+                              layout)
         matFrame = QtGui.QGroupBox(self.tr("Material"))
         matFrame.setLayout(self.matLayout)
         return matFrame
@@ -269,10 +281,10 @@ class FiberEditor(AppWindow):
     def initLayerList(self):
         self.layerList.clear()
         for i, layer in enumerate(self.factory.layers, 1):
-            if layer["name"] == "":
+            if layer.name == "":
                 name = "layer {}".format(i)
             else:
-                name = layer["name"]
+                name = layer.name
             self.layerList.addItem(name)
 
         self.actions['remove'].setEnabled(False)
@@ -281,7 +293,7 @@ class FiberEditor(AppWindow):
     def selectLayer(self):
         index = self.layerList.currentRow()
         self.layerName.setEnabled(True)
-        self.layerName.setText(self.factory.layers[index]["name"])
+        self.layerName.setText(self.factory.layers[index].name)
         self.initGeom()
         self.initMat()
         if index == len(self.factory.layers) - 1:
@@ -300,14 +312,14 @@ class FiberEditor(AppWindow):
     def removeLayer(self):
         index = self.layerList.currentRow()
         self.layerList.takeItem(index)
-        del self.factory.layers[index]
+        self.factory.removeLayer(index)
         self._adjustLayerNames()
         self.layerList.setCurrentRow(index)
         self.setDirty(True)
 
     def _adjustLayerNames(self):
         for i, layer in enumerate(self.factory.layers):
-            if layer["name"] == "":
+            if layer.name == "":
                 name = "layer {}".format(i+1)
                 if self.layerList.item(i):
                     self.layerList.item(i).setText(name)
@@ -315,7 +327,7 @@ class FiberEditor(AppWindow):
     def changeLayerName(self, newText):
         index = self.layerList.currentRow()
 
-        self.factory.layers[index]["name"] = newText
+        self.factory.layers[index].name = newText
         if newText == "":
             name = "layer {}".format(index+1)
         else:
@@ -340,7 +352,7 @@ class FiberEditor(AppWindow):
         else:
             self.geomType.setEnabled(True)
 
-        geomtype = self.factory.layers[layerIndex]["type"]
+        geomtype = self.factory.layers[layerIndex].type
         gtidx = self.geomType.findText(geomtype)
         # We call selectGeomType directly instead of emitting the signal,
         # to prevent it setting dirty state, since we only display the
@@ -363,10 +375,10 @@ class FiberEditor(AppWindow):
             return
 
         layer = self.factory.layers[layerIndex]
-        self.radiusInput = SLRC()
+        self.radiusInput = SLRCWidget()
         self.radiusInput.setSuffix(" µm")
         self.radiusInput.setScaleFactor(1e6)
-        self.radiusInput.setValue(layer["tparams"][0])
+        self.radiusInput.setValue(layer.radius)
         self.radiusInput.valueChanged.connect(self.updateRadius)
 
         self.geomLayout.addRow(QtGui.QLabel(self.tr("Radius:")),
@@ -377,8 +389,9 @@ class FiberEditor(AppWindow):
 
     def initMat(self):
         self.matType.setEnabled(True)
+        self.matPropBut.setEnabled(True)
         layerIndex = self.layerList.currentRow()
-        mattype = self.factory.layers[layerIndex]["material"]
+        mattype = self.factory.layers[layerIndex].material
         mtidx = self.matType.findText(mattype)
         state = self.matType.blockSignals(True)
         self.matType.setCurrentIndex(mtidx)
@@ -388,32 +401,31 @@ class FiberEditor(AppWindow):
     def selectMatType(self, index, change=True):
         layerIndex = self.layerList.currentRow()
         layer = self.factory.layers[layerIndex]
-        layer["material"] = self.matType.currentText()
+        layer.material = self.matType.currentText()
         util.clearLayout(self.matLayout, 2)
-        if index == 0:
+        mat = material.__dict__[layer.material]
+
+        if mat.nparams == 0:
+            pass  # No parameters to display
+
+        elif issubclass(mat, material.Fixed):
             if change:
-                layer["mparams"] = [1.444]
+                layer.mparams = [1.444]
             self.setFixedMaterial(layer)
-        elif index == 1:
+
+        elif issubclass(mat, material.compmaterial.CompMaterial):
             if change:
-                layer["mparams"] = []
-            self.setSilicaMaterial(layer)
-        elif index == 2:
-            if change:
-                layer["mparams"] = [0.05]
+                layer.mparams = [0.05]
             self.setConcentrationMaterial(layer)
-        elif index == 3:
-            if change:
-                layer["mparams"] = [0.05]
-            self.setConcentrationMaterial(layer)
+
         if change:
             self.setDirty(True)
 
     def setFixedMaterial(self, layer):
-        self.indexInput = SLRC()
+        self.indexInput = SLRCWidget()
         self.indexInput.setRange(1, 2)
         self.indexInput.setSingleStep(0.01)
-        self.indexInput.setValue(layer["mparams"][0])
+        self.indexInput.setValue(layer.mparams[0])
         self.indexInput.valueChanged.connect(self.updateIndex)
 
         self.matLayout.addRow(QtGui.QLabel(self.tr("Index:")),
@@ -422,16 +434,13 @@ class FiberEditor(AppWindow):
     def updateIndex(self, value):
         self._updateParam("mparams", 0, value)
 
-    def setSilicaMaterial(self, layer):
-        pass
-
     def setConcentrationMaterial(self, layer):
         layerIndex = self.layerList.currentRow()
         layer = self.factory.layers[layerIndex]
-        self.molInput = SLRC()
+        self.molInput = SLRCWidget()
         self.molInput.setSuffix(" %")
         self.molInput.setScaleFactor(100)
-        self.molInput.setValue(layer["mparams"][0])
+        self.molInput.setValue(layer.mparams[0])
         self.molInput.valueChanged.connect(self.updateMol)
 
         self.matLayout.addRow(QtGui.QLabel(self.tr("Molar concentration:")),
@@ -453,3 +462,17 @@ class FiberEditor(AppWindow):
         self.infoTable.updateInfo(
             self.factory[self.fnumInput.value()-1],
             value * 1e-9)
+
+    def aboutFiberMaterial(self):
+        layerIndex = self.layerList.currentRow()
+        layer = self.factory.layers[layerIndex]
+        mat = material.__dict__[layer.material]
+        msgBox = QtGui.QMessageBox()
+        msgBox.setWindowTitle(mat.name)
+        text = "<h1>{}</h1>".format(mat.name)
+        if mat.info:
+            text += "<p>{}</p>".format(mat.info)
+        if mat.url:
+            text += '<p><a href="{url}">{url}</a></p>'.format(url=mat.url)
+        msgBox.setText(text)
+        msgBox.exec_()
