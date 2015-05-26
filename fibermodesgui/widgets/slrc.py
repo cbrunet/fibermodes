@@ -139,7 +139,7 @@ class SLRCWidget(QtGui.QFrame, SLRC):
             self.innerLayout.addWidget(self.codeButton)
 
     def editCode(self):
-        cedialog = CodeEditor(self._value)
+        cedialog = CodeEditor(self._value, self.codeParams)
         ret = cedialog.exec_()
         if ret == QtGui.QDialog.Accepted:
             if self._value != cedialog.code:
@@ -294,7 +294,7 @@ class ListEditor(QtGui.QDialog):
 
 class CodeEditor(QtGui.QDialog):
 
-    def __init__(self, code, parent=None, f=0):
+    def __init__(self, code, params, parent=None, f=0):
         super().__init__(parent, f)
         self.code = code
 
@@ -310,8 +310,10 @@ class CodeEditor(QtGui.QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
+        paramstr = ", ".join(params) if params else "*params"
+
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(QtGui.QLabel("def f(*params):"))
+        layout.addWidget(QtGui.QLabel("def f({}}):".format(paramstr)))
         layout.addWidget(self.codeEditor)
         layout.addWidget(buttonBox)
         self.setLayout(layout)

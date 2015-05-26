@@ -2,11 +2,12 @@
 from PySide import QtGui, QtCore
 from fibermodes import FiberFactory
 from fibermodes.fiber import material
-from fibermodesgui import util
+from fibermodesgui import util, blockSignals
 from fibermodesgui.widgets import AppWindow
 from fibermodesgui.widgets import SLRCWidget
 from .fiberproperties import FiberPropertiesWindow
 from .infotable import FiberInfoTable
+from .fiberplot import FiberPlot
 import os
 
 
@@ -109,6 +110,7 @@ class FiberEditor(AppWindow):
             self.factory.addLayer(name="core", radius=4e-6, index=1.454)
             self.factory.addLayer(name="cladding", index=1.444)
             self.initLayerList()
+            self.updateInfo()
 
     def actionOpen(self, filename=None):
         if not self._closeDocument():
@@ -132,6 +134,7 @@ class FiberEditor(AppWindow):
             self.setDirty(False)
             self.setDocumentName(filename)
             self.statusBar().showMessage(self.tr("Fiber opened"), 5000)
+            self.updateInfo()
 
     def save(self):
         if self.documentName() == "":
@@ -170,10 +173,7 @@ class FiberEditor(AppWindow):
         self.actions['save'].setEnabled(df)
         self.fnumInput.setRange(1, len(self.factory))
         self.fnumSlider.setRange(1, self.fnumInput.maximum())
-        if self.factory.layers:
-            self.infoTable.updateInfo(
-                self.factory[self.fnumInput.value()-1],
-                self.wlInput.value() * 1e-9)
+        self.updateInfo()
 
     def _initLayout(self):
         self.layerName = QtGui.QLineEdit()
@@ -226,11 +226,10 @@ class FiberEditor(AppWindow):
         self.fnumSlider.setMaximum(self.fnumInput.maximum())
         self.fnumSlider.valueChanged.connect(self.fnumChanged)
         self.infoTable = FiberInfoTable()
-        # self.infoTable.updateInfo(
-        #     self.factory[self.fnumInput.value()-1],
-        #     self.wlInput.value() * 1e-9)
+        self.fiberPlot = FiberPlot()
         infoTab = QtGui.QTabWidget()
         infoTab.addTab(self.infoTable, self.tr("Info"))
+        infoTab.addTab(self.fiberPlot, self.tr("Graph"))
         layout3 = QtGui.QVBoxLayout()
         layout3.addLayout(wlForm)
         layout3.addWidget(self.fnumSlider)
@@ -293,7 +292,8 @@ class FiberEditor(AppWindow):
     def selectLayer(self):
         index = self.layerList.currentRow()
         self.layerName.setEnabled(True)
-        self.layerName.setText(self.factory.layers[index].name)
+        with blockSignals(self.layerName):
+            self.layerName.setText(self.factory.layers[index].name)
         self.initGeom()
         self.initMat()
         if index == len(self.factory.layers) - 1:
@@ -379,6 +379,7 @@ class FiberEditor(AppWindow):
         self.radiusInput.setSuffix(" µm")
         self.radiusInput.setScaleFactor(1e6)
         self.radiusInput.setValue(layer.radius)
+        self.radiusInput.codeParams = ['r', 'fp', 'mp']
         self.radiusInput.valueChanged.connect(self.updateRadius)
 
         self.geomLayout.addRow(QtGui.QLabel(self.tr("Radius:")),
@@ -427,6 +428,7 @@ class FiberEditor(AppWindow):
         self.indexInput.setSingleStep(0.01)
         self.indexInput.setValue(layer.mparams[0])
         self.indexInput.valueChanged.connect(self.updateIndex)
+        self.indexInput.codeParams = ['r', 'fp', 'mp']
 
         self.matLayout.addRow(QtGui.QLabel(self.tr("Index:")),
                               self.indexInput)
@@ -442,6 +444,7 @@ class FiberEditor(AppWindow):
         self.molInput.setScaleFactor(100)
         self.molInput.setValue(layer.mparams[0])
         self.molInput.valueChanged.connect(self.updateMol)
+        self.molInput.codeParams = ['r', 'fp', 'mp']
 
         self.matLayout.addRow(QtGui.QLabel(self.tr("Molar concentration:")),
                               self.molInput)
@@ -449,19 +452,24 @@ class FiberEditor(AppWindow):
     def updateMol(self, value):
         self._updateParam("mparams", 0, value)
 
+    def updateInfo(self):
+        if self.factory.layers:
+            self.infoTable.updateInfo(
+                self.factory[self.fnumInput.value()-1],
+                self.wlInput.value() * 1e-9)
+            self.fiberPlot.updateInfo(
+                self.factory[self.fnumInput.value()-1],
+                self.wlInput.value() * 1e-9)
+
     def fnumChanged(self, value):
         if self.fnumInput.value() != value:
             self.fnumInput.setValue(value)
         if self.fnumSlider.value() != value:
             self.fnumSlider.setValue(value)
-        self.infoTable.updateInfo(
-            self.factory[value-1],
-            self.wlInput.value() * 1e-9)
+        self.updateInfo()
 
     def wlChanged(self, value):
-        self.infoTable.updateInfo(
-            self.factory[self.fnumInput.value()-1],
-            value * 1e-9)
+        self.updateInfo()
 
     def aboutFiberMaterial(self):
         layerIndex = self.layerList.currentRow()

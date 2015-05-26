@@ -1,12 +1,14 @@
 
 from .solver import FiberSolver
 from fibermodes import Mode, ModeFamily
+from fibermodes.fiber.material.material import OutOfRangeWarning
 from math import sqrt
 import numpy
 from scipy.special import j0, y0, i0, k0
 from scipy.special import j1, y1, i1, k1
 from scipy.special import jn, yn, iv, kn
 from scipy.special import jvp, ivp
+import warnings
 
 
 class TLSIFSolver(FiberSolver):
@@ -30,16 +32,19 @@ class TLSIFSolver(FiberSolver):
                                    delta=delta)
 
     def __params(self, v0):
-        wl = self.fiber.toWl(v0)
-        r1, r2 = self.fiber._r
-        Nsq = numpy.square(numpy.fromiter(
-                           (self.fiber.minIndex(i, wl)
-                            for i in range(3)), dtype=float, count=3))
-        n1sq, n2sq, n3sq = Nsq
-        Usq = [wl.k0**2 * (nsq - n3sq) for nsq in Nsq]
-        s1, s2, s3 = numpy.sign(Usq)
-        u1, u2, u3 = numpy.sqrt(numpy.abs(Usq))
-        return u1*r1, u2*r1, u2*r2, s1, s2, n1sq, n2sq, n3sq
+        with warnings.catch_warnings():
+            # ignore OutOfRangeWarning; it will occur elsewhere anyway
+            warnings.simplefilter("ignore", category=OutOfRangeWarning)
+            wl = self.fiber.toWl(v0)
+            r1, r2 = self.fiber._r
+            Nsq = numpy.square(numpy.fromiter(
+                               (self.fiber.minIndex(i, wl)
+                                for i in range(3)), dtype=float, count=3))
+            n1sq, n2sq, n3sq = Nsq
+            Usq = [wl.k0**2 * (nsq - n3sq) for nsq in Nsq]
+            s1, s2, s3 = numpy.sign(Usq)
+            u1, u2, u3 = numpy.sqrt(numpy.abs(Usq))
+            return u1*r1, u2*r1, u2*r2, s1, s2, n1sq, n2sq, n3sq
 
     def __delta(self, nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq):
         if s1 < 0:

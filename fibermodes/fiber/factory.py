@@ -8,7 +8,8 @@ from functools import reduce
 from itertools import product, islice
 from .fiber import Fiber
 from fibermodes.slrc import SLRC
-from fibermodes.fiber import material
+from fibermodes.fiber import material as materialmod
+from fibermodes.fiber.material.compmaterial import CompMaterial
 
 
 __version__ = "0.0.1"
@@ -55,7 +56,7 @@ class LayerProxy(object):
     def _material(self, value):
         if value != self.material:
             self._layer["material"] = value
-            self._layer["mparams"] = [0] * material.__dict__[value].nparams
+            self._layer["mparams"] = [0] * materialmod.__dict__[value].nparams
 
     @property
     def radius(self):
@@ -139,7 +140,7 @@ class FiberFactory(object):
         return LayersProxy(self)
 
     def addLayer(self, pos=None, name="", radius=0,
-                 material="Fixed", index=1.444, **kwargs):
+                 material="Fixed", **kwargs):
         if pos is None:
             pos = len(self._fibers["layers"])
         layer = {
@@ -150,7 +151,18 @@ class FiberFactory(object):
             "mparams": [],
         }
         if material == "Fixed":
+            index = kwargs.get("index", 1.444)
             layer["mparams"].append(index)
+        else:
+            Mat = materialmod.__dict__[material]
+            if issubclass(Mat, CompMaterial):
+                if "x" in kwargs:
+                    layer["mparams"].append(kwargs["x"])
+                elif "index" in kwargs and "wl" in kwargs:
+                    x = Mat.xFromN(kwargs["wl"], kwargs["index"])
+                    layer["mparams"].append(x)
+                else:
+                    layer["mparams"].append(0)
         self._fibers["layers"].insert(pos, layer)
 
     def removeLayer(self, pos=-1):
@@ -242,20 +254,26 @@ class FiberFactory(object):
             names.append(name)
 
             if i < len(self._fibers["layers"]):
-                r.append(SLRC(layer["tparams"][0])[indexes[ii]])
+                rr = SLRC(layer["tparams"][0])
+                rr.codeParams = ["r", "fp", "mp"]
+                r.append(rr[indexes[ii]])
             ii += 1  # we count radius of cladding, even if we don't use it
 
             f.append(layer["type"])
             fp_ = []
             for p in layer["tparams"][1:]:
-                fp_.append(SLRC(p)[indexes[ii]])
+                ff = SLRC(p)
+                ff.codeParams = ["r", "fp", "mp"]
+                fp_.append(ff[indexes[ii]])
                 ii += 1
             fp.append(fp_)
 
             m.append(layer["material"])
             mp_ = []
             for p in layer["mparams"]:
-                mp_.append(SLRC(p)[indexes[ii]])
+                mm = SLRC(p)
+                mm.codeParams = ["r", "fp", "mp"]
+                mp_.append(mm[indexes[ii]])
                 ii += 1
             mp.append(mp_)
 

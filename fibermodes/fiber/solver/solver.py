@@ -1,11 +1,11 @@
 
-from fibermodes import Mode, ModeFamily
+from fibermodes import Mode, ModeFamily, Wavelength
 from fibermodes import constants
 from fibermodes.functions import derivative
 from itertools import count
 from functools import lru_cache
 import numpy
-from math import isnan
+from math import isnan, sqrt
 from scipy.optimize import brentq
 from scipy.special import kn, kvp, k0, k1
 import logging
@@ -17,8 +17,9 @@ class FiberSolver(object):
 
     def __init__(self, fiber):
         self.fiber = fiber
-        self.__cocache = {Mode("HE", 1, 1): 0,
-                          Mode("LP", 0, 1): 0}
+        self.co_cache = {Mode("HE", 1, 1): 0,
+                         Mode("LP", 0, 1): 0}
+        self.ne_cache = {}
 
     def cutoff(self, mode):
         """Give `V0` parameter at cutoff, for given mode.
@@ -30,40 +31,68 @@ class FiberSolver(object):
 
         """
         try:
-            return self.__cocache[mode]
+            return self.co_cache[mode]
         except KeyError:
             co = self._cutoff(mode)
-            self.__cocache[mode] = co
+            self.co_cache[mode] = co
             return co
 
     def _cutoff(self, mode):
         raise NotImplementedError()
 
-    @lru_cache(maxsize=None)
-    def neff(self, wl, mode, delta=1e-6):
-        return self._neff(wl, mode, delta)
+    def set_ne_cache(self, wl, mode, neff):
+        try:
+            self.ne_cache[wl][mode] = neff
+        except KeyError:
+            self.ne_cache[wl] = {mode: neff}
 
-    def _neff(self, wl, mode, delta):
-        pm = None
-        if mode.family is ModeFamily.HE:
-            if mode.m > 1:
-                pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
-        elif mode.family is ModeFamily.EH:
-            pm = Mode(ModeFamily.HE, mode.nu, mode.m)
-        elif mode.m > 1:
-            pm = Mode(mode.family, mode.nu, mode.m - 1)
+    def neff(self, wl, mode, delta, lowbound=None):
+        try:
+            return self.ne_cache[wl][mode]
+        except KeyError:
+            neff = self._neff(wl, mode, delta, lowbound)
+            self.set_ne_cache(wl, mode, neff)
+            return neff
 
-        if pm:
-            lowbound = self.neff(wl, pm)
-        else:
-            lowbound = max(layer.maxIndex(wl) for layer in self.fiber.layers)
+    def _neff(self, wl, mode, delta, lowbound):
+        wl = Wavelength(wl)
+        if lowbound is None:
+            pm = None
+            if mode.family is ModeFamily.HE:
+                if mode.m > 1:
+                    pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
+            elif mode.family is ModeFamily.EH:
+                pm = Mode(ModeFamily.HE, mode.nu, mode.m)
+            elif mode.m > 1:
+                pm = Mode(mode.family, mode.nu, mode.m - 1)
 
-        if mode.family is ModeFamily.LP and mode.nu > 0:
-            pm = Mode(mode.family, mode.nu - 1, mode.m)
-            lowbound = min(lowbound, self.neff(wl, pm))
+            if pm:
+                lowbound = self.neff(wl, pm, delta)
+                if isnan(lowbound):
+                    return lowbound
+            else:
+                lowbound = max(layer.maxIndex(wl)
+                               for layer in self.fiber.layers)
 
-        if isnan(lowbound):
-            return lowbound
+            if mode.family is ModeFamily.LP and mode.nu > 0:
+                pm = Mode(mode.family, mode.nu - 1, mode.m)
+                lb = self.neff(wl, pm, delta)
+                if isnan(lb):
+                    return lowbound
+                lowbound = min(lowbound, lb)
+
+        try:
+            # Use cutoff information if available
+            co = self.cutoff(mode)
+            if self.fiber.V0(wl) < co:
+                return float("nan")
+
+            nco = max(layer.maxIndex(wl) for layer in self.fiber.layers)
+            r = self.fiber.innerRadius(-1)
+
+            lowbound = min(lowbound, sqrt(nco**2 - (co / (r * wl.k0))**2))
+        except NotImplementedError:
+            pass
 
         highbound = self.fiber.minIndex(-1, wl)
 
@@ -80,15 +109,29 @@ class FiberSolver(object):
                                    delta=-delta)
 
     @lru_cache(maxsize=None)
-    def beta(self, wl, mode, p=0):
+    def beta(self, omega, mode, p=0, delta=1e-6):
+        wl = Wavelength(omega=omega)
         if p == 0:
-            return self.neff(wl, mode) * constants.tpi / wl
+            neff = self.neff(wl, mode, delta)
+            # print("b0", omega, wl, neff)
+            return neff * wl.k0
 
         # if p == 1:
         #     neff1 = derivative(self.neff, wl, 1, 3, 1, 1e-9, mode)
         #     return (self.neff(wl, mode) - wl * neff1) / constants.c
 
-        return derivative(self.beta, wl, p, 5, 2, 1e-9, mode, 0)
+        m = 5
+        j = (m - 1) // 2
+        h = 1e5
+        lb = None
+        for i in range(m-1, -1, -1):
+            # Precompute neff using previous wavelength
+            o = omega + (i-j) * h
+            wl = Wavelength(omega=o)
+            lb = self.neff(wl, mode, delta, lb) + delta * 1.1
+            # print("pc", o, float(wl), lb)
+
+        return derivative(self.beta, omega, p, m, j, h, mode, 0, delta)
 
     def _findFirstRoot(self, fct, args=(), lowbound=0, highbound=None,
                        ipoints=[], delta=0.25):

@@ -48,7 +48,7 @@ class SSIFSolver(FiberSolver):
                                    ipoints=ipoints,
                                    delta=delta)
 
-    def _neff(self, wl, mode, delta):
+    def _neff(self, wl, mode, delta, lowbound):
         co = self.cutoff(mode)
         if self.fiber.V0(wl) < co:
             return float("nan")

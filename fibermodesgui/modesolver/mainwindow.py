@@ -5,7 +5,7 @@ from .solverdocument import SolverDocument
 from .fiberselector import FiberSelector
 from .fiberslider import FiberSlider
 from .wavelengthslider import WavelengthSlider
-from .modetable import ModeTable
+from .modetable import ModeTableView, ModeTableModel
 
 
 class ModeSolver(AppWindow):
@@ -91,7 +91,11 @@ class ModeSolver(AppWindow):
         self.setDirty(False)
 
     def _initLayout(self):
-        self.countLabel = QtGui.QLabel()
+        self.progressBar = QtGui.QProgressBar()
+        self.progressBar.setFormat("%v / %m (%p%)")
+        self.statusBar().addWidget(self.progressBar, 1)
+
+        self.countLabel = QtGui.QLabel(self.tr("No fiber"))
         self.countLabel.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Sunken)
         self.statusBar().addPermanentWidget(self.countLabel)
 
@@ -100,6 +104,9 @@ class ModeSolver(AppWindow):
         splitter.addWidget(self._modesFrame())
         splitter.addWidget(QtGui.QFrame())
         self.setCentralWidget(splitter)
+
+        self.doc.valuesChanged.connect(self.initProgressBar)
+        self.doc.valuesComputed.connect(self.updateProgressBar)
 
     def _parametersFrame(self):
         self.fiberSelector = FiberSelector(self.doc)
@@ -125,16 +132,19 @@ class ModeSolver(AppWindow):
             QtGui.QLabel(self.tr("Modes")),
             self.modeSelector)
 
-        self.ellMaxInput = QtGui.QSpinBox()
-        self.ellMaxInput.valueChanged.connect(self.setMaxEll)
+        self.nuMaxInput = QtGui.QSpinBox()
+        self.nuMaxInput.valueChanged.connect(self.setMaxNu)
+        self.nuMaxInput.setRange(-1, 99)
+        self.nuMaxInput.setSpecialValueText(" ")
         self.mMaxInput = QtGui.QSpinBox()
-        self.mMaxInput.setRange(1, 100)
+        self.mMaxInput.setRange(0, 100)
         self.mMaxInput.valueChanged.connect(self.setMaxM)
+        self.mMaxInput.setSpecialValueText(" ")
 
         simParamFormLayout = QtGui.QHBoxLayout()
         simParamFormLayout.addWidget(
             QtGui.QLabel(self.tr("l max")), 0, QtCore.Qt.AlignRight)
-        simParamFormLayout.addWidget(self.ellMaxInput)
+        simParamFormLayout.addWidget(self.nuMaxInput)
         simParamFormLayout.addWidget(
             QtGui.QLabel(self.tr("m max")), 0, QtCore.Qt.AlignRight)
         simParamFormLayout.addWidget(self.mMaxInput)
@@ -157,6 +167,7 @@ class ModeSolver(AppWindow):
         topLayout.addWidget(self.fiberSelector)
         topLayout.addLayout(formLayout)
         topLayout.addWidget(simParamsGroup)
+        topLayout.addStretch(1)
 
         topFrame = QtGui.QFrame()
         topFrame.setLayout(topLayout)
@@ -167,10 +178,17 @@ class ModeSolver(AppWindow):
         return splitter
 
     def _modesFrame(self):
-        self.modeTable = ModeTable(self.doc)
+        self.modeTableModel = ModeTableModel(self.doc, self)
+        modeTableProxy = QtGui.QSortFilterProxyModel(self)
+        modeTableProxy.setSourceModel(self.modeTableModel)
+        modeTableProxy.setSortRole(QtCore.Qt.ToolTipRole)
+        modeTableProxy.setDynamicSortFilter(True)
+        modeTableView = ModeTableView(modeTableProxy)
+        self.modeTableModel.dataChanged.connect(
+            modeTableView.resizeColumnsToContents)
 
         self.fiberSlider = FiberSlider()
-        self.fiberSlider.valueChanged.connect(self.modeTable.setFiber)
+        self.fiberSlider.valueChanged.connect(self.modeTableModel.setFiber)
 
         self.wavelengthSlider = WavelengthSlider()
         self.wavelengthSlider.valueChanged.connect(self.setWavelength)
@@ -181,47 +199,46 @@ class ModeSolver(AppWindow):
 
         layout2 = QtGui.QVBoxLayout()
         layout2.addLayout(layout1)
-        layout2.addWidget(self.modeTable)
+        layout2.addWidget(modeTableView, stretch=1)
 
         frame = QtGui.QFrame()
         frame.setLayout(layout2)
 
+        # Default values
+        self.nuMaxInput.setValue(-1)
+        self.mMaxInput.setValue(0)
+
         return frame
 
     def setDirty(self, df):
-        if self.doc.factory is None:
+        if not self.doc.factory:
             self.actions['save'].setEnabled(False)
         else:
             self.actions['save'].setEnabled(df)
         super().setDirty(df)
 
     def _updateFiberCount(self):
-        nf = self.doc.numfibers
-        nw = len(self.doc.wavelengths)
-        self.countLabel.setText(
-            self.tr("{} F x {} W = {}").format(
-                nf, nw, nf*nw))
+        if self.doc.factory:
+            nf = len(self.doc.fibers)
+            nw = len(self.doc.wavelengths)
+            self.countLabel.setText(
+                self.tr("{} F x {} W = {}").format(
+                    nf, nw, nf*nw))
 
     def updateFiber(self):
         """New fiber loaded, or fiber modified."""
         self.actions['new'].setEnabled(False)
         self.actions['edit'].setEnabled(True)
         self.actions['info'].setEnabled(True)
-        self.doc.load()
         self.fiberSelector.updateFiberName()
-        self.fiberSlider.setNum(self.doc.numfibers)
+        self.fiberSlider.setNum(len(self.doc.fibers))
         self.setDirty(True)
         self._updateFiberCount()
         self.statusBar().showMessage(self.tr("Fiber factory loaded"), 5000)
 
     def updateWavelengths(self):
-        wl = self.wavelengthInput()
-        try:
-            wl = [float(wl)]
-        except TypeError:
-            pass
-        self.doc.wavelengths = wl
-        self.wavelengthSlider.setNum(len(wl))
+        self.doc.wavelengths = self.wavelengthInput
+        self.wavelengthSlider.setNum(len(self.doc.wavelengths))
         self.setWavelength(self.wavelengthSlider.value())
         self._updateFiberCount()
         self.setDirty(True)
@@ -229,32 +246,29 @@ class ModeSolver(AppWindow):
     def setMode(self, index):
         self.doc.modeKind = self.modeSelector.currentText()
 
-    def setMaxEll(self, value):
-        self.doc.maxell = value
+    def setMaxNu(self, value):
+        self.doc.numax = value
 
     def setMaxM(self, value):
-        self.doc.maxm = value
+        self.doc.mmax = value
 
     def setWavelength(self, value):
         if 0 <= value - 1 < len(self.doc.wavelengths):
             wl = self.doc.wavelengths[value-1]
             self.wavelengthSlider.wlLabel.setText(
-                "{:.5f} nm".format(wl))
-            self.modeTable.setWavelength(wl)
+                "{:.5f} nm".format(wl * 1e9))
+            self.modeTableModel.setWavelength(value)
 
     def updateParams(self, checked):
-        self.doc.params = []
+        params = []
         for p in self.PARAMETERS:
             if self.simParamBoxes[p].isChecked():
-                self.doc.params.append(p)
-        self.modeTable.updateParams()
-        self.startSolving()
+                params.append(p)
+        self.doc.params = params
 
-    def startSolving(self):
-        self.doc.start()
+    def initProgressBar(self):
+        self.progressBar.setMaximum(self.doc.toCompute)
+        self.progressBar.setValue(0)
 
-    def stopSolving(self):
-        self.doc.terminate()
-
-    def solvingEnded(self):
-        pass
+    def updateProgressBar(self, nvals):
+        self.progressBar.setValue(self.progressBar.value() + nvals)

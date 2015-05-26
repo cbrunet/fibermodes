@@ -1,58 +1,103 @@
 
 from PySide import QtGui, QtCore
+from math import isnan, isinf
 
 
-class ModeTable(QtGui.QTableWidget):
+class ModeTableView(QtGui.QTableView):
 
-    def __init__(self, doc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self.setModel(model)
+        self.setSortingEnabled(True)
+
+
+class ModeTableModel(QtCore.QAbstractTableModel):
+
+    def __init__(self, doc, parent=None):
+        super().__init__(parent)
         self._doc = doc
+        self._fnum = self._wl = 0
+        self.modes = []
+        doc.valuesChanged.connect(self.updateTable)
 
-    def setFibers(self, fibers):
-        self._fibers = fibers
+    def rowCount(self, parent=QtCore.QModelIndex):
+        return len(self.modes)
+
+    def columnCount(self, parent=QtCore.QModelIndex):
+        return len(self._doc.params)
+
+    def data(self, index, role):
+        mode = self.modes[index.row()]
+        try:
+            v = self._doc.values[(self._fnum,
+                                  self._wl,
+                                  mode,
+                                  index.column())]
+        except KeyError:
+            v = None
+
+        if role == QtCore.Qt.DisplayRole:
+            if v is None:
+                return '...'
+            elif isnan(v):
+                return '--'
+            elif isinf(v):
+                return 'oo'
+            else:
+                if self._doc.params[index.column()] == 'cutoff':
+                    return "{:.5f} nm".format(v * 1e9)
+                elif self._doc.params[index.column()] == 'D':
+                    return "{:.5f} ps / (nm km)".format(v * 1e9)
+                else:
+                    return "{:.5f}".format(v)
+        elif role == QtCore.Qt.ToolTipRole:
+            if v is None:
+                return None
+            elif isinf(v):
+                return 'infinity'
+            elif self._doc.params[index.column()] == 'cutoff':
+                return v * 1e9
+            else:
+                return v
+
+    def setData(self, index, value, role=QtCore.Qt.DisplayRole):
+        self.dataChanged.emit(index, index)
+        return True
+
+    def headerData(self, section, orientation, role):
+        if role == QtCore.Qt.DisplayRole:
+            if orientation == QtCore.Qt.Horizontal:
+                return self._doc.params[section]
+            else:
+                return str(self.modes[section])
 
     def setFiber(self, fnum):
-        self._fnum = fnum
-        self._updateTable()
+        self._fnum = fnum - 1
+        self.updateTable()
 
     def setWavelength(self, wl):
-        self._wl = wl
-        self._updateTable()
+        self._wl = wl - 1
+        self.updateTable()
 
-    def updateParams(self):
-        self.setColumnCount(len(self._doc.params) + 1)
-        self.setHorizontalHeaderLabels(['Modes'] + self._doc.params)
-        self._updateTable()
+    def updateTable(self):
+        """Update displayed values when fiber of wl index change."""
+        sim = self._doc.simulator
+        if sim.factory is None:
+            return
 
-    def _updateTable(self):
-        self.clearContents()
-        modes = set()
+        self.beginResetModel()
+        self.modes = list(sim.modes(self._fnum, self._wl))
+        self.endResetModel()
 
-        if "cutoff" in self._doc.params and self._doc.cutoffs:
-            for mode, co in self._doc.cutoffs[self._fnum]:
-                if co >= self._wl:
-                    modes.add(mode)
+        if self._doc.toCompute > 0:
+            QtCore.QTimer.singleShot(0, self._updateValues)
 
-        if self._doc.modes and self._wl in self._doc.modes[self._fnum]:
-            for mode in self._doc.modes[self._wl]:
-                modes.add(mode)
+    def _updateValues(self):
+        for fi, wi, m, j, v in self._doc.readyValues():
+            if (fi, wi) == (self._fnum, self._wl):
+                i = self.modes.index(m)
+                index = self.index(i, j)
+                self.setData(index, v)
 
-        self.setRowCount(len(modes))
-        for i, mode in enumerate(modes):
-            item = QtGui.QTableWidgetItem(str(mode))
-            self.setItem(i, 0, item)
-
-            for j, prop in enumerate(self._properties, 1):
-                if prop == "cutoff":
-                    if mode in self._doc.cutoffs[self._fnum]:
-                        co = self._doc.cutoffs[self._fnum][mode]
-                        item = QtGui.QTableWidgetItem(
-                            "{:.5f} nm".format(co * 1e9))
-                        self.setItem(i, j, item)
-                elif self._wl in self._doc.modes[self._fnum]:
-                    if mode in self._doc.modes[self._fnum][self._wl]:
-                        if prop in self._doc.modes[self._fnum][self._wl][mode]:
-                            p = self._doc.modes[self._fnum][self._wl][mode][prop]
-                            item = QtGui.QTableWidgetItem(
-                                "{:.5f}".format(p))
-                            self.setItem(i, j, item)
+        if self._doc.futures:
+            QtCore.QTimer.singleShot(0, self._updateValues)

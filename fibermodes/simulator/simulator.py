@@ -3,8 +3,9 @@ an array of parameters.
 
 """
 
-from itertools import starmap, repeat
-from fibermodes import FiberFactory
+from itertools import repeat, product
+from functools import lru_cache
+from fibermodes import FiberFactory, Wavelength
 from fibermodes.slrc import SLRC
 
 
@@ -13,32 +14,28 @@ class Simulator(object):
     """Simulator class."""
 
     def __init__(self, factory=None, wavelengths=None,
-                 numax=None, mmax=None, vectorial=True):
+                 numax=None, mmax=None, vectorial=True, scalar=False):
         self._fibers = None
         self._wavelengths = None
-        self._vModes = None
-        self._lpModes = None
 
         self.numax = numax
         self.mmax = mmax
         self.vectorial = vectorial
+        self.scalar = scalar
 
-        if factory:
-            self.set_factory(factory)
+        self.set_factory(factory)
         if wavelengths:
             self.set_wavelengths(wavelengths)
 
     def set_wavelengths(self, value):
-        self._wavelengths = tuple(iter(SLRC(value)))
-        if self._fibers is not None:
-            self._init_modes()
+        self._wavelengths = tuple(Wavelength(w) for w in iter(SLRC(value)))
 
     def set_factory(self, factory):
         if isinstance(factory, str):
             factory = FiberFactory(factory)
-        self._fibers = tuple(iter(factory))
-        if self._wavelengths is not None:
-            self._init_modes()
+        self.factory = factory
+        if factory is not None:
+            self._fibers = tuple(iter(factory))
 
     @property
     def fibers(self):
@@ -54,50 +51,86 @@ class Simulator(object):
                              "set_wavelengths first.")
         return self._wavelengths
 
-    def _apply(self, fct, fidx, wlidx):
+    @property
+    def initialized(self):
+        return not (self._fibers is None or self.factory is None)
+
+    def _idx_iter(self, fidx, wlidx):
         if wlidx is None:
             wlidx = range(len(self.wavelengths))
         if isinstance(fidx, int):
             if isinstance(wlidx, int):
-                return fct(fidx, wlidx)
+                yield (fidx, wlidx)
             else:
-                return starmap(fct, zip(repeat(fidx), wlidx))
+                yield from zip(repeat(fidx), wlidx)
         else:
             if fidx is None:
                 fidx = range(len(self.fibers))
             if isinstance(wlidx, int):
-                return starmap(fct, zip(fidx, repeat(wlidx)))
+                yield from zip(fidx, repeat(wlidx))
             else:
-                return (starmap(fct, zip(repeat(i), wlidx))
-                        for i in fidx)
+                yield from product(fidx, wlidx)
 
-    def _init_modes(self):
-        self._vModes = [[None] * len(self.wavelengths)
-                        for _ in self.fibers]
-        self._lpModes = [[None] * len(self.wavelengths)
-                         for _ in self.fibers]
+    def _apply(self, fct, fidx, wlidx):
+        if isinstance(fidx, int) and isinstance(wlidx, int):
+            return fct((fidx, wlidx))
+        return map(fct, self._idx_iter(fidx, wlidx))
 
-    def _v_modes(self, fidx, wlidx):
-        if self._vModes[fidx][wlidx] is None:
-            self._vModes[fidx][wlidx] = self.fibers[fidx].findVmodes(
+    def _apply_to_modes(self, fct, idx, args=()):
+        modes = self._modes(idx)
+        return {mode: fct(mode, *args) for mode in modes}
+
+    @lru_cache()
+    def _modes(self, arg):
+        fidx, wlidx = arg
+        modes = set()
+        if self.vectorial:
+            modes |= self.fibers[fidx].findVmodes(
                 self.wavelengths[wlidx], self.numax, self.mmax)
-        return self._vModes[fidx][wlidx]
-
-    def _lp_modes(self, fidx, wlidx):
-        if self._lpModes[fidx][wlidx] is None:
-            self._lpModes[fidx][wlidx] = self.fibers[fidx].findLPmodes(
+        if self.scalar:
+            modes |= self.fibers[fidx].findLPmodes(
                 self.wavelengths[wlidx], self.numax, self.mmax)
-        return self._lpModes[fidx][wlidx]
+        return modes
 
     def modes(self, fidx=None, wlidx=None):
-        fct = self._v_modes if self.vectorial else self._lp_modes
-        return self._apply(fct, fidx, wlidx)
+        return self._apply(self._modes, fidx, wlidx)
 
-    def _cutoff(self, fidx, wlidx):
-        modes = (self._vModes[fidx][wlidx] if self.vectorial
-                 else self._lpModes[fidx][wlidx])
-        return {mode: self.fibers[fidx].cutoff(mode) for mode in modes}
+    def _cutoff(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].cutoff, arg)
 
     def cutoff(self, fidx=None, wlidx=None):
-        self.modes(fidx, wlidx)  # Ensure we already found modes
         return self._apply(self._cutoff, fidx, wlidx)
+
+    def _cutoffWl(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].cutoffWl, arg)
+
+    def cutoffWl(self, fidx=None, wlidx=None):
+        return self._apply(self._cutoffWl, fidx, wlidx)
+
+    def _neff(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].neff, arg,
+                                    (self.wavelengths[arg[1]], ))
+
+    def neff(self, fidx=None, wlidx=None):
+        return self._apply(self._neff, fidx, wlidx)
+
+    def _ng(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].ng, arg,
+                                    (self.wavelengths[arg[1]], ))
+
+    def ng(self, fidx=None, wlidx=None):
+        return self._apply(self._ng, fidx, wlidx)
+
+    def _D(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].D, arg,
+                                    (self.wavelengths[arg[1]], ))
+
+    def D(self, fidx=None, wlidx=None):
+        return self._apply(self._D, fidx, wlidx)
+
+    def _S(self, arg):
+        return self._apply_to_modes(self.fibers[arg[0]].S, arg,
+                                    (self.wavelengths[arg[1]], ))
+
+    def S(self, fidx=None, wlidx=None):
+        return self._apply(self._S, fidx, wlidx)

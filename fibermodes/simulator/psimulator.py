@@ -1,76 +1,143 @@
-"""Parallel simulator module, using multiprocessing. """
 
+from fibermodes import Mode, ModeFamily
 from .simulator import Simulator
-from ..mode import Mode, Family
-import concurrent.futures as cf
-import numpy
+from multiprocessing import Pool, Pipe
+from functools import partial
+from collections import deque
+
+
+def _neff(fiber, wl, mode, nfrom, nto):
+    lowbound = min((t.recv() for t in nto), default=None)
+    neff = fiber.neff(mode, wl, lowbound=lowbound)
+    for f in nfrom:
+        f.send(neff)
+    return neff
+
+
+def _sync_cache(fct, fiber, args, pipe):
+    r = fct(*args)
+    mode = args[0]
+    ne_cache = {}
+    for wl, modes in fiber._solver.ne_cache.items():
+        if mode in modes:
+            ne_cache[wl] = modes[mode]
+    co_cache = fiber._solver.co_cache.get(mode, None)
+    pipe.send((ne_cache, co_cache))
+
+    return r
 
 
 class PSimulator(Simulator):
 
-    """Parallel simulator class. The interface should be identical to
-    :class:`~fibermodes.simulator.simulator.Simulator`.
-
-    :param nproc: Number of processors to use. If ``None``, use all processors.
+    """
 
     """
 
-    def __init__(self, nproc=None, *args, **kwargs):
-        if nproc is None:
-            import multiprocessing
-            nproc = multiprocessing.cpu_count()
-        self._nproc = nproc
+    def __init__(self, *args, **kwargs):
+        self.pool = Pool()
         super().__init__(*args, **kwargs)
 
-    def _solvefibers(self, fibers, mode):
-        smodes = {}
-        for fiber in fibers:
-            smodes[fiber] = self._solveForMode(fiber, mode)
-        return smodes
+    def __del__(self):
+        self.pool.terminate()
+        self.pool.join()
 
-    def _psolve(self, fibers, mode):
+    def terminate(self):
+        self.pool.terminate()
+        self.pool.join()
+        self.pool = Pool()
+
+    def set_wavelengths(self, wavelengths):
+        self.terminate()
+        super().set_wavelengths(wavelengths)
+
+    def set_factory(self, factory):
+        self.terminate()
+        super().set_factory(factory)
+
+    def _apply_to_modes(self, fct, idx, args=()):
+        modes = self._modes(idx)
+        fiber = self.fibers[idx[0]]
+        r = {}
+        for m in modes:
+            arg = (m,) + args
+            re, se = Pipe(False)
+            r[m] = self.pool.apply_async(
+                _sync_cache,
+                (fct, fiber, arg, se),
+                callback=partial(self._update_cache,
+                                 fiber=fiber, mode=m, pipe=re))
+            # r[m] = self.pool.apply_async(fct, arg)
+        return r
+
+    def neff(self, fidx=None, wlidx=None):
+        modes = {}
+        nfrom = {}
+        nto = {}
+        for f, w in self._idx_iter(fidx, wlidx):
+            for m in self._modes((f, w)):
+                modes[(f, w, m)] = None
+                nfrom[(f, w, m)] = []
+                nto[(f, w, m)] = []
+        ml = deque(modes.keys())
+
+        for idx in ml:
+            for d in self._depends_on(*idx):
+                t, f = Pipe(False)
+                nfrom[d].append(f)
+                nto[idx].append(t)
+
+        while ml:
+            idx = ml.popleft()
+            deps = self._depends_on(*idx)
+            for d in deps:
+                if modes[d] is None:
+                    ml.append(idx)
+                    break
+            else:
+                modes[idx] = self.pool.apply_async(
+                    _neff,
+                    (
+                        self.fibers[idx[0]],
+                        self.wavelengths[idx[1]],
+                        idx[2],
+                        nfrom[idx],
+                        nto[idx]
+                    ),
+                    callback=partial(self._set_ne_cache, idx=idx))
+
+        if isinstance(fidx, int) and isinstance(wlidx, int):
+            return {m: modes[(fidx, wlidx, m)]
+                    for m in self._modes((fidx, wlidx))}
+        return ({m: modes[(f, w, m)] for m in self._modes((f, w))}
+                for f, w in self._idx_iter(fidx, wlidx))
+
+    def _update_cache(self, x, fiber, mode, pipe):
+        ce_cache, co_cache = pipe.recv()
+        for wl, neff in ce_cache.items():
+            fiber._solver.set_ne_cache(wl, mode, neff)
+        if co_cache is not None:
+            fiber._solver.co_cache[mode] = co_cache
+        pipe.close()
+
+    def _set_ne_cache(self, neff, idx):
+        fiber = self.fibers[idx[0]]
+        wl = self.wavelengths[idx[1]]
+        fiber._solver.set_ne_cache(wl, idx[2], neff)
+
+    def _depends_on(self, fnum, wlnum, mode):
+        s = []
+        if wlnum > 0:
+            s.append((fnum, wlnum-1, mode))
+
         pm = None
-        if mode.family in (Family.TE, Family.TM, Family.LP) and mode.m > 1:
-            pm = Mode(mode.family, mode.nu, mode.m-1)
-        elif mode.family == Family.EH:
-            pm = Mode(Family.HE, mode.nu, mode.m)
-        elif mode.family == Family.HE and mode.m > 1:
-            pm = Mode(Family.EH, mode.nu, mode.m-1)
+        if mode.family is ModeFamily.HE:
+            if mode.m > 1:
+                pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
+        elif mode.family is ModeFamily.EH:
+            pm = Mode(ModeFamily.HE, mode.nu, mode.m)
+        elif mode.m > 1:
+            pm = Mode(mode.family, mode.nu, mode.m - 1)
+        if pm:
+            s.append((fnum, wlnum, pm))
 
-        solvepm = False
-        solvem = False
-        for fiber in fibers:
-            if fiber not in self._modes:
-                self._modes[fiber] = {}
-            if mode not in self._modes[fiber]:
-                if pm is not None:
-                    solvepm = True
-                solvem = True  # Something missing, so solve for it
-
-        # Recursive parallel solve for previous modes
-        if solvepm:
-            self._psolve(fibers, pm)
-
-        # Parallel solve for mode
-        if solvem:
-            futures = {}
-            with cf.ProcessPoolExecutor(max_workers=self._nproc) as executor:
-                for i in range(self._nproc):
-                    ff = fibers[i::self._nproc]
-                    futures[executor.submit(self._solvefibers, ff, mode)] = i
-                for f in cf.as_completed(futures):
-                    for fiber, smode in f.result().items():
-                        self._modes[fiber][mode] = smode
-
-    def _getModesAttr(self, mode, attr):
-        """Generic function to fetch list of ``attr`` from solved modes.
-
-        """
-        fibers = list(iter(self))
-        self._psolve(fibers, mode)
-        a = numpy.fromiter((self._getModeAttr(fiber, mode, attr, 0)
-                            for fiber in fibers),
-                           numpy.float,
-                           self.__length_hint__())
-        a = a.reshape(self.shape())
-        return numpy.ma.masked_less_equal(a, 0)
+        return s

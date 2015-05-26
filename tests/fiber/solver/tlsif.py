@@ -3,11 +3,26 @@
 import unittest
 
 from fibermodes import FiberFactory, Mode, Wavelength
+from math import sqrt
 
 
 class TestTLSIF(unittest.TestCase):
 
     """Test suite for three-layers step-index fibers."""
+
+    def _compareWithCo(self, fiber, mode, neff):
+        co = fiber.cutoff(mode)
+        wl = Wavelength(1550e-9)
+        n = max(l.maxIndex(wl) for l in fiber.layers)
+        r = fiber.innerRadius(-1)
+
+        nmax = sqrt(n**2 - (co / (r * wl.k0))**2)
+        self.assertLess(neff, nmax)
+
+        ms = Mode(mode.family, mode.nu+1, mode.m)
+        co = fiber.cutoff(ms)
+        nmin = sqrt(n**2 - (co / (r * wl.k0))**2)
+        self.assertGreater(neff, nmin)
 
     def testCase1LP(self):
         f = FiberFactory()
@@ -25,6 +40,7 @@ class TestTLSIF(unittest.TestCase):
         self.assertEqual(len(lpmodes), len(sols))
 
         for mode, neff in sols:
+            self._compareWithCo(fiber, mode, neff)
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
     def testCase2LP(self):
@@ -494,6 +510,66 @@ class TestTLSIF(unittest.TestCase):
             Mode('TM', 0, 2): 13.3822,
         }
         self._testFiberCutoff(rho, n, cutoffs, 4)
+
+    def testBuresEx334(self):
+        f = FiberFactory()
+        f.addLayer(material="SiO2GeO2", radius=4.5e-6,
+                   index=1.448918, wl=1550e-9)
+        f.addLayer(material="Silica", radius=62.5e-6)
+        f.addLayer(material="Air")
+        fiber = f[0]
+
+        # Fig 3.31
+        wl = Wavelength(900e-9)
+        vgc = 1 / fiber.ng(Mode("HE", 1, 1), wl)
+        self.assertGreater(vgc, 0.680)
+        self.assertLess(vgc, 0.6805)
+
+        vgc = 1 / fiber.ng(Mode("EH", 1, 1), wl)
+        self.assertGreater(vgc, 0.6825)
+        self.assertLess(vgc, 0.683)
+
+        wl = Wavelength(1600e-9)
+        vgc = 1 / fiber.ng(Mode("HE", 1, 1), wl)
+        self.assertGreater(vgc, 0.6805)
+        self.assertLess(vgc, 0.6815)
+
+        vgc = 1 / fiber.ng(Mode("EH", 1, 1), wl)
+        self.assertGreater(vgc, 0.683)
+        self.assertLess(vgc, 0.6835)
+
+        # Fig 3.32
+        # wl = Wavelength(900e-9)
+        # D = fiber.D(Mode("HE", 1, 1), wl)
+        # self.assertGreater(D, -80)
+        # self.assertLess(D, -60)
+
+        # D = fiber.D(Mode("EH", 1, 1), wl)
+        # self.assertGreater(D, -80)
+        # self.assertLess(D, -60)
+
+        # wl = Wavelength(1290e-9)
+        # D = fiber.D(Mode("HE", 1, 1), wl)
+        # self.assertGreater(D, -10)
+        # self.assertLess(D, 10)
+
+        # D = fiber.D(Mode("EH", 1, 1), wl)
+        # self.assertGreater(D, -10)
+        # self.assertLess(D, 10)
+
+        # wl = Wavelength(1550e-9)
+        # D = fiber.D(Mode("HE", 1, 1), wl)
+        # self.assertGreater(D, 10)
+        # self.assertLess(D, 20)
+
+        # wl = Wavelength(1600e-9)
+        # D = fiber.D(Mode("HE", 1, 1), wl)
+        # self.assertGreater(D, 15)
+        # self.assertLess(D, 30)
+
+        # D = fiber.D(Mode("EH", 1, 1), wl)
+        # self.assertGreater(D, 15)
+        # self.assertLess(D, 30)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,68 +1,156 @@
 
 from PySide import QtCore
-from multiprocessing import Pool
-from fibermodes.fiber.factory import FiberFactory
-from fibermodes import Mode
+from fibermodes import FiberFactory, PSimulator
 
 
 class SolverDocument(QtCore.QObject):
 
+    valuesChanged = QtCore.Signal()
+    valuesComputed = QtCore.Signal(int)
+
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.filename = None
+        self._filename = None
         self.factory = None
-        self.params = []
-        self.wavelengths = []
+        self._params = []
         self.numfibers = 0
-        self.modeKind = 'vector'
-        self.maxell = 0
-        self.maxm = 1
 
-        self.totalTasks = 0
-        self.tasksDone = 0
-        self.pool = None
+        self.toCompute = 0
+        self.futures = self.values = {}
 
-        self.cutoffs = []
-        self.modes = []
+        self.simulator = PSimulator()
 
-    def load(self):
-        """Reset fiber factory data. Reload fiber factory file."""
-        self.factory = FiberFactory(self.filename)
-        self.numfibers = len(self.factory)
-        self.cutoffs = [{} for _ in range(self.numfibers)]
-        self.modes = [{} for _ in range(self.numfibers)]
+    @property
+    def initialized(self):
+        return self.simulator.initialized
 
-    def start(self):
-        self.terminate()
+    @property
+    def params(self):
+        return self._params
 
-        self._pool = Pool()
+    @params.setter
+    def params(self, value):
+        self._params = value
+        self._computeValues()
 
-        for p in self.params:
+    @property
+    def numax(self):
+        return self.simulator.numax
+
+    @numax.setter
+    def numax(self, value):
+        self.simulator.numax = value if value > -1 else None
+        self._computeValues()
+
+    @property
+    def mmax(self):
+        return self.simulator.mmax
+
+    @mmax.setter
+    def mmax(self, value):
+        self.simulator.mmax = value if value > 0 else None
+        self._computeValues()
+
+    @property
+    def modeKind(self):
+        if self.simulator.vectorial and self.simulator.scalar:
+            return 'both'
+        elif self.simulator.vectorial:
+            return 'vector'
+        else:
+            return 'scalar'
+
+    @modeKind.setter
+    def modeKind(self, value):
+        if value == 'both':
+            self.simulator.vectorial = self.simulator.scalar = True
+        elif value == 'scalar':
+            self.simulator.scalar = True
+            self.simulator.vectorial = False
+        else:
+            self.simulator.vectorial = True
+            self.simulator.scalar = False
+        self._computeValues()
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, value):
+        self._filename = value
+        self.factory = FiberFactory(value)
+        self.simulator.set_factory(self.factory)
+        self._computeValues()
+
+    @property
+    def fibers(self):
+        return self.simulator.fibers
+
+    @property
+    def wavelengths(self):
+        return self.simulator.wavelengths
+
+    @wavelengths.setter
+    def wavelengths(self, value):
+        self.simulator.set_wavelengths(value)
+        self._computeValues()
+
+    def _computeValues(self):
+        if not self.simulator.initialized:
+            return
+
+        self.simulator.terminate()
+        self.futures = {}
+        self.values = {}
+        self.toCompute = 0
+
+        for j, p in enumerate(self.params):
             if p == "cutoff":
-                self.findCutoffs()
+                fut = self.simulator.cutoffWl()
+            elif p == "neff":
+                fut = self.simulator.neff()
+            elif p == "ng":
+                fut = self.simulator.ng()
+            elif p == "D":
+                fut = self.simulator.D()
+            elif p == "S":
+                fut = self.simulator.S()
+            else:
+                continue  # should not happen...
+            for fnum, fiber in enumerate(self.fibers):
+                for wlnum, wl in enumerate(self.wavelengths):
+                    if j == 0:
+                        self.futures[(fnum, wlnum)] = []
+                    vals = next(fut)
+                    self.futures[(fnum, wlnum)].append(vals)
+                    self.toCompute += len(vals)
 
-    def terminate(self):
-        if self.tasksDone != self.totalTasks:
-            self.pool.terminate()
-            self.pool.join()
-            self.totalTasks = 0
-            self.tasksDone = 0
+        if self.toCompute > 0:
+            self.valuesChanged.emit()
 
-    def findCutoffs(self):
-        for mode in self.modeGen():
-            print(str(mode))
-
-    def modeGen(self):
-        for ell in range(self.maxell+1):
-            for m in range(1, self.maxm+1):
-                if self.modeKind in ('scalar', 'both'):
-                    yield Mode("LP", ell, m)
-                if self.modeKind in ('vector', 'both'):
-                    if ell == 1:
-                        yield Mode("TM", 0, m)
-                    if ell >= 2:
-                        yield Mode("EH", ell-1, m)
-                    yield Mode("HE", ell+1, m)
-                    if ell == 1:
-                        yield Mode("TE", 0, m)
+    def readyValues(self):
+        tc = self.toCompute
+        rmfut = []
+        for (fi, wi), fwfutures in self.futures.items():
+            allDone = True
+            for j, futures in enumerate(fwfutures):
+                rmmod = []
+                for m, f in futures.items():
+                    if f.ready():
+                        rmmod.append(m)
+                        v = f.get()
+                        self.values[(fi, wi, m, j)] = v
+                        self.toCompute -= 1
+                        yield (fi, wi, m, j, v)
+                    else:
+                        allDone = False
+                for m in rmmod:
+                    del futures[m]
+            if allDone:
+                rmfut.append((fi, wi))
+        for fw in rmfut:
+            del self.futures[fw]
+        if tc > self.toCompute:
+            self.valuesComputed.emit(tc - self.toCompute)

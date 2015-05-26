@@ -40,6 +40,7 @@ class Fiber(object):
         return self._names[layer]
 
     def _layer(self, r):
+        r = abs(r)
         for i, r_ in enumerate(self._r):
             if r < r_:
                 return self.layers[i]
@@ -108,8 +109,9 @@ class Fiber(object):
                 break
             wl0 = wl
         else:
-            warnings.war(("Max number of iterations reached while converting "
-                          "V0 to wavelength."), MaxIterationsReachedWarning)
+            warnings.warn(("Max number of iterations reached while "
+                           "converting V0 to wavelength."),
+                          MaxIterationsReachedWarning)
 
         self.logger.info('toWl converged in {} iterations'.format(i))
         return Wavelength(wl)
@@ -117,29 +119,39 @@ class Fiber(object):
     def cutoff(self, mode):
         return self._solver.cutoff(mode)
 
-    def neff(self, mode, wl, delta=1e-6):
-        return self._solver.neff(wl, mode, delta)
+    def cutoffWl(self, mode):
+        return self.toWl(self._solver.cutoff(mode))
 
-    def beta(self, mode, wl, p=0):
-        return self._solver.beta(wl, mode)
+    def neff(self, mode, wl, delta=1e-6, lowbound=None):
+        return self._solver.neff(wl, mode, delta, lowbound)
 
-    def b(self, mode, wl):
+    def beta(self, mode, omega, p=0, delta=1e-6):
+        return self._solver.beta(omega, mode, p, delta)
+
+    def b(self, mode, wl, delta=1e-6):
         """Normalized propagation constant"""
-        neff = self._solver.neff(wl, mode)
+        neff = self._solver.neff(wl, mode, delta)
         nmax = max(layer.maxIndex(wl) for layer in self.layers)
         ncl = self.minIndex(-1, wl)
         ncl2 = ncl*ncl
         return (neff*neff - ncl2) / (nmax*nmax - ncl2)
 
-    def ng(self, mode, wl):
-        return self._solver.beta(mode, wl, 1) * constants.c
+    def vp(self, mode, wl, delta=1e-6):
+        return constants.c / self._solver.neff(wl, mode, delta)
+
+    def ng(self, mode, wl, delta=1e-6):
+        return self._solver.beta(Wavelength(wl).omega,
+                                 mode, 1, delta) * constants.c
+
+    def vg(self, mode, wl, delta=1e-6):
+        return 1 / self._solver.beta(Wavelength(wl).omega, mode, 1, delta)
 
     def D(self, mode, wl):
-        return -(self._solver.beta(mode, wl, 2) *
+        return -(self._solver.beta(Wavelength(wl).omega, mode, 2) *
                  constants.tpi * constants.c * 1e6 / (wl * wl))
 
     def S(self, mode, wl):
-        return (self._solver.beta(mode, wl, 3) *
+        return (self._solver.beta(Wavelength(wl).omega, mode, 3) *
                 (constants.tpi * constants.c / (wl * wl))**2 * 1e-3)
 
     def findVmodes(self, wl, numax=None, mmax=None):
@@ -159,7 +171,11 @@ class Fiber(object):
                     break
                 if (fam is ModeFamily.HE or fam is ModeFamily.EH) and nu == 0:
                     continue
+                if numax is not None and nu > numax:
+                    break
                 for m in count(1):
+                    if mmax is not None and m > mmax:
+                        break
                     mode = Mode(fam, nu, m)
                     try:
                         co = self.cutoff(mode)

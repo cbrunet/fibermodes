@@ -5,6 +5,12 @@ import logging
 
 class SLRC(object):
 
+    """Scalar, list, range or code object.
+
+    Values are assumed to be always sorted.
+
+    """
+
     logger = logging.getLogger(__name__)
 
     rglobals = {
@@ -44,6 +50,7 @@ class SLRC(object):
     }
 
     def __init__(self, value=0):
+        self.codeParams = None
         SLRC.value.fset(self, value)
 
     @property
@@ -66,7 +73,8 @@ class SLRC(object):
             else:
                 return []
         elif k == 'code':
-            code = "def f(*args, **kwargs):\n"
+            cp = ", ".join(self.codeParams) + ", " if self.codeParams else ""
+            code = "def f({}*args, **kwargs):\n".format(cp)
             for line in self._value.splitlines():
                 code += "    {}\n".format(line)
             loc = {}
@@ -86,6 +94,8 @@ class SLRC(object):
             self._value = value._value
         else:
             self._value = value
+        if self.kind == 'list':
+            self._value = sorted(value)
         self.logger.debug("Value set to {}".format(self._value))
 
     def __iter__(self):

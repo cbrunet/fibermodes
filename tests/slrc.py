@@ -37,6 +37,21 @@ class TestSLRC(unittest.TestCase):
         self.assertTrue(visited)
         self.assertEqual(x(), testList)
 
+    def testUnorderedList(self):
+        testList = [1, 4, 2, 5, 3]
+        x = SLRC(testList)
+        self.assertEqual(x.value, sorted(testList))
+        self.assertEqual(x.kind, 'list')
+        self.assertEqual(len(x), 5)
+        for i, v in enumerate(sorted(testList)):
+            self.assertEqual(x[i], v)
+        visited = False
+        for v, t in zip(x, sorted(testList)):
+            self.assertEqual(v, t)
+            visited = True
+        self.assertTrue(visited)
+        self.assertEqual(x(), sorted(testList))
+
     def testRange(self):
         testRange = {'start': 0, 'end': 5, 'num': 6}
         testList = [0, 1, 2, 3, 4, 5]
