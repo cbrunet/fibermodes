@@ -14,7 +14,8 @@ class Simulator(object):
     """Simulator class."""
 
     def __init__(self, factory=None, wavelengths=None,
-                 numax=None, mmax=None, vectorial=True, scalar=False):
+                 numax=None, mmax=None, vectorial=True, scalar=False,
+                 delta=1e-6):
         self._fibers = None
         self._wavelengths = None
 
@@ -22,6 +23,7 @@ class Simulator(object):
         self.mmax = mmax
         self.vectorial = vectorial
         self.scalar = scalar
+        self.delta = delta
 
         self.set_factory(factory)
         if wavelengths:
@@ -76,9 +78,14 @@ class Simulator(object):
             return fct((fidx, wlidx))
         return map(fct, self._idx_iter(fidx, wlidx))
 
-    def _apply_to_modes(self, fct, idx, args=()):
+    def _apply_cutoff_to_modes(self, fct, idx):
         modes = self._modes(idx)
-        return {mode: fct(mode, *args) for mode in modes}
+        return {mode: fct(mode) for mode in modes}
+
+    def _apply_to_modes(self, fct, idx):
+        modes = self._modes(idx)
+        wl = self.wavelengths[idx[1]]
+        return {mode: fct(mode, wl, delta=self.delta) for mode in modes}
 
     @lru_cache()
     def _modes(self, arg):
@@ -96,41 +103,37 @@ class Simulator(object):
         return self._apply(self._modes, fidx, wlidx)
 
     def _cutoff(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].cutoff, arg)
+        return self._apply_cutoff_to_modes(self.fibers[arg[0]].cutoff, arg)
 
     def cutoff(self, fidx=None, wlidx=None):
         return self._apply(self._cutoff, fidx, wlidx)
 
     def _cutoffWl(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].cutoffWl, arg)
+        return self._apply_cutoff_to_modes(self.fibers[arg[0]].cutoffWl, arg)
 
     def cutoffWl(self, fidx=None, wlidx=None):
         return self._apply(self._cutoffWl, fidx, wlidx)
 
     def _neff(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].neff, arg,
-                                    (self.wavelengths[arg[1]], ))
+        return self._apply_to_modes(self.fibers[arg[0]].neff, arg)
 
     def neff(self, fidx=None, wlidx=None):
         return self._apply(self._neff, fidx, wlidx)
 
     def _ng(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].ng, arg,
-                                    (self.wavelengths[arg[1]], ))
+        return self._apply_to_modes(self.fibers[arg[0]].ng, arg)
 
     def ng(self, fidx=None, wlidx=None):
         return self._apply(self._ng, fidx, wlidx)
 
     def _D(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].D, arg,
-                                    (self.wavelengths[arg[1]], ))
+        return self._apply_to_modes(self.fibers[arg[0]].D, arg)
 
     def D(self, fidx=None, wlidx=None):
         return self._apply(self._D, fidx, wlidx)
 
     def _S(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].S, arg,
-                                    (self.wavelengths[arg[1]], ))
+        return self._apply_to_modes(self.fibers[arg[0]].S, arg)
 
     def S(self, fidx=None, wlidx=None):
         return self._apply(self._S, fidx, wlidx)

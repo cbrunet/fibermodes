@@ -109,10 +109,10 @@ class FiberSolver(object):
                                    delta=-delta)
 
     @lru_cache(maxsize=None)
-    def beta(self, omega, mode, p=0, delta=1e-6):
+    def beta(self, omega, mode, p=0, delta=1e-6, lowbound=None):
         wl = Wavelength(omega=omega)
         if p == 0:
-            neff = self.neff(wl, mode, delta)
+            neff = self.neff(wl, mode, delta, lowbound)
             # print("b0", omega, wl, neff)
             return neff * wl.k0
 
@@ -123,7 +123,7 @@ class FiberSolver(object):
         m = 5
         j = (m - 1) // 2
         h = 1e5
-        lb = None
+        lb = lowbound
         for i in range(m-1, -1, -1):
             # Precompute neff using previous wavelength
             o = omega + (i-j) * h
@@ -131,7 +131,8 @@ class FiberSolver(object):
             lb = self.neff(wl, mode, delta, lb) + delta * 1.1
             # print("pc", o, float(wl), lb)
 
-        return derivative(self.beta, omega, p, m, j, h, mode, 0, delta)
+        return derivative(
+            self.beta, omega, p, m, j, h, mode, 0, delta, lowbound)
 
     def _findFirstRoot(self, fct, args=(), lowbound=0, highbound=None,
                        ipoints=[], delta=0.25):

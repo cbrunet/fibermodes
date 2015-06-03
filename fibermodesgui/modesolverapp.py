@@ -2,7 +2,7 @@
 
 import sys
 from PySide import QtGui
-# import logging
+import logging
 
 from modesolver.mainwindow import ModeSolver
 

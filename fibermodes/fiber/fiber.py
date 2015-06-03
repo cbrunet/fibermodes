@@ -125,33 +125,36 @@ class Fiber(object):
     def neff(self, mode, wl, delta=1e-6, lowbound=None):
         return self._solver.neff(wl, mode, delta, lowbound)
 
-    def beta(self, mode, omega, p=0, delta=1e-6):
-        return self._solver.beta(omega, mode, p, delta)
+    def beta(self, mode, omega, p=0, delta=1e-6, lowbound=None):
+        return self._solver.beta(omega, mode, p, delta, lowbound)
 
-    def b(self, mode, wl, delta=1e-6):
+    def b(self, mode, wl, delta=1e-6, lowbound=None):
         """Normalized propagation constant"""
-        neff = self._solver.neff(wl, mode, delta)
+        neff = self._solver.neff(wl, mode, delta, lowbound)
         nmax = max(layer.maxIndex(wl) for layer in self.layers)
         ncl = self.minIndex(-1, wl)
         ncl2 = ncl*ncl
         return (neff*neff - ncl2) / (nmax*nmax - ncl2)
 
-    def vp(self, mode, wl, delta=1e-6):
-        return constants.c / self._solver.neff(wl, mode, delta)
+    def vp(self, mode, wl, delta=1e-6, lowbound=None):
+        return constants.c / self._solver.neff(wl, mode, delta, lowbound)
 
-    def ng(self, mode, wl, delta=1e-6):
+    def ng(self, mode, wl, delta=1e-6, lowbound=None):
         return self._solver.beta(Wavelength(wl).omega,
-                                 mode, 1, delta) * constants.c
+                                 mode, 1, delta, lowbound) * constants.c
 
-    def vg(self, mode, wl, delta=1e-6):
-        return 1 / self._solver.beta(Wavelength(wl).omega, mode, 1, delta)
+    def vg(self, mode, wl, delta=1e-6, lowbound=None):
+        return 1 / self._solver.beta(
+            Wavelength(wl).omega, mode, 1, delta, lowbound)
 
-    def D(self, mode, wl):
-        return -(self._solver.beta(Wavelength(wl).omega, mode, 2) *
+    def D(self, mode, wl, delta=1e-6, lowbound=None):
+        return -(self._solver.beta(
+                    Wavelength(wl).omega, mode, 2, delta, lowbound) *
                  constants.tpi * constants.c * 1e6 / (wl * wl))
 
-    def S(self, mode, wl):
-        return (self._solver.beta(Wavelength(wl).omega, mode, 3) *
+    def S(self, mode, wl, delta=1e-6, lowbound=None):
+        return (self._solver.beta(
+                    Wavelength(wl).omega, mode, 3, delta, lowbound) *
                 (constants.tpi * constants.c / (wl * wl))**2 * 1e-3)
 
     def findVmodes(self, wl, numax=None, mmax=None):

@@ -14,7 +14,7 @@ class SolverDocument(QtCore.QObject):
         self._filename = None
         self.factory = None
         self._params = []
-        self.numfibers = 0
+        # self.numfibers = 0
 
         self.toCompute = 0
         self.futures = self.values = {}
@@ -101,7 +101,7 @@ class SolverDocument(QtCore.QObject):
         if not self.simulator.initialized:
             return
 
-        self.simulator.terminate()
+        self.simulator.reset_thread()
         self.futures = {}
         self.values = {}
         self.toCompute = 0

@@ -6,6 +6,17 @@ from .fiberselector import FiberSelector
 from .fiberslider import FiberSlider
 from .wavelengthslider import WavelengthSlider
 from .modetable import ModeTableView, ModeTableModel
+from .plotframe import PlotFrame
+
+
+def msToStr(ms, displayms=True):
+    h = ms // 3600000
+    ms -= h * 3600000
+    m = ms // 60000
+    ms -= m * 60000
+    s = ms / 1000
+    fmt = "{:d}:{:02d}:{:05.3f}" if displayms else "{:d}:{:02d}:{:02.0f}"
+    return fmt.format(h, m, s)
 
 
 class ModeSolver(AppWindow):
@@ -95,6 +106,13 @@ class ModeSolver(AppWindow):
         self.progressBar.setFormat("%v / %m (%p%)")
         self.statusBar().addWidget(self.progressBar, 1)
 
+        self.timeLabel = QtGui.QLabel()
+        self.timeLabel.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Sunken)
+        self.statusBar().addPermanentWidget(self.timeLabel)
+        self.time = QtCore.QTime()
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.updateTime)
+
         self.countLabel = QtGui.QLabel(self.tr("No fiber"))
         self.countLabel.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Sunken)
         self.statusBar().addPermanentWidget(self.countLabel)
@@ -102,7 +120,8 @@ class ModeSolver(AppWindow):
         splitter = QtGui.QSplitter(self)
         splitter.addWidget(self._parametersFrame())
         splitter.addWidget(self._modesFrame())
-        splitter.addWidget(QtGui.QFrame())
+        self.plotFrame = PlotFrame(self)
+        splitter.addWidget(self.plotFrame)
         self.setCentralWidget(splitter)
 
         self.doc.valuesChanged.connect(self.initProgressBar)
@@ -188,7 +207,7 @@ class ModeSolver(AppWindow):
             modeTableView.resizeColumnsToContents)
 
         self.fiberSlider = FiberSlider()
-        self.fiberSlider.valueChanged.connect(self.modeTableModel.setFiber)
+        self.fiberSlider.valueChanged.connect(self.setFiber)
 
         self.wavelengthSlider = WavelengthSlider()
         self.wavelengthSlider.valueChanged.connect(self.setWavelength)
@@ -224,6 +243,9 @@ class ModeSolver(AppWindow):
             self.countLabel.setText(
                 self.tr("{} F x {} W = {}").format(
                     nf, nw, nf*nw))
+            self.countLabel.setToolTip(
+                self.tr("{} fibers x {} wavelengths = {} combinations".format(
+                    nf, nw, nf*nw)))
 
     def updateFiber(self):
         """New fiber loaded, or fiber modified."""
@@ -252,12 +274,17 @@ class ModeSolver(AppWindow):
     def setMaxM(self, value):
         self.doc.mmax = value
 
+    def setFiber(self, value):
+        self.modeTableModel.setFiber(value)
+        self.plotFrame.setFiber(value)
+
     def setWavelength(self, value):
         if 0 <= value - 1 < len(self.doc.wavelengths):
             wl = self.doc.wavelengths[value-1]
             self.wavelengthSlider.wlLabel.setText(
                 "{:.5f} nm".format(wl * 1e9))
             self.modeTableModel.setWavelength(value)
+            self.plotFrame.setWavelength(value)
 
     def updateParams(self, checked):
         params = []
@@ -269,6 +296,30 @@ class ModeSolver(AppWindow):
     def initProgressBar(self):
         self.progressBar.setMaximum(self.doc.toCompute)
         self.progressBar.setValue(0)
+        self.time.start()
+        self.estimation = 0
+        self.timer.start(0)
 
     def updateProgressBar(self, nvals):
         self.progressBar.setValue(self.progressBar.value() + nvals)
+        elapsed = self.time.elapsed()
+        self.estimation = elapsed
+        if self.doc.toCompute == 0:
+            self.timer.stop()
+            self.updateTime()
+            self.plotFrame.updatePlot()
+        else:
+            done = self.progressBar.value()
+            if done:
+                tot = self.progressBar.maximum()
+                self.estimation = tot * (elapsed / done)
+
+    def updateTime(self):
+        elapsed = self.time.elapsed()
+        remaining = int(self.estimation - elapsed)
+        if remaining > 0:
+            self.timeLabel.setText(self.tr("E: {} (R: {})").format(
+                msToStr(elapsed), msToStr(remaining, False)))
+        else:
+            self.timeLabel.setText(self.tr("E: {}").format(
+                msToStr(elapsed)))

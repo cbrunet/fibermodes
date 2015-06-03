@@ -26,7 +26,7 @@ class ModeTableModel(QtCore.QAbstractTableModel):
     def columnCount(self, parent=QtCore.QModelIndex):
         return len(self._doc.params)
 
-    def data(self, index, role):
+    def data(self, index, role=QtCore.Qt.DisplayRole):
         mode = self.modes[index.row()]
         try:
             v = self._doc.values[(self._fnum,
@@ -64,12 +64,15 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit(index, index)
         return True
 
-    def headerData(self, section, orientation, role):
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
-            if orientation == QtCore.Qt.Horizontal:
-                return self._doc.params[section]
-            else:
-                return str(self.modes[section])
+            try:
+                if orientation == QtCore.Qt.Horizontal:
+                    return self._doc.params[section]
+                else:
+                    return str(self.modes[section])
+            except IndexError:
+                return None
 
     def setFiber(self, fnum):
         self._fnum = fnum - 1
@@ -89,7 +92,7 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         self.modes = list(sim.modes(self._fnum, self._wl))
         self.endResetModel()
 
-        if self._doc.toCompute > 0:
+        if self._doc.futures:
             QtCore.QTimer.singleShot(0, self._updateValues)
 
     def _updateValues(self):
