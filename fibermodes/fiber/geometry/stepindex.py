@@ -1,6 +1,6 @@
 
+from fibermodes.fiber.geometry.geometry import Geometry
 from fibermodes import constants
-from fibermodes.fiber import material
 from math import sqrt
 import numpy
 from scipy.special import jn, yn, iv, kn
@@ -9,11 +9,7 @@ from scipy.special import j1, y1, i1, k1
 from scipy.special import jvp, yvp, ivp, kvp
 
 
-class StepIndex(object):
-
-    def __init__(self, m, mp):
-        self._m = material.__dict__[m]()  # instantiate material object
-        self._mp = mp
+class StepIndex(Geometry):
 
     def index(self, r, wl):
         return self._m.n(wl, *self._mp)

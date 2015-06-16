@@ -200,7 +200,7 @@ class PlotFrame(QtGui.QFrame):
         self.xAxisSelector.currentIndexChanged.connect(self.updatePlot)
         self.xAxisSelector.setCurrentIndex(VNUMBER)
 
-        self.plotLegend = QtGui.QCheckBox(self.tr("Plot legend"))
+        self.plotLegend = QtGui.QCheckBox(self.tr("Show legend"))
         self.plotLegend.stateChanged.connect(self.updatePlot)
 
         layout = QtGui.QHBoxLayout()
@@ -212,9 +212,11 @@ class PlotFrame(QtGui.QFrame):
 
     def setFiber(self, value):
         self._fnum = value - 1
+        self.updatePlot()
 
     def setWavelength(self, value):
         self._wl = value - 1
+        self.updatePlot()
 
     def updatePlot(self):
         if not self.doc.initialized:
@@ -266,9 +268,9 @@ class PlotFrame(QtGui.QFrame):
             for (f, w, m, j), v in self.doc.values.items():
                 if j == what and w == self._wl:
                     if m in y:
-                        y[m].append((f, v))
+                        y[m].append((f+1, v))
                     else:
-                        y[m] = [(f, v)]
+                        y[m] = [(f+1, v)]
         else:
             for (f, w, m, j), v in self.doc.values.items():
                 if j == what and f == self._fnum:

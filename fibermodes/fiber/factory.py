@@ -9,6 +9,7 @@ from itertools import product, islice
 from .fiber import Fiber
 from fibermodes.slrc import SLRC
 from fibermodes.fiber import material as materialmod
+from fibermodes.fiber.solver.solver import FiberSolver
 from fibermodes.fiber.material.compmaterial import CompMaterial
 
 
@@ -102,6 +103,8 @@ class FiberFactory(object):
         if filename:
             with open(filename, 'r') as f:
                 self.load(f)
+        self._Neff = None
+        self._Cutoff = None
 
     @property
     def name(self):
@@ -237,6 +240,12 @@ class FiberFactory(object):
         g = product(*(range(i) for i in self._nitems))
         return next(islice(g, index, None))
 
+    def setSolvers(self, Cutoff=None, Neff=None):
+        assert Cutoff is None or issubclass(Cutoff, FiberSolver)
+        assert Neff is None or issubclass(Neff, FiberSolver)
+        self._Cutoff = Cutoff
+        self._Neff = Neff
+
     def _buildFiber(self, indexes):
         """Build Fiber object from list of indexes"""
 
@@ -308,4 +317,4 @@ class FiberFactory(object):
                 del names[i]
             i -= 1
 
-        return Fiber(r, f, fp, m, mp, names)
+        return Fiber(r, f, fp, m, mp, names, self._Cutoff, self._Neff)

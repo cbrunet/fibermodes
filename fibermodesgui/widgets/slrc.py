@@ -48,8 +48,8 @@ class SLRCWidget(QtGui.QFrame, SLRC):
         self.typeButton.setPopupMode(QtGui.QToolButton.InstantPopup)
         self.typeButton.setMenu(self.typeMenu)
 
-    def _setType(self, kind):
-        if kind == self.kind:
+    def _setType(self, kind, check=True):
+        if check and kind == self.kind:
             return False
 
         self.kind = kind
@@ -71,8 +71,8 @@ class SLRCWidget(QtGui.QFrame, SLRC):
         self._value = value / self.scale
         self._emitValueChanged()
 
-    def setScalarLayout(self):
-        if self._setType('scalar'):
+    def setScalarLayout(self, check=True):
+        if self._setType('scalar', check):
             self.innerLayout.addWidget(self.numberInput)
         self.numberInput.setValue(self._value * self.scale)
 
@@ -81,8 +81,8 @@ class SLRCWidget(QtGui.QFrame, SLRC):
         self.listButton = QtGui.QPushButton(self.tr("Edit"))
         self.listButton.clicked.connect(self.editList)
 
-    def setListLayout(self):
-        if self._setType('list'):
+    def setListLayout(self, check=True):
+        if self._setType('list', check):
             self.innerLayout.addWidget(self.listLabel)
             self.innerLayout.addWidget(self.listButton)
         self._updateListCount()
@@ -118,8 +118,8 @@ class SLRCWidget(QtGui.QFrame, SLRC):
             self._value['num'] = self.rnumInput.value()
             self._emitValueChanged()
 
-    def setRangeLayout(self):
-        if self._setType('range'):
+    def setRangeLayout(self, check=True):
+        if self._setType('range', check):
             self.innerLayout.addWidget(self.rstartInput)
             self.innerLayout.addWidget(self.rendInput)
             self.innerLayout.addWidget(self.rnumInput)
@@ -134,8 +134,8 @@ class SLRCWidget(QtGui.QFrame, SLRC):
         self.codeButton = QtGui.QPushButton(self.tr("Edit code"))
         self.codeButton.clicked.connect(self.editCode)
 
-    def setCodeLayout(self):
-        if self._setType('code'):
+    def setCodeLayout(self, check=True):
+        if self._setType('code', check):
             self.innerLayout.addWidget(self.codeButton)
 
     def editCode(self):
@@ -147,7 +147,7 @@ class SLRCWidget(QtGui.QFrame, SLRC):
                 self._emitValueChanged()
 
     def _emitValueChanged(self):
-        self.valueChanged.emit(self())
+        self.valueChanged.emit(self._value)
 
     @property
     def value(self):
@@ -162,13 +162,13 @@ class SLRCWidget(QtGui.QFrame, SLRC):
         kind = self.kind
 
         if kind == 'scalar':
-            self.setScalarLayout()
+            self.setScalarLayout(False)
         elif kind == 'list':
-            self.setListLayout()
+            self.setListLayout(False)
         elif kind == 'range':
-            self.setRangeLayout()
+            self.setRangeLayout(False)
         elif kind == 'code':
-            self.setCodeLayout()
+            self.setCodeLayout(False)
 
     def setSuffix(self, suffix):
         self.numberInput.setSuffix(suffix)
@@ -313,7 +313,7 @@ class CodeEditor(QtGui.QDialog):
         paramstr = ", ".join(params) if params else "*params"
 
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(QtGui.QLabel("def f({}}):".format(paramstr)))
+        layout.addWidget(QtGui.QLabel("def f({}):".format(paramstr)))
         layout.addWidget(self.codeEditor)
         layout.addWidget(buttonBox)
         self.setLayout(layout)

@@ -9,6 +9,8 @@ from .fiberproperties import FiberPropertiesWindow
 from .infotable import FiberInfoTable
 from .fiberplot import FiberPlot
 import os
+from tempfile import TemporaryFile
+from shutil import copyfileobj
 
 
 class FiberEditor(AppWindow):
@@ -141,8 +143,16 @@ class FiberEditor(AppWindow):
             self.actionSaveAs()
             return  # actionSaveAs will call save again
 
-        with open(self.documentName(), 'w') as f:
+        # Use temporary file to prevent overwriting existing file in case
+        # of error
+        with TemporaryFile(mode="w+") as f:
             self.factory.dump(f)
+            f.seek(0)
+            with open(self.documentName(), 'w') as fd:
+                copyfileobj(f, fd)
+
+        # with open(self.documentName(), 'w') as f:
+        #     self.factory.dump(f)
         self.setDirty(False)
         self.statusBar().showMessage(self.tr("Fiber saved"), 5000)
         super().save()
@@ -357,10 +367,9 @@ class FiberEditor(AppWindow):
         # We call selectGeomType directly instead of emitting the signal,
         # to prevent it setting dirty state, since we only display the
         # current state, we are not changing the geometry type
-        state = self.geomType.blockSignals(True)
-        self.geomType.setCurrentIndex(gtidx)
-        self.selectGeomType(gtidx, False)
-        self.geomType.blockSignals(state)
+        with blockSignals(self.geomType):
+            self.geomType.setCurrentIndex(gtidx)
+            self.selectGeomType(gtidx, False)
 
     def selectGeomType(self, index, change=True):
         util.clearLayout(self.geomLayout, 2)
@@ -378,8 +387,8 @@ class FiberEditor(AppWindow):
         self.radiusInput = SLRCWidget()
         self.radiusInput.setSuffix(" µm")
         self.radiusInput.setScaleFactor(1e6)
-        self.radiusInput.setValue(layer.radius)
         self.radiusInput.codeParams = ['r', 'fp', 'mp']
+        self.radiusInput.setValue(layer.radius)
         self.radiusInput.valueChanged.connect(self.updateRadius)
 
         self.geomLayout.addRow(QtGui.QLabel(self.tr("Radius:")),

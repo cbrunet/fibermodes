@@ -10,6 +10,9 @@ class TestTLSIF(unittest.TestCase):
 
     """Test suite for three-layers step-index fibers."""
 
+    def setUp(self):
+        self.f = FiberFactory()
+
     def _compareWithCo(self, fiber, mode, neff):
         co = fiber.cutoff(mode)
         wl = Wavelength(1550e-9)
@@ -25,11 +28,10 @@ class TestTLSIF(unittest.TestCase):
         self.assertGreater(neff, nmin)
 
     def testCase1LP(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4489)
-        f.addLayer(radius=10e-6, index=1.4474)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4489)
+        self.f.addLayer(radius=10e-6, index=1.4474)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('LP', 0, 1), 1.4472309),
@@ -45,11 +47,10 @@ class TestTLSIF(unittest.TestCase):
 
     def testCase2LP(self):
         """Annular-core fiber."""
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4444)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4444)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('LP', 0, 1), 1.4472296),
@@ -63,11 +64,10 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-4), neff)
 
     def testCase3LP(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4474)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4474)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('LP', 0, 1), 1.44767716),
@@ -82,11 +82,10 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
     def testCase4LP(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4444)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4474)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4444)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4474)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('LP', 0, 1), 1.447761788),
@@ -101,11 +100,10 @@ class TestTLSIF(unittest.TestCase):
     @unittest.skip("À régler plus tard...")
     def testCase5LP(self):
         """W-type fiber."""
-        f = FiberFactory()
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(radius=16e-6, index=1.4444)
-        f.addLayer(index=1.4474)
-        fiber = f[0]
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(radius=16e-6, index=1.4444)
+        self.f.addLayer(index=1.4474)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('LP', 0, 1), 1.448542616086886),  # ???
@@ -118,11 +116,10 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
     def testCase1Vector(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4489)
-        f.addLayer(radius=10e-6, index=1.4474)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4489)
+        self.f.addLayer(radius=10e-6, index=1.4474)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('HE', 1, 1), 1.44722991),
@@ -138,11 +135,10 @@ class TestTLSIF(unittest.TestCase):
 
     def testCase2Vector(self):
         """Annular-core fiber."""
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4444)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4444)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('HE', 1, 1), 1.4472267686),
@@ -158,11 +154,10 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-4), neff)
 
     def testCase3Vector(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4474)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4444)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4474)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4444)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('HE', 1, 1), 1.447675825578464),
@@ -179,11 +174,10 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
     def testCase4Vector(self):
-        f = FiberFactory()
-        f.addLayer(radius=4e-6, index=1.4444)
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(index=1.4474)
-        fiber = f[0]
+        self.f.addLayer(radius=4e-6, index=1.4444)
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(index=1.4474)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('HE', 1, 1), 1.4477608163543525),
@@ -199,11 +193,10 @@ class TestTLSIF(unittest.TestCase):
     @unittest.skip("À vérifier...")
     def testCase5Vector(self):
         """Annular-core fiber."""
-        f = FiberFactory()
-        f.addLayer(radius=10e-6, index=1.4489)
-        f.addLayer(radius=16e-6, index=1.4444)
-        f.addLayer(index=1.4474)
-        fiber = f[0]
+        self.f.addLayer(radius=10e-6, index=1.4489)
+        self.f.addLayer(radius=16e-6, index=1.4444)
+        self.f.addLayer(index=1.4474)
+        fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
         sols = [(Mode('HE', 1, 1), 1.448089116517021),
@@ -215,11 +208,11 @@ class TestTLSIF(unittest.TestCase):
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-6), neff)
 
     def _testFiberCutoff(self, rho, n, cutoffs, places=7):
-        f = FiberFactory()
-        f.addLayer(radius=rho[0], index=n[0])
-        f.addLayer(radius=rho[1], index=n[1])
-        f.addLayer(index=n[2])
-        fiber = f[0]
+        self.setUp()
+        self.f.addLayer(radius=rho[0], index=n[0])
+        self.f.addLayer(radius=rho[1], index=n[1])
+        self.f.addLayer(index=n[2])
+        fiber = self.f[0]
 
         for mode, co in cutoffs.items():
             self.assertAlmostEqual(fiber.cutoff(mode), co,
@@ -512,12 +505,11 @@ class TestTLSIF(unittest.TestCase):
         self._testFiberCutoff(rho, n, cutoffs, 4)
 
     def testBuresEx334(self):
-        f = FiberFactory()
-        f.addLayer(material="SiO2GeO2", radius=4.5e-6,
-                   index=1.448918, wl=1550e-9)
-        f.addLayer(material="Silica", radius=62.5e-6)
-        f.addLayer(material="Air")
-        fiber = f[0]
+        self.f.addLayer(material="SiO2GeO2", radius=4.5e-6,
+                        index=1.448918, wl=1550e-9)
+        self.f.addLayer(material="Silica", radius=62.5e-6)
+        self.f.addLayer(material="Air")
+        fiber = self.f[0]
 
         # Fig 3.31
         wl = Wavelength(900e-9)

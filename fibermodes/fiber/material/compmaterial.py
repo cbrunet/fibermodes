@@ -38,3 +38,7 @@ class CompMaterial(Material):
 
         x = 1 if cls.XRANGE is None else cls.XRANGE
         return brentq(lambda x: cls.n(wl, x)-n, 0, x)
+
+    @classmethod
+    def str(cls, x):
+        return "{} ({:.2f} %)".format(cls.name, x*100)

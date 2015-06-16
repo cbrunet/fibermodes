@@ -67,6 +67,42 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("Ctrl+I")],
                 self.fiberSelector.fiberProperties
             ),
+            'start': (
+                self.tr("&Run simulation"),
+                QtGui.QIcon.fromTheme('media-playback-start'),
+                [QtGui.QKeySequence("F5")],
+                self.run_simulation
+            ),
+            'stop': (
+                self.tr("&Stop simulation"),
+                QtGui.QIcon.fromTheme('media-playback-stop'),
+                [QtGui.QKeySequence("Ctrl+.")],
+                self.stop_simulation
+            ),
+            'paramwin': (
+                self.tr("&Parameters"),
+                None,
+                [QtGui.QKeySequence("F2")],
+                self.togglePanes
+            ),
+            'tablewin': (
+                self.tr("&Result table"),
+                None,
+                [QtGui.QKeySequence("F3")],
+                self.togglePanes
+            ),
+            'graphwin': (
+                self.tr("&Graph"),
+                None,
+                [QtGui.QKeySequence("F4")],
+                self.togglePanes
+            ),
+            'fullscreen': (
+                self.tr("&Fullscreen"),
+                QtGui.QIcon.fromTheme('view-fullscreen'),
+                [QtGui.QKeySequence("F11")],
+                self.toggleFullscreen
+            ),
         }
 
         menus = [
@@ -85,11 +121,28 @@ class ModeSolver(AppWindow):
                     'edit',
                     'info',
                 ]
-            )
+            ),
+            (
+                self.tr("&Simulation"), [
+                    'start',
+                    'stop'
+                ]
+            ),
+            (
+                self.tr("&Window"), [
+                    'paramwin',
+                    'tablewin',
+                    'graphwin',
+                    '-',
+                    'fullscreen',
+                ]
+            ),
         ]
 
         toolbars = [
-            ['save']
+            ['save'],
+            ['start', 'stop'],
+            ['paramwin', 'tablewin', 'graphwin'],
         ]
 
         self.initActions(actions)
@@ -98,8 +151,20 @@ class ModeSolver(AppWindow):
 
         self.actions['edit'].setEnabled(False)
         self.actions['info'].setEnabled(False)
+        self.actions['start'].setCheckable(True)
+        self.actions['stop'].setCheckable(True)
+        self.actions['stop'].setChecked(True)
+        self.actions['stop'].setEnabled(False)
+        self.actions['paramwin'].setCheckable(True)
+        self.actions['paramwin'].setChecked(True)
+        self.actions['tablewin'].setCheckable(True)
+        self.actions['tablewin'].setChecked(True)
+        self.actions['graphwin'].setCheckable(True)
+        self.actions['graphwin'].setChecked(True)
+        self.actions['fullscreen'].setCheckable(True)
         self.wavelengthInput.setValue(1550e-9)
         self.setDirty(False)
+        self.closed.connect(self.doc.stop_thread)
 
     def _initLayout(self):
         self.progressBar = QtGui.QProgressBar()
@@ -117,15 +182,16 @@ class ModeSolver(AppWindow):
         self.countLabel.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Sunken)
         self.statusBar().addPermanentWidget(self.countLabel)
 
-        splitter = QtGui.QSplitter(self)
-        splitter.addWidget(self._parametersFrame())
-        splitter.addWidget(self._modesFrame())
+        self.splitter = QtGui.QSplitter(self)
+        self.splitter.addWidget(self._parametersFrame())
+        self.splitter.addWidget(self._modesFrame())
         self.plotFrame = PlotFrame(self)
-        splitter.addWidget(self.plotFrame)
-        self.setCentralWidget(splitter)
+        self.splitter.addWidget(self.plotFrame)
+        self.setCentralWidget(self.splitter)
 
-        self.doc.valuesChanged.connect(self.initProgressBar)
-        self.doc.valuesComputed.connect(self.updateProgressBar)
+        self.doc.computeStarted.connect(self.initProgressBar)
+        self.doc.valueAvailable.connect(self.updateProgressBar)
+        self.doc.computeFinished.connect(self.stopProgressBar)
 
     def _parametersFrame(self):
         self.fiberSelector = FiberSelector(self.doc)
@@ -277,6 +343,7 @@ class ModeSolver(AppWindow):
     def setFiber(self, value):
         self.modeTableModel.setFiber(value)
         self.plotFrame.setFiber(value)
+        self.showVNumber()
 
     def setWavelength(self, value):
         if 0 <= value - 1 < len(self.doc.wavelengths):
@@ -285,6 +352,18 @@ class ModeSolver(AppWindow):
                 "{:.5f} nm".format(wl * 1e9))
             self.modeTableModel.setWavelength(value)
             self.plotFrame.setWavelength(value)
+            self.showVNumber()
+
+    def showVNumber(self):
+        try:
+            wlnum = self.modeTableModel._wl
+            fnum = self.modeTableModel._fnum
+            wl = self.doc.wavelengths[wlnum]
+            fiber = self.doc.fibers[fnum]
+            self.wavelengthSlider.vLabel.setText(
+                "/ V = {:.5f}".format(fiber.V0(wl)))
+        except ValueError:
+            pass
 
     def updateParams(self, checked):
         params = []
@@ -294,25 +373,31 @@ class ModeSolver(AppWindow):
         self.doc.params = params
 
     def initProgressBar(self):
-        self.progressBar.setMaximum(self.doc.toCompute)
+        self.progressBar.setMaximum(0)
         self.progressBar.setValue(0)
         self.time.start()
         self.estimation = 0
         self.timer.start(0)
 
-    def updateProgressBar(self, nvals):
-        self.progressBar.setValue(self.progressBar.value() + nvals)
+    def updateProgressBar(self):
+        tot = self.progressBar.maximum()
+        if tot == 0:
+            tot = self.doc.toCompute + 1
+            self.progressBar.setMaximum(tot)
+        self.progressBar.setValue(self.progressBar.value() + 1)
         elapsed = self.time.elapsed()
         self.estimation = elapsed
-        if self.doc.toCompute == 0:
-            self.timer.stop()
-            self.updateTime()
-            self.plotFrame.updatePlot()
-        else:
+        if self.doc.toCompute > 0:
             done = self.progressBar.value()
             if done:
-                tot = self.progressBar.maximum()
                 self.estimation = tot * (elapsed / done)
+
+    def stopProgressBar(self):
+        tot = self.progressBar.maximum()
+        self.progressBar.setValue(tot)
+        self.timer.stop()
+        self.updateTime()
+        self.plotFrame.updatePlot()
 
     def updateTime(self):
         elapsed = self.time.elapsed()
@@ -323,3 +408,40 @@ class ModeSolver(AppWindow):
         else:
             self.timeLabel.setText(self.tr("E: {}").format(
                 msToStr(elapsed)))
+
+    def run_simulation(self):
+        self.doc.ready = True
+        self.doc.start()
+        self.actions['start'].setEnabled(False)
+        self.actions['stop'].setEnabled(True)
+        self.actions['stop'].setChecked(False)
+
+    def stop_simulation(self):
+        self.timer.stop()
+        self.progressBar.setValue(0)
+        self.doc.stop_thread()
+        self.doc.ready = False
+        self.actions['stop'].setEnabled(False)
+        self.actions['start'].setEnabled(True)
+        self.actions['start'].setChecked(False)
+
+    def togglePanes(self):
+        states = [
+            self.actions['paramwin'].isChecked(),
+            self.actions['tablewin'].isChecked(),
+            self.actions['graphwin'].isChecked()]
+        self.splitter.setSizes(states)
+        if sum(states) == 1:
+            self.actions['paramwin'].setEnabled(not states[0])
+            self.actions['tablewin'].setEnabled(not states[1])
+            self.actions['graphwin'].setEnabled(not states[2])
+        else:
+            self.actions['paramwin'].setEnabled(True)
+            self.actions['tablewin'].setEnabled(True)
+            self.actions['graphwin'].setEnabled(True)
+
+    def toggleFullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()

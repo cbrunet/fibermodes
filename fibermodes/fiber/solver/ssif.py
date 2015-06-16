@@ -6,9 +6,11 @@ import numpy
 from scipy.special import jn, jn_zeros, kn, j0, j1, k0, k1, jvp, kvp
 
 
-class SSIFSolver(FiberSolver):
+class Cutoff(FiberSolver):
 
-    def _cutoff(self, mode):
+    """Cutoff for standard step-index fiber."""
+
+    def __call__(self, mode, delta):
         nu = mode.nu
         m = mode.m
 
@@ -18,12 +20,11 @@ class SSIFSolver(FiberSolver):
                     m -= 1
             else:
                 nu -= 1
-
         elif mode.family is ModeFamily.HE:
             if nu == 1:
                 m -= 1
             else:
-                return self._findHEcutoff(mode)
+                return self._findHEcutoff(mode, delta)
 
         return jn_zeros(nu, m)[m-1]
 
@@ -32,10 +33,10 @@ class SSIFSolver(FiberSolver):
         n02 = self.fiber.maxIndex(0, wl)**2 / self.fiber.minIndex(1, wl)**2
         return (1+n02) * jn(nu-2, V0) - (1-n02) * jn(nu, V0)
 
-    def _findHEcutoff(self, mode, delta=0.1):
+    def _findHEcutoff(self, mode, delta):
         if mode.m > 1:
             pm = Mode(mode.family, mode.nu, mode.m - 1)
-            lowbound = self.cutoff(pm) + delta
+            lowbound = self.fiber.cutoff(pm, delta) + delta
         else:
             lowbound = delta
         ipoints = numpy.concatenate((jn_zeros(mode.nu, mode.m),
@@ -48,8 +49,13 @@ class SSIFSolver(FiberSolver):
                                    ipoints=ipoints,
                                    delta=delta)
 
-    def _neff(self, wl, mode, delta, lowbound):
-        co = self.cutoff(mode)
+
+class Neff(FiberSolver):
+
+    """neff for standard step-index fiber"""
+
+    def __call__(self, wl, mode, delta, lowbound):
+        co = self.fiber.cutoff(mode)
         if self.fiber.V0(wl) < co:
             return float("nan")
 
@@ -65,7 +71,7 @@ class SSIFSolver(FiberSolver):
             nm = Mode(ModeFamily.LP, mode.nu+2, mode.m)
         else:
             nm = Mode(ModeFamily.LP, 1, mode.m+1)
-        co = self.cutoff(nm)
+        co = self.fiber.cutoff(nm)
         lowbound = max(sqrt(nco**2 - (co / (r * wl.k0))**2) + delta,
                        self.fiber.minIndex(-1, wl) + delta)
 

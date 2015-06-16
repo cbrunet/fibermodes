@@ -11,10 +11,9 @@ from scipy.special import jvp, ivp
 import warnings
 
 
-class TLSIFSolver(FiberSolver):
+class Cutoff(FiberSolver):
 
-    def _cutoff(self, mode):
-        delta = 0.25
+    def __call__(self, mode, delta):
         fct = {ModeFamily.LP: self._lpcoeq,
                ModeFamily.TE: self._tecoeq,
                ModeFamily.TM: self._tmcoeq,
@@ -23,20 +22,31 @@ class TLSIFSolver(FiberSolver):
                }
         if mode.m > 1:
             pm = Mode(mode.family, mode.nu, mode.m - 1)
-            lowbound = self.cutoff(pm) + delta
+            lowbound = self.fiber.cutoff(pm, delta) + delta
         else:
             lowbound = delta
         return self._findFirstRoot(fct[mode.family],
                                    args=(mode.nu,),
                                    lowbound=lowbound,
-                                   delta=delta)
+                                   delta=delta,
+                                   maxiter=1000)
 
     def __params(self, v0):
         with warnings.catch_warnings():
             # ignore OutOfRangeWarning; it will occur elsewhere anyway
             warnings.simplefilter("ignore", category=OutOfRangeWarning)
-            wl = self.fiber.toWl(v0)
             r1, r2 = self.fiber._r
+            for _ in range(5):
+                # If we cannot convert V0 to a wavelength, try
+                # to modify fiber radius to get a different normalization
+                try:
+                    wl = self.fiber.toWl(v0)
+                    break
+                except (ValueError, RuntimeError):
+                    self.fiber._r = (self.fiber._r[0] * 2, self.fiber._r[1]*2)
+            else:
+                raise ValueError()
+            self.fiber._r = r1, r2
             Nsq = numpy.square(numpy.fromiter(
                                (self.fiber.minIndex(i, wl)
                                 for i in range(3)), dtype=float, count=3))

@@ -1,6 +1,7 @@
 
 import math
 import logging
+import numpy
 
 
 class SLRC(object):
@@ -139,6 +140,8 @@ class SLRC(object):
 
         """
         if isinstance(self._value, list):
+            return 'list'
+        elif isinstance(self._value, numpy.ndarray):
             return 'list'
         elif isinstance(self._value, str):
             return 'code'

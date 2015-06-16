@@ -18,7 +18,9 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         self._doc = doc
         self._fnum = self._wl = 0
         self.modes = []
-        doc.valuesChanged.connect(self.updateTable)
+
+        doc.modesAvailable.connect(self.updateModes)
+        doc.valueAvailable.connect(self.updateValue)
 
     def rowCount(self, parent=QtCore.QModelIndex):
         return len(self.modes)
@@ -82,6 +84,10 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         self._wl = wl - 1
         self.updateTable()
 
+    def updateModes(self, fnum):
+        if fnum == self._fnum:
+            self.updateTable()
+
     def updateTable(self):
         """Update displayed values when fiber of wl index change."""
         sim = self._doc.simulator
@@ -89,18 +95,14 @@ class ModeTableModel(QtCore.QAbstractTableModel):
             return
 
         self.beginResetModel()
-        self.modes = list(sim.modes(self._fnum, self._wl))
+        try:
+            self.modes = list(self._doc.modes[self._fnum][self._wl])
+        except IndexError:
+            pass
         self.endResetModel()
 
-        if self._doc.futures:
-            QtCore.QTimer.singleShot(0, self._updateValues)
-
-    def _updateValues(self):
-        for fi, wi, m, j, v in self._doc.readyValues():
-            if (fi, wi) == (self._fnum, self._wl):
-                i = self.modes.index(m)
-                index = self.index(i, j)
-                self.setData(index, v)
-
-        if self._doc.futures:
-            QtCore.QTimer.singleShot(0, self._updateValues)
+    def updateValue(self, fnum, wl, mode, j):
+        if (fnum, wl) == (self._fnum, self._wl):
+            i = self.modes.index(mode)
+            index = self.index(i, j)
+            self.dataChanged.emit(index, index)

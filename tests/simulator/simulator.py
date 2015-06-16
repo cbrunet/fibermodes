@@ -2,7 +2,7 @@
 
 import unittest
 
-from fibermodes import FiberFactory, Mode
+from fibermodes import FiberFactory, Mode, ModeFamily
 from fibermodes.simulator import Simulator
 
 
@@ -10,65 +10,91 @@ class TestSimulator(unittest.TestCase):
 
     """Test suite for Simulator class"""
 
-    def setUp(self):
-        self.sim = Simulator()
+    @property
+    def Simulator(self):
+        return Simulator
 
     def testUninitializedSimulator(self):
+        sim = self.Simulator()
         with self.assertRaises(ValueError):
-            self.sim.fibers
+            sim.fibers
 
         with self.assertRaises(ValueError):
-            self.sim.wavelengths
+            sim.wavelengths
+
+    def testConstructor(self):
+        sim = self.Simulator('tests/fiber/smf28.fiber', 1550e-9)
+        self.assertEqual(len(sim.wavelengths), 1)
+        self.assertEqual(len(sim.fibers), 1)
+        self.assertTrue(sim.initialized)
+        self.assertTrue(sim._fsims is not None)
 
     def testSetWavelengths(self):
-        self.sim.set_wavelengths(1550e-9)
-        self.assertEqual(len(self.sim.wavelengths), 1)
-        self.assertEqual(self.sim.wavelengths[0], 1550e-9)
+        sim = self.Simulator()
+        sim.set_wavelengths(1550e-9)
+        self.assertEqual(len(sim.wavelengths), 1)
+        self.assertEqual(sim.wavelengths[0], 1550e-9)
 
-        self.sim.set_wavelengths([1550e-9, 1560e-9])
-        self.assertEqual(len(self.sim.wavelengths), 2)
+        sim.set_wavelengths([1550e-9, 1560e-9])
+        self.assertEqual(len(sim.wavelengths), 2)
 
-        self.sim.set_wavelengths({'start': 1550e-9,
-                                  'end': 1580e-9,
-                                  'num': 4})
-        self.assertEqual(len(self.sim.wavelengths), 4)
+        sim.set_wavelengths({'start': 1550e-9,
+                             'end': 1580e-9,
+                             'num': 4})
+        self.assertEqual(len(sim.wavelengths), 4)
 
         with self.assertRaises(ValueError):
-            self.sim.fibers
+            sim.fibers
+        self.assertFalse(sim.initialized)
+        self.assertTrue(sim._fsims is None)
 
     def testSetFactory(self):
-        self.sim.set_factory('tests/fiber/smf28.fiber')
-        self.assertEqual(len(self.sim.fibers), 1)
+        sim = self.Simulator()
+        sim.set_factory('tests/fiber/rcfs.fiber')
+        self.assertEqual(len(sim.fibers), 5)
 
         f = FiberFactory()
         f.addLayer(radius=[4e-6, 5e-6, 6e-6], index=1.449)
         f.addLayer(index=1.444)
-        self.sim.set_factory(f)
-        self.assertEqual(len(self.sim.fibers), 3)
+        sim.set_factory(f)
+        self.assertEqual(len(sim.fibers), 3)
 
         with self.assertRaises(ValueError):
-            self.sim.wavelengths
+            sim.wavelengths
+        self.assertFalse(sim.initialized)
+        self.assertTrue(sim._fsims is None)
 
-    def testModes(self):
-        self.sim.set_wavelengths(1550e-9)
-        self.sim.set_factory('tests/fiber/smf28.fiber')
-        modes = self.sim.modes(0, 0)
+    def testModesSMF(self):
+        sim = self.Simulator('tests/fiber/smf28.fiber', 1550e-9, scalar=True)
+        modes = list(sim.modes())
         self.assertEqual(len(modes), 1)
-        self.assertEqual(str(modes.pop()), 'HE(1,1)')
+        modesf1 = modes[0]
+        self.assertEqual(len(modesf1), 1)
+        modeswl1 = modesf1[0]
+        self.assertEqual(len(modeswl1), 2)
+        self.assertTrue(Mode(ModeFamily.HE, 1, 1) in modeswl1)
+        self.assertTrue(Mode(ModeFamily.LP, 0, 1) in modeswl1)
+
+    def testModesRCF(self):
+        sim = self.Simulator('tests/fiber/rcfs.fiber', 1550e-9)
+        modes = list(sim.modes())
+        self.assertEqual(len(modes), 5)
+        for fmodes in modes:
+            self.assertEqual(len(fmodes), 1)
 
     def testCutoff(self):
-        self.sim.set_wavelengths(1550e-9)
-        self.sim.set_factory('tests/fiber/smf28.fiber')
-        co = self.sim.cutoff(0, 0)
-        self.assertEqual(len(co), 1)
-        self.assertEqual(co[Mode('HE', 1, 1)], 0)
+        sim = self.Simulator('tests/fiber/rcfs.fiber', 1550e-9)
+        co = list(sim.cutoff())
+        self.assertEqual(len(co), 5)
+        for fco in co:
+            self.assertEqual(len(fco), 1)
+            self.assertEqual(fco[0][Mode('HE', 1, 1)], 0)
 
     def testNeff(self):
-        self.sim.set_wavelengths(1550e-9)
-        self.sim.set_factory('tests/fiber/smf28.fiber')
-        n = self.sim.neff(0, 0)
-        self.assertEqual(len(n), 1)
-        self.assertEqual(n[Mode('HE', 1, 1)], 1.4463865149370994)
+        sim = self.Simulator('tests/fiber/smf28.fiber', 1550e-9, delta=1e-4)
+        neff = list(sim.neff())
+        self.assertEqual(len(neff), 1)
+        self.assertAlmostEqual(neff[0][0][Mode('HE', 1, 1)], 1.446386514937099)
 
 if __name__ == "__main__":
     import os

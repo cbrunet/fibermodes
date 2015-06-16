@@ -3,10 +3,12 @@ from PySide import QtCore
 from fibermodes import FiberFactory, PSimulator
 
 
-class SolverDocument(QtCore.QObject):
+class SolverDocument(QtCore.QThread):
 
-    valuesChanged = QtCore.Signal()
-    valuesComputed = QtCore.Signal(int)
+    computeStarted = QtCore.Signal()
+    modesAvailable = QtCore.Signal(int)  # fiber num
+    valueAvailable = QtCore.Signal(int, int, object, int)
+    computeFinished = QtCore.Signal()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -17,9 +19,12 @@ class SolverDocument(QtCore.QObject):
         # self.numfibers = 0
 
         self.toCompute = 0
-        self.futures = self.values = {}
+        self.values = {}
+        self.modes = []
 
         self.simulator = PSimulator()
+        self.running = False
+        self.ready = False
 
     @property
     def initialized(self):
@@ -32,7 +37,7 @@ class SolverDocument(QtCore.QObject):
     @params.setter
     def params(self, value):
         self._params = value
-        self._computeValues()
+        self.start()
 
     @property
     def numax(self):
@@ -41,7 +46,7 @@ class SolverDocument(QtCore.QObject):
     @numax.setter
     def numax(self, value):
         self.simulator.numax = value if value > -1 else None
-        self._computeValues()
+        self.start()
 
     @property
     def mmax(self):
@@ -50,7 +55,7 @@ class SolverDocument(QtCore.QObject):
     @mmax.setter
     def mmax(self, value):
         self.simulator.mmax = value if value > 0 else None
-        self._computeValues()
+        self.start()
 
     @property
     def modeKind(self):
@@ -71,7 +76,7 @@ class SolverDocument(QtCore.QObject):
         else:
             self.simulator.vectorial = True
             self.simulator.scalar = False
-        self._computeValues()
+        self.start()
 
     @property
     def filename(self):
@@ -82,7 +87,7 @@ class SolverDocument(QtCore.QObject):
         self._filename = value
         self.factory = FiberFactory(value)
         self.simulator.set_factory(self.factory)
-        self._computeValues()
+        self.start()
 
     @property
     def fibers(self):
@@ -95,62 +100,49 @@ class SolverDocument(QtCore.QObject):
     @wavelengths.setter
     def wavelengths(self, value):
         self.simulator.set_wavelengths(value)
-        self._computeValues()
+        self.start()
 
-    def _computeValues(self):
+    def start(self):
         if not self.simulator.initialized:
             return
 
-        self.simulator.reset_thread()
-        self.futures = {}
+        if not self.ready:
+            return
+
+        self.stop_thread()
+        super().start()
+
+    def run(self):
+        self.modes = []
         self.values = {}
         self.toCompute = 0
-
-        for j, p in enumerate(self.params):
-            if p == "cutoff":
-                fut = self.simulator.cutoffWl()
-            elif p == "neff":
-                fut = self.simulator.neff()
-            elif p == "ng":
-                fut = self.simulator.ng()
-            elif p == "D":
-                fut = self.simulator.D()
-            elif p == "S":
-                fut = self.simulator.S()
-            else:
-                continue  # should not happen...
-            for fnum, fiber in enumerate(self.fibers):
-                for wlnum, wl in enumerate(self.wavelengths):
-                    if j == 0:
-                        self.futures[(fnum, wlnum)] = []
-                    vals = next(fut)
-                    self.futures[(fnum, wlnum)].append(vals)
-                    self.toCompute += len(vals)
+        self.running = True
+        for fnum, resultf in enumerate(self.simulator.modes()):
+            self.modes.append(resultf)
+            self.modesAvailable.emit(fnum)
+            self.toCompute += sum(len(rw) for rw in resultf)
+        self.toCompute *= len(self.params)
 
         if self.toCompute > 0:
-            self.valuesChanged.emit()
+            self.computeStarted.emit()
 
-    def readyValues(self):
-        tc = self.toCompute
-        rmfut = []
-        for (fi, wi), fwfutures in self.futures.items():
-            allDone = True
-            for j, futures in enumerate(fwfutures):
-                rmmod = []
-                for m, f in futures.items():
-                    if f.ready():
-                        rmmod.append(m)
-                        v = f.get()
-                        self.values[(fi, wi, m, j)] = v
-                        self.toCompute -= 1
-                        yield (fi, wi, m, j, v)
-                    else:
-                        allDone = False
-                for m in rmmod:
-                    del futures[m]
-            if allDone:
-                rmfut.append((fi, wi))
-        for fw in rmfut:
-            del self.futures[fw]
-        if tc > self.toCompute:
-            self.valuesComputed.emit(tc - self.toCompute)
+            for j, p in enumerate(self.params):
+                if p == "cutoff":
+                    fct = self.simulator.cutoffWl
+                else:
+                    fct = getattr(self.simulator, p)
+
+                for fnum, resultf in enumerate(fct()):
+                    if not self.running:
+                        self.simulator.terminate()
+                        return
+                    for wlnum, resultw in enumerate(resultf):
+                        for mode, value in resultw.items():
+                            self.values[(fnum, wlnum, mode, j)] = value
+                            self.valueAvailable.emit(fnum, wlnum, mode, j)
+                            self.toCompute -= 1
+            self.computeFinished.emit()
+
+    def stop_thread(self):
+        self.running = False
+        self.wait()

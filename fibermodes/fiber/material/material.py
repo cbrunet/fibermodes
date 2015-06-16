@@ -73,6 +73,10 @@ class Material(object):
             "This method must be implemented in derived class.")
 
     @classmethod
+    def str(cls, *args):
+        return cls.name
+
+    @classmethod
     def __str__(cls):
         return cls.name
 

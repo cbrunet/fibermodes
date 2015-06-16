@@ -20,6 +20,7 @@ class WavelengthSlider(QtGui.QFrame):
         self.slider.valueChanged.connect(self.changeValue)
 
         self.wlLabel = QtGui.QLabel()
+        self.vLabel = QtGui.QLabel()
 
         hlayout = QtGui.QHBoxLayout()
         hlayout.addWidget(label)
@@ -27,11 +28,12 @@ class WavelengthSlider(QtGui.QFrame):
         hlayout.addWidget(self.totLabel)
 
         h2layout = QtGui.QHBoxLayout()
-        h2layout.addWidget(self.slider)
         h2layout.addWidget(self.wlLabel)
+        h2layout.addWidget(self.vLabel)
 
         vlayout = QtGui.QVBoxLayout()
         vlayout.addLayout(hlayout)
+        vlayout.addWidget(self.slider)
         vlayout.addLayout(h2layout)
 
         self.setLayout(vlayout)

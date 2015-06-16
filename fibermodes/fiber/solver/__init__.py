@@ -1,7 +1,6 @@
+from . import ssif
+from . import tlsif
+from . import mlsif
 
-from .solver import FiberSolver
-from .ssif import SSIFSolver
-from .tlsif import TLSIFSolver
 
-
-__all__ = ['FiberSolver', 'SSIFSolver', 'TLSIFSolver']
+__all__ = ['ssif', 'tlsif', 'mlsif']

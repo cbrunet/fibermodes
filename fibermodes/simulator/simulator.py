@@ -3,10 +3,103 @@ an array of parameters.
 
 """
 
-from itertools import repeat, product
-from functools import lru_cache
-from fibermodes import FiberFactory, Wavelength
+from fibermodes import FiberFactory, Wavelength, Mode, ModeFamily
 from fibermodes.slrc import SLRC
+from functools import reduce, partial
+import operator
+
+
+class _FSimulator(object):
+
+    def __init__(self, fiber, wavelengths,
+                 numax, mmax, vectorial, scalar, delta):
+        self._fiber = fiber
+        self._wavelengths = wavelengths
+        self._modes = None
+
+        self._numax = numax
+        self._mmax = mmax
+        self._vectorial = vectorial
+        self._scalar = scalar
+        self._delta = delta
+
+    def modes(self):
+        if self._modes is None:
+            numax = self._numax
+            mmax = self._mmax
+            self._modes = [set() for _ in self._wavelengths]
+            for i, wl in enumerate(self._wavelengths):
+                if self._vectorial:
+                    self._modes[i] |= self._fiber.findVmodes(wl, numax, mmax)
+                if self._scalar:
+                    self._modes[i] |= self._fiber.findLPmodes(wl, numax, mmax)
+
+                numax = max(m.nu for m in self._modes[i])
+                mmax = [max((m.m for m in self._modes[i] if m.nu == nu),
+                            default=0)
+                        for nu in range(numax+1)]
+        return self._modes
+
+    def cutoff(self):
+        co = [{} for _ in self._wavelengths]
+        for i, wl in enumerate(self._wavelengths):
+            for m in self.modes()[i]:
+                co[i][m] = self._fiber.cutoff(m)
+        return co
+
+    def cutoffWl(self):
+        co = {}
+        for m in reduce(operator.or_, self.modes(), set()):
+            co[m] = self._fiber.toWl(self._fiber.cutoff(m))
+
+        cod = [{} for _ in self._wavelengths]
+        for i, wl in enumerate(self._wavelengths):
+            for m in self._modes[i]:
+                cod[i][m] = co[m]
+        return cod
+
+    def _neff(self, mode, wlidx):
+        lowbound = self._lowbound(mode, wlidx)
+        wl = self._wavelengths[wlidx]
+        return self._fiber.neff(mode, wl, delta=self._delta, lowbound=lowbound)
+
+    def _lowbound(self, mode, i):
+        wl = self._wavelengths[i]
+        lowbound = max(layer.maxIndex(wl) for layer in self._fiber.layers)
+
+        if i > 0:
+            lowbound = min(lowbound, self._neff(mode, i-1))
+
+        pm = None
+        if mode.family is ModeFamily.EH:
+            pm = Mode(ModeFamily.HE, mode.nu, mode.m)
+        elif mode.m > 1:
+            if mode.family is ModeFamily.HE:
+                pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
+            else:
+                pm = Mode(mode.family, mode.nu, mode.m - 1)
+        if pm is not None:
+            lowbound = min(lowbound, self._neff(pm, i))
+
+        if (mode.family is ModeFamily.LP and mode.nu > 0) or mode.nu > 1:
+            pm = Mode(mode.family, mode.nu-1, mode.m)
+            lowbound = min(lowbound, self._neff(pm, i))
+
+        return lowbound
+
+    def _apply_fct(self, fct):
+        r = [{} for _ in self._wavelengths]
+        for i, wl in enumerate(self._wavelengths):
+            for m in self.modes()[i]:
+                lowbound = self._lowbound(m, i)
+                r[i][m] = fct(m, wl, delta=self._delta, lowbound=lowbound)
+        return r
+
+    def __getattr__(self, name):
+        if name[0] != '_':
+            fct = getattr(self._fiber, name)
+            return partial(self._apply_fct, fct)
+        return getattr(super(), name)
 
 
 class Simulator(object):
@@ -17,20 +110,31 @@ class Simulator(object):
                  numax=None, mmax=None, vectorial=True, scalar=False,
                  delta=1e-6):
         self._fibers = None
+        self._fsims = None
         self._wavelengths = None
 
-        self.numax = numax
-        self.mmax = mmax
-        self.vectorial = vectorial
-        self.scalar = scalar
+        self._numax = numax
+        self._mmax = mmax
+        self._vectorial = vectorial
+        self._scalar = scalar
         self.delta = delta
 
         self.set_factory(factory)
         if wavelengths:
             self.set_wavelengths(wavelengths)
+        self._build_fsims()
+
+    def _build_fsims(self):
+        if self.initialized:
+            self._fsims = tuple(_FSimulator(fiber, self._wavelengths,
+                                            self.numax, self.mmax,
+                                            self.vectorial, self.scalar,
+                                            self.delta)
+                                for fiber in self._fibers)
 
     def set_wavelengths(self, value):
         self._wavelengths = tuple(Wavelength(w) for w in iter(SLRC(value)))
+        self._build_fsims()
 
     def set_factory(self, factory):
         if isinstance(factory, str):
@@ -38,6 +142,7 @@ class Simulator(object):
         self.factory = factory
         if factory is not None:
             self._fibers = tuple(iter(factory))
+            self._build_fsims()
 
     @property
     def fibers(self):
@@ -54,86 +159,48 @@ class Simulator(object):
         return self._wavelengths
 
     @property
+    def numax(self):
+        return self._numax
+
+    @numax.setter
+    def numax(self, value):
+        self._numax = value
+        self._build_fsims()
+
+    @property
+    def mmax(self):
+        return self._mmax
+
+    @mmax.setter
+    def mmax(self, value):
+        self._mmax = value
+        self._build_fsims()
+
+    @property
+    def vectorial(self):
+        return self._vectorial
+
+    @vectorial.setter
+    def vectorial(self, value):
+        self._vectorial = value
+        self._build_fsims()
+
+    @property
+    def scalar(self):
+        return self._scalar
+
+    @scalar.setter
+    def scalar(self, value):
+        self._scalar = value
+        self._build_fsims()
+
+    @property
     def initialized(self):
-        return not (self._fibers is None or self.factory is None)
+        return not (self._fibers is None or self._wavelengths is None)
 
-    def _idx_iter(self, fidx, wlidx):
-        if wlidx is None:
-            wlidx = range(len(self.wavelengths))
-        if isinstance(fidx, int):
-            if isinstance(wlidx, int):
-                yield (fidx, wlidx)
-            else:
-                yield from zip(repeat(fidx), wlidx)
-        else:
-            if fidx is None:
-                fidx = range(len(self.fibers))
-            if isinstance(wlidx, int):
-                yield from zip(fidx, repeat(wlidx))
-            else:
-                yield from product(fidx, wlidx)
-
-    def _apply(self, fct, fidx, wlidx):
-        if isinstance(fidx, int) and isinstance(wlidx, int):
-            return fct((fidx, wlidx))
-        return map(fct, self._idx_iter(fidx, wlidx))
-
-    def _apply_cutoff_to_modes(self, fct, idx):
-        modes = self._modes(idx)
-        return {mode: fct(mode) for mode in modes}
-
-    def _apply_to_modes(self, fct, idx):
-        modes = self._modes(idx)
-        wl = self.wavelengths[idx[1]]
-        return {mode: fct(mode, wl, delta=self.delta) for mode in modes}
-
-    @lru_cache()
-    def _modes(self, arg):
-        fidx, wlidx = arg
-        modes = set()
-        if self.vectorial:
-            modes |= self.fibers[fidx].findVmodes(
-                self.wavelengths[wlidx], self.numax, self.mmax)
-        if self.scalar:
-            modes |= self.fibers[fidx].findLPmodes(
-                self.wavelengths[wlidx], self.numax, self.mmax)
-        return modes
-
-    def modes(self, fidx=None, wlidx=None):
-        return self._apply(self._modes, fidx, wlidx)
-
-    def _cutoff(self, arg):
-        return self._apply_cutoff_to_modes(self.fibers[arg[0]].cutoff, arg)
-
-    def cutoff(self, fidx=None, wlidx=None):
-        return self._apply(self._cutoff, fidx, wlidx)
-
-    def _cutoffWl(self, arg):
-        return self._apply_cutoff_to_modes(self.fibers[arg[0]].cutoffWl, arg)
-
-    def cutoffWl(self, fidx=None, wlidx=None):
-        return self._apply(self._cutoffWl, fidx, wlidx)
-
-    def _neff(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].neff, arg)
-
-    def neff(self, fidx=None, wlidx=None):
-        return self._apply(self._neff, fidx, wlidx)
-
-    def _ng(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].ng, arg)
-
-    def ng(self, fidx=None, wlidx=None):
-        return self._apply(self._ng, fidx, wlidx)
-
-    def _D(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].D, arg)
-
-    def D(self, fidx=None, wlidx=None):
-        return self._apply(self._D, fidx, wlidx)
-
-    def _S(self, arg):
-        return self._apply_to_modes(self.fibers[arg[0]].S, arg)
-
-    def S(self, fidx=None, wlidx=None):
-        return self._apply(self._S, fidx, wlidx)
+    def __getattr__(self, name):
+        def wrapper():
+            for fsim in self._fsims:
+                fct = getattr(fsim, name)
+                yield fct()
+        return wrapper
