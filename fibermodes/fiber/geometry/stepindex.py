@@ -1,0 +1,141 @@
+
+from fibermodes.fiber.geometry.geometry import Geometry
+from fibermodes import constants
+from math import sqrt
+import numpy
+from scipy.special import jn, yn, iv, kn
+from scipy.special import j0, y0, i0, k0
+from scipy.special import j1, y1, i1, k1
+from scipy.special import jvp, yvp, ivp, kvp
+
+
+class StepIndex(Geometry):
+
+    def index(self, r, wl):
+        return self._m.n(wl, *self._mp)
+
+    def minIndex(self, wl):
+        return self._m.n(wl, *self._mp)
+
+    def maxIndex(self, wl):
+        return self._m.n(wl, *self._mp)
+
+    def u(self, r, neff, wl):
+        return wl.k0 * r * sqrt(abs(self.maxIndex(wl)**2 - neff**2))
+
+    def Psi(self, r, neff, wl, nu, C):
+        u = self.u(r, neff, wl)
+        if neff < self.maxIndex(wl):
+            psi = C[0] * jn(nu, u) + C[1] * yn(nu, u)
+            psip = u * (C[0] * jvp(nu, u) + C[1] * yvp(nu, u))
+        else:
+            psi = C[0] * iv(nu, u) + C[1] * kn(nu, u)
+            psip = u * (C[0] * ivp(nu, u) + C[1] * kvp(nu, u))
+        return psi, psip
+
+    def lpConstants(self, r, neff, wl, nu, A):
+        u = self.u(r, neff, wl)
+        if neff < self.maxIndex(wl):
+            W = constants.pi / 2
+            return (W * (u * yvp(nu, u) * A[0] - yn(nu, u) * A[1]),
+                    W * (jn(nu, u) * A[1] - u * jvp(nu, u) * A[0]))
+        else:
+            return ((kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
+                    (iv(nu, u) * A[1] - ivp(nu, u) * A[0]))
+
+    def ehrfields(self, r, neff, wl, nu, C):
+        n = self.maxIndex(wl)
+        u = self.u(r, neff, wl)
+        EH = numpy.empty(C.shape)
+
+        if neff < n:
+            c1 = wl.k0 * r / u
+            F3 = jvp(nu, u) / jn(nu, u)
+            F4 = yvp(nu, u) / yn(nu, u)
+        else:
+            c1 = -wl.k0 * r / u
+            F3 = ivp(nu, u) / iv(nu, u)
+            F4 = kvp(nu, u) / kn(nu, u)
+
+        c2 = neff * nu / u * c1
+        c3 = constants.eta0 * c1
+        c4 = constants.Y0 * n * n * c1
+
+        EH[0] = C[0] + C[1]
+        EH[1] = C[2] + C[3]
+        EH[2] = (c2 * (C[0] + C[1]) - c3 * (F3 * C[2] + F4 * C[3]))
+        EH[3] = (c4 * (F3 * C[0] + F4 * C[1]) - c2 * (C[2] + C[3]))
+
+        return EH
+
+    def vConstants(self, ri, ro, neff, wl, nu, EH):
+        a = numpy.zeros((4, 4))
+        n = self.maxIndex(wl)
+        u = self.u(ro, neff, wl)
+        urp = self.u(ri, neff, wl)
+
+        if neff < n:
+            B1 = jn(nu, u)
+            B2 = yn(nu, u)
+            F1 = jn(nu, urp) / B1
+            F2 = yn(nu, urp) / B2
+            F3 = jvp(nu, urp) / B1
+            F4 = yvp(nu, urp) / B2
+            c1 = wl.k0 * ro / u
+        else:
+            B1 = iv(nu, u)
+            B2 = kn(nu, u)
+            F1 = iv(nu, urp) / B1
+            F2 = kn(nu, urp) / B2
+            F3 = ivp(nu, urp) / B1
+            F4 = kvp(nu, urp) / B2
+            c1 = -wl.k0 * ro / u
+        c2 = neff * nu / urp * c1
+        c3 = constants.eta0 * c1
+        c4 = constants.Y0 * n * n * c1
+
+        a[0, 0] = F1
+        a[0, 1] = F2
+        a[1, 2] = F1
+        a[1, 3] = F2
+        a[2, 0] = F1 * c2
+        a[2, 1] = F2 * c2
+        a[2, 2] = -F3 * c3
+        a[2, 3] = -F4 * c3
+        a[3, 0] = F3 * c4
+        a[3, 1] = F4 * c4
+        a[3, 2] = -F1 * c2
+        a[3, 3] = -F2 * c2
+
+        return numpy.linalg.solve(a, EH)
+
+    def tetmConstants(self, ri, ro, neff, wl, EH, c, idx):
+        a = numpy.empty((2, 2))
+        n = self.maxIndex(wl)
+        u = self.u(ro, neff, wl)
+        urp = self.u(ri, neff, wl)
+
+        if neff < n:
+            B1 = j0(u)
+            B2 = y0(u)
+            F1 = j0(urp) / B1
+            F2 = y0(urp) / B2
+            F3 = -j1(urp) / B1
+            F4 = -y1(urp) / B2
+            c1 = wl.k0 * ro / u
+        else:
+            B1 = i0(u)
+            B2 = k0(u)
+            F1 = i0(urp) / B1
+            F2 = k0(urp) / B2
+            F3 = i1(urp) / B1
+            F4 = -k1(urp) / B2
+            c1 = -wl.k0 * ro / u
+        c3 = c * c1
+
+        a[0, 0] = F1
+        a[0, 1] = F2
+        a[1, 0] = F3 * c3
+        a[1, 1] = F4 * c3
+
+        return numpy.linalg.solve(a, EH.take(idx))

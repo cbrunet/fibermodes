@@ -8,3 +8,6 @@ scripts/*.tex
 *.txt
 *.zip
 *.pdf
+*.fiber
+*.xmi
+*.dump

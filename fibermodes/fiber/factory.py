@@ -1,97 +1,320 @@
 """Fiber factory module."""
 
-from fibermodes.wavelength import Wavelength
-from fibermodes.fiber.ssif import SSIF
-from fibermodes.fiber.mlsif import MLSIF
-from fibermodes.fiber.tlsif import TLSIF
-from fibermodes.material.fixed import Fixed
+import json
+import time
+from distutils.version import StrictVersion as Version
+from operator import mul
+from functools import reduce
+from itertools import product, islice
+from .fiber import Fiber
+from fibermodes.slrc import SLRC
+from fibermodes.fiber import material as materialmod
+from fibermodes.fiber.solver.solver import FiberSolver
+from fibermodes.fiber.material.compmaterial import CompMaterial
 
 
-class Factory(list):
+__version__ = "0.0.1"
 
-    """Creates a :py:class:`~fibermodes.fiber.fiber.Fiber` object from given
-    arguments.
 
-    The Factory is a :py:class:`list`, and expect to contains
-    :py:class:`~fibermodes.material.Material` of each fiber layer,
-    begin from the center.
+class FiberFactoryValidationError(Exception):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        self._rna = None
-        super().__init__(*args, **kwargs)
+    """
+    pass
+
+
+class LayerProxy(object):
+
+    def __init__(self, layer):
+        self._layer = layer
+
+    def __getattr__(self, name):
+        if name in self._layer:
+            return self._layer[name]
+        else:
+            raise AttributeError
+
+    def __setattr__(self, name, value):
+        if name == "_layer":
+            super().__setattr__(name, value)
+        elif name == "material":
+            self._material(value)
+        elif name in self._layer:
+            self._layer[name] = value
+        else:
+            super().__setattr__(name, value)
+
+    def __getitem__(self, name):
+        return self._layer[name]
+
+    def __setitem__(self, name, value):
+        if name in self._layer:
+            self._layer[name] = value
+        else:
+            raise KeyError
+
+    def _material(self, value):
+        if value != self.material:
+            self._layer["material"] = value
+            self._layer["mparams"] = [0] * materialmod.__dict__[value].nparams
 
     @property
-    def nlayers(self):
-        """Number of layers in the fiber."""
-        return len(self)
+    def radius(self):
+        return self._layer["tparams"][0]
 
-    def __call__(self, wl, *args):
-        """
-        args are (radius, `*mat_params`)
-        """
-        assert len(args) == self.nlayers, "Wrong number of arguments"
-
-        if not isinstance(wl, Wavelength):
-            wl = Wavelength(wl)
-
-        def n(i):
-            return self[i].n(wl, *args[i][1:])
-
-        params = [((self[0],) + tuple(args[0]))]
-        ln = n0 = n(0)
-        n1 = None
-        for i in range(1, self.nlayers):
-            cn = n(i)
-            if cn == ln:
-                params[-1] = (self[i],) + tuple(args[i])
-            else:
-                params.append((self[i],) + tuple(args[i]))
-                ln = cn
-                if n1 is None:
-                    n1 = cn
-        nlayers = len(params)
-
-        if nlayers < 2:
-            return None
-
-        if nlayers == 2 and n0 > n1:
-            return SSIF(wl, *params, rna=self._rna)
-        elif nlayers == 3:
-            return TLSIF(wl, *params, rna=self._rna)
-        else:
-            return MLSIF(wl, *params, rna=self._rna)
+    @radius.setter
+    def radius(self, value):
+        self._layer["tparams"][0] = value
 
 
-def fixedFiber(wl, r, n, rna=None):
-    """Build a step-index fiber with fixed indices, from given parameters.
+class LayersProxy(object):
 
-    :param wl: wavelength
-    :param r: list of layer radii (from inner to outer)
-    :param n: list of layer indices (from inner to outer)
-    :rtype: :py:class:`~fibermodes.fiber.fiber.Fiber` object
+    def __init__(self, factory):
+        self.factory = factory
+
+    def __len__(self):
+        return len(self.factory._fibers["layers"])
+
+    def __getitem__(self, index):
+        return LayerProxy(self.factory._fibers["layers"][index])
+
+
+class FiberFactory(object):
+
+    """FiberFactory is used to instantiate a Fiber or a serie of Fiber objects.
+
+    It can read fiber definition from json file, and write it back.
+    Convenient functions are available to set fiber parameters, and to
+    iterate through fiber objects.
 
     """
-    ff = Factory()
-    ff._rna = rna
-    params = []
-    for i in range(len(n)):
-        ff.append(Fixed)
-        params.append((r[i], n[i]) if i < len(r) else (r[i - 1], n[i]))
-        # TODO: Detect subsequent layers with same n
-    return ff(wl, *params)
 
+    def __init__(self, filename=None):
+        self._fibers = {
+            "version": __version__,
+            "name": "",
+            "description": "",
+            "author": "",
+            "crdate": time.time(),
+            "tstamp": time.time(),
+            "layers": []
+        }
+        if filename:
+            with open(filename, 'r') as f:
+                self.load(f)
+        self._Neff = None
+        self._Cutoff = None
 
-if __name__ == '__main__':
-    fact = Factory((Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
+    @property
+    def name(self):
+        return self._fibers["name"]
 
-    fact = Factory((Fixed, Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.6), (5e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
+    @name.setter
+    def name(self, value):
+        self._fibers["name"] = value
 
-    fact = Factory((Fixed, Fixed, Fixed))
-    fiber = fact(1550e-9, (4e-6, 1.4), (5e-6, 1.6), (6e-6, 1.4))
-    print(fiber.__class__, fiber)
+    @property
+    def author(self):
+        return self._fibers["author"]
+
+    @author.setter
+    def author(self, value):
+        self._fibers["author"] = value
+
+    @property
+    def description(self):
+        return self._fibers["description"]
+
+    @description.setter
+    def description(self, value):
+        self._fibers["description"] = value
+
+    @property
+    def crdate(self):
+        return self._fibers["crdate"]
+
+    @property
+    def tstamp(self):
+        return self._fibers["tstamp"]
+
+    @property
+    def layers(self):
+        return LayersProxy(self)
+
+    def addLayer(self, pos=None, name="", radius=0,
+                 material="Fixed", **kwargs):
+        if pos is None:
+            pos = len(self._fibers["layers"])
+        layer = {
+            "name": name,
+            "type": "StepIndex",
+            "tparams": [radius],
+            "material": material,
+            "mparams": [],
+        }
+        if material == "Fixed":
+            index = kwargs.get("index", 1.444)
+            layer["mparams"].append(index)
+        else:
+            Mat = materialmod.__dict__[material]
+            if issubclass(Mat, CompMaterial):
+                if "x" in kwargs:
+                    layer["mparams"].append(kwargs["x"])
+                elif "index" in kwargs and "wl" in kwargs:
+                    x = Mat.xFromN(kwargs["wl"], kwargs["index"])
+                    layer["mparams"].append(x)
+                else:
+                    layer["mparams"].append(0)
+        self._fibers["layers"].insert(pos, layer)
+
+    def removeLayer(self, pos=-1):
+        self._fibers["layers"].pop(pos)
+
+    def dump(self, fp, **kwargs):
+        fp.write(self.dumps(**kwargs))
+
+    def dumps(self, **kwargs):
+        self._fibers["tstamp"] = time.time()
+        return json.dumps(self._fibers, **kwargs)
+
+    def load(self, fp, **kwargs):
+        self.loads(fp.read(), **kwargs)
+
+    def loads(self, s, **kwargs):
+        fibers = json.loads(s, **kwargs)
+        self.validate(fibers)
+        self._fibers = fibers
+
+    def validate(self, obj):
+        for key in ("version", "name", "description",
+                    "author", "crdate", "tstamp", "layers"):
+            if key not in obj.keys():
+                raise FiberFactoryValidationError(
+                    "Missing '{}' parameter".format(key))
+
+        if Version(obj["version"]) > Version(__version__):
+            raise FiberFactoryValidationError("Version of loaded object "
+                                              "is higher that version "
+                                              "of current library")
+        elif Version(obj["version"]) < Version(__version__):
+            self._upgrade(obj)
+
+        for layernum, layer in enumerate(obj["layers"], 1):
+            self._validateLayer(layer, layernum)
+
+    def _validateLayer(self, layer, layernum):
+        for key in ("name", "type", "tparams", "material", "mparams"):
+            if key not in layer.keys():
+                raise FiberFactoryValidationError(
+                    "Missing '{}' parameter for layer {}".format(key,
+                                                                 layernum))
+
+    def _upgrade(self, obj):
+        obj["version"] = __version__
+
+    def __iter__(self):
+        self._buildFiberList()
+        g = product(*(range(i) for i in self._nitems))
+        return (self._buildFiber(i) for i in g)
+
+    def __len__(self):
+        if not self.layers:
+            return 0
+        self._buildFiberList()
+        return reduce(mul, self._nitems)
+
+    def __getitem__(self, key):
+        self._buildFiberList()
+        return self._buildFiber(self._getIndexes(key))
+
+    def _buildFiberList(self):
+        self._nitems = []
+        for layer in self._fibers["layers"]:
+            for key in ("tparams", "mparams"):
+                for tp in layer[key]:
+                    self._nitems.append(len(SLRC(tp)))
+
+    def _getIndexes(self, index):
+        """Get list of indexes from a single index."""
+        g = product(*(range(i) for i in self._nitems))
+        return next(islice(g, index, None))
+
+    def setSolvers(self, Cutoff=None, Neff=None):
+        assert Cutoff is None or issubclass(Cutoff, FiberSolver)
+        assert Neff is None or issubclass(Neff, FiberSolver)
+        self._Cutoff = Cutoff
+        self._Neff = Neff
+
+    def _buildFiber(self, indexes):
+        """Build Fiber object from list of indexes"""
+
+        r = []
+        f = []
+        fp = []
+        m = []
+        mp = []
+        names = []
+
+        # Get parameters for selected fiber
+        ii = 0
+        for i, layer in enumerate(self._fibers["layers"], 1):
+            name = layer["name"] if layer["name"] else "layer {}".format(i+1)
+            names.append(name)
+
+            if i < len(self._fibers["layers"]):
+                rr = SLRC(layer["tparams"][0])
+                rr.codeParams = ["r", "fp", "mp"]
+                r.append(rr[indexes[ii]])
+            ii += 1  # we count radius of cladding, even if we don't use it
+
+            f.append(layer["type"])
+            fp_ = []
+            for p in layer["tparams"][1:]:
+                ff = SLRC(p)
+                ff.codeParams = ["r", "fp", "mp"]
+                fp_.append(ff[indexes[ii]])
+                ii += 1
+            fp.append(fp_)
+
+            m.append(layer["material"])
+            mp_ = []
+            for p in layer["mparams"]:
+                mm = SLRC(p)
+                mm.codeParams = ["r", "fp", "mp"]
+                mp_.append(mm[indexes[ii]])
+                ii += 1
+            mp.append(mp_)
+
+        # Execute code parts
+        for i, p in enumerate(r):
+            if callable(p):
+                r[i] = float(p(r, fp, mp))
+        for i, pp in enumerate(fp):
+            for j, p in enumerate(pp):
+                if callable(p):
+                    fp[i][j] = float(p(r, fp, mp))
+            fp[i] = tuple(fp[i])
+        for i, pp in enumerate(mp):
+            for j, p in enumerate(pp):
+                if callable(p):
+                    mp[i][j] = float(p(r, fp, mp))
+            mp[i] = tuple(mp[i])
+
+        # Remove unneeded layers
+        i = len(m)-2
+        while i >= 0 and len(m) > 1:
+            if (r[i] == 0 or
+                    (i > 0 and r[i] <= r[i-1]) or
+                    (f[i] == f[i+1] == 'StepIndex' and
+                     m[i] == m[i+1] and
+                     mp[i] == mp[i+1])):
+                del r[i]
+                del f[i]
+                del fp[i]
+                del m[i]
+                del mp[i]
+                del names[i]
+            i -= 1
+
+        return Fiber(r, f, fp, m, mp, names, self._Cutoff, self._Neff)

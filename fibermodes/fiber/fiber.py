@@ -1,421 +1,282 @@
-"""This module contains the base :class:`~fibermodes.fiber.fiber.Fiber`
-class.
 
-You should not instanciate it directly. Instead, you should generate
-a specialized fiber class using either a
-:class:`~fibermodes.fiber.factory.Factory`, or a utility function like
-:func:`~fibermodes.fiber.factory.fixedFiber`.
-
-However, you should referer at the documentation of this class,
-as it contains all the functions you need to solve for modes.
-
-"""
-
-import numpy
-from scipy.optimize import brentq
+from . import geometry
+from . import solver
+from .solver.solver import FiberSolver
+from math import sqrt, isnan, isinf
+from fibermodes import Wavelength, Mode, ModeFamily
+from fibermodes import constants
+from fibermodes.functions import derivative
 from itertools import count
-from math import sqrt
-from copy import copy
+import logging
+from scipy.optimize import fixed_point
 
-from ..mode import Mode, SMode, Family, sortModes
+
+class MaxIterationsReachedWarning(UserWarning):
+
+    """
+
+    """
+    pass
 
 
 class Fiber(object):
 
-    """This class represents a Fiber, at a given wavelength.
+    logger = logging.getLogger(__name__)
 
-    This is the basis object used to solve for modes.
+    def __init__(self, r, f, fp, m, mp, names, Cutoff=None, Neff=None):
 
-    :param wl: :class:`~fibermodes.wavelength.Wavelength` object.
-    :param `*args`: variable number of tuples (material, radius, mat_params)
+        self._r = r
+        self._names = names
 
-    """
+        self.layers = []
+        for f_, fp_, m_, mp_ in zip(f, fp, m, mp):
+            layer = geometry.__dict__[f_](*fp_, m=m_, mp=mp_)
+            self.layers.append(layer)
 
-    def __init__(self, wl, *args, **kwargs):
-        '''
-        Constructor
+        self.co_cache = {Mode("HE", 1, 1): 0,
+                         Mode("LP", 0, 1): 0}
+        self.ne_cache = {}
 
-        args are: (material, radius, mat_params)
-        '''
-        hasfct = False
-        self._rna = kwargs.pop('rna', None)
+        self.setSolvers(Cutoff, Neff)
 
-        def niffct(x):
-            nonlocal hasfct
-            if hasattr(x, '__iter__'):
-                hasfct = True
-                return None
-            return x
-
-        n = len(args)
-
-        # TODO: use a dict for faster get() ?
-        self._wl = wl
-        self._mat = []
-        self._r = numpy.empty(n)
-        self._n = numpy.empty(n)
-        self._params = []
-
-        for i in range(n):  # For each layer
-            self._mat.append(args[i][0])  # Material
-            self._r[i] = niffct(args[i][1])  # Radius
-            self._n[i] = args[i][0].n(self._wl, *args[i][2:])
-            self._params.append(args[i][2:])
-        self._r[-1] = self._r[-2]  # last layer radius
-
-        if hasfct:
-            # TODO: implement for wl and matparams also
-            for i in range(n):
-                if numpy.isnan(self._r[i]):
-                    fct, *fargs = args[i][1]
-                    p = [self.get(*x) for x in fargs]
-                    self._r[i] = fct(*p)
-
-    def __hash__(self):
-        """Allow to use Fiber as dictionary key."""
-        return hash((self._wl,) + tuple(self._r[:-1]) +
-                    tuple(self._n))
-
-    @property
-    def na(self):
-        """Numerical aperture.
-
-        NA is only relevant for :class:`~fibermodes.fiber.ssif.SSIF`.
-        However, it is useful when calculating
-        :attr:`~fibermodes.fiber.fiber.Fiber.V0`. Therefore, we define it
-        as :math:`\\text{NA} = \sqrt{n_{\max}^2 - n_{cl}^2}`, where
-        :math:`n_{\max}` is the highest refractive index inside the fiber,
-        and :math:`n_{cl}` is the refractive index of the cladding.
-
-        """
-        return sqrt(max(self._n)**2 - self._n[-1]**2)
-
-    @property
-    def V0(self):
-        """Normalized frequency.
-
-        We define it as :math:`V_0 = k_0 r_{cl} \\text{NA}`,
-        where :math:`r_{cl}` is the inner radius of the cladding.
-
-        """
-        if self._rna is None:
-            return self._wl.k0 * self._r[-1] * self.na
-        else:
-            return self._wl.k0 * self._rna
-
-    def get(self, pname, *args):
-        """Get fiber parameter from given parameter name.
-
-        Possible names are: 'wavelength', 'radius', 'material', and 'value'.
-
-        For 'wavelength', the optional second parameter is the wavelength
-        conversion to apply ('wavelength', 'k0', 'omega', etc. *see*
-        :class:`~fibermodes.wavelength.Wavelength`). It the second parameter
-        is omitted, wavelength is assumed.
-
-        For 'radius' and 'material', the second parameter is the layer index.
-
-        For 'material', the third parameter is material parameter index.
-
-        For 'value', the second parameter is the value itself.
-
-        :param pname: string representing the parameter ('wavelength',
-                      'radius', 'material', or 'value')
-        :rtype: float
-        :raises: :class:`TypeError`
-
-        """
-        if pname == 'wavelength':
-            wc = args[0] if args else 'wavelength'
-            return getattr(self._wl, wc)
-        elif pname == 'radius':
-            return self._r[args[0]]
-        elif pname == 'material':
-            return self._params[args[0]][args[1]]
-        elif pname == 'index':
-            return self._n[args[0]]
-        elif pname == 'value':
-            return args[0]
-        raise TypeError('pname must be wavelength, radius, '
-                        'material or value, not"{}"'.format(pname))
-
-    def __getitem__(self, key):
-        return self.get(*key)
-
-    def solve(self, mode, nmin, nmax, delta=1e-6, epsilon=1e-12):
-        """Find root of characteristic equation inside given bound.
-
-        It tries to find the first root from the highest index.
-        However, it is not guaranteed that the found root is the first root.
-        This function does not take into account the *m* parameter of
-        the mode. You need to provide the right starting point or interval
-        in order to get the right solution.
-
-        :class:`OverflowError` is risen if no root is found.
-
-        :param mode: :class:`~fibermodes.mode.Mode` object.
-        :param bound: hint to help root search. Can be *None*, start,
-                      or (min, start, max).
-        :param delta: minimal interval to look in.
-        :type delta: float
-        :param epsilon: precision for root finding.
-        :type epsilon: float
-        :rtype: :class:`~fibermodes.mode.SMode` (solved mode) object.
-        :raises: :class:`OverflowError`
-
-        """
-        fct = self._ceq(mode)
-
-        a = nmax - epsilon
-        fa = fct(a, mode)
-        while a > nmin + delta + epsilon:
-            b, fb = a, fa
-            a = b - delta
-            fa = fct(a, mode)
-            if (fa < 0 and fb > 0) or (fa > 0 and fb < 0):
-                neff = brentq(fct, a, b, args=(mode,), xtol=epsilon)
-                if a <= neff <= b:  # Detect discontinuity
-                    v0 = abs(fct(neff, mode))
-                    if (abs(fct(neff-epsilon, mode)) >= v0 and
-                            abs(fct(neff+epsilon, mode)) >= v0):
-                        return SMode(self, mode, neff)
-        else:
-            raise OverflowError("Did not found root in given interval.")
-
-    def solveAll(self, mode, delta=1e-6, epsilon=1e-12, nmax=None,
-                 cladding=False, idxmax=None):
-        """Find all the modes in a given family with a given *ν*.
-
-        :param mode: :class:`~fibermodes.mode.Mode` object.
-        :param delta: minimal interval to look in.
-        :type delta: float
-        :param epsilon: precision for root finding.
-        :type epsilon: float
-        :param nmax: maximum number of modes to search.
-        :param cladding: do we look for cladding modes too?
-        :param idxmax: maximum posible refractive index, or None
-        :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
-                (solved mode) object.
-                Return empty :class:`list` if no mode is found.
-        """
-        modes = []
-        if idxmax is None:
-            idxmax = max(self._n)
-        idxmin = min(self._n) if cladding else self._n[-1]
-        assert idxmin < idxmax, "min > max"
-        n = list(nn for nn in sorted(set(self._n), reverse=True)
-                 if idxmin <= nn <= idxmax)
-        if n[0] + epsilon < idxmax:
-            n.insert(0, idxmax)
-        # if n[-1] > idxmin:
-        #     print("!")
-        #     n.append(idxmin)
-        bounds = [(n[i+1], n[i]) for i in range(len(n)-1)]
-        while bounds:
-            b = bounds.pop(0)
-            try:
-                smode = self.solve(mode,
-                                   b[0], b[1],
-                                   delta, epsilon)
-                modes.append(smode)
-                if nmax and len(modes) == nmax:
-                    break
-                bounds.append((b[0], smode.neff))
-                # bounds.append((smode.neff, b[1]))
-            except OverflowError:
-                pass
-        return sortModes(modes)
-
-    def csolve(self, mode):
-        pass
-
-    def cutoffV0(self, mode, V0min=2, V0max=float('inf'), delta=0.25):
-        """Gives cutoff of given mode, in term of V0.
-
-        This is an abstract method, that can be implemented for specific
-        fiber layouts.
-
-        :param mode: :class:`~fibermodes.mode.Mode` object.
-        :param V0min: Minimal value for returned V0 (dafault: 2).
-        :type V0min: integer
-        :param V0max: Maximal value for returned V0 (default: inf).
-        :type V0max: integer
-        :param delta: Increment used for searching roots (default: 0.25).
-                      Decrease it if it is not able to find a given cutoff.
-                      Increase it to et faster calculation.
-        :type delta: float
-        :rtype: float
-        :raise: NotImplementedError
-
-        """
-        raise NotImplementedError
-
-    def lpModes(self, delta=1e-6, epsilon=1e-12, cladding=False, nmax=None):
-        """Find all scalar (lp) modes of the fiber.
-
-        :param delta: minimal interval to look in.
-        :type delta: float
-        :param epsilon: precision for root finding.
-        :type epsilon: float
-        :param cladding: do we look for cladding modes too?
-        :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
-                (solved mode) object.
-                Return empty :class:`list` if no mode is found.
-
-        """
-        modes = []
-        nm = nmax
-        for nu in count():
-            lpModes = self.solveAll(Mode(Family.LP, nu, 1),
-                                    delta, epsilon, nmax=nm,
-                                    cladding=cladding)
-            if not lpModes:
-                break
-            modes += lpModes
-            if nmax:
-                nm = min(nmax, lpModes[-1].m)
-        modes.sort(reverse=True)
-        return modes
-
-    def _findNear(self, mode, nmin, neff, nmax, delta, epsilon):
-        fct = self._ceq(mode)
-        n1 = n2 = neff
-        f0 = fct(neff, mode)
-        if f0 == 0:
-            return SMode(self, mode, neff)
-
-        while 1:
-            if n2 + delta < nmax:
-                n2 += delta
-                f2 = fct(n2, mode)
-                if (f0 > 0 and f2 < 0) or (f0 < 0 and f2 > 0):
-                    try:
-                        return self.solve(mode, n2-delta-2*epsilon, n2+epsilon,
-                                          delta, epsilon)
-                    except:
-                        pass
-
-            if n1 - delta > nmin:
-                n1 -= delta
-                f1 = fct(n1, mode)
-                if (f0 > 0 and f1 < 0) or (f0 < 0 and f1 > 0):
-                    try:
-                        return self.solve(mode, n1-2*epsilon, n1+delta+epsilon,
-                                          delta, epsilon)
-                    except:
-                        pass
-
-            elif n2 + delta > nmax:
-                raise OverflowError("Did not found root in given interval.")
-
-    def vModes(self, lpModes=None, delta=1e-6, epsilon=1e-12, cladding=False,
-               nmax=None):
-        """Find all vector (hybrid) modes of the fiber.
-
-        :param lpModes: :class:`list` of :class:`~fibermodes.mode.SMode`.
-                        If set, we look around effective indices of the given
-                        LP modes to get an estimation of expected vector modes.
-        :param delta: minimal interval to look in.
-        :type delta: float
-        :param epsilon: precision for root finding.
-        :type epsilon: float
-        :param cladding: do we look for cladding modes too?
-        :rtype: :class:`list` of :class:`~fibermodes.mode.SMode`
-                (solved mode) object.
-                Return empty :class:`list` if no mode is found.
-
-        """
-        modes = []
-        if lpModes:
-            lpModes.sort(reverse=True)
-            smode = None
-            for mode in lpModes:
-                try:
-                    nmax = smode.neff if smode else max(self._n)
-                    nmin = min(self._n) if cladding else self._n[-1]
-                    smode = self._findNear(Mode(Family.HE,
-                                                mode.nu + 1, mode.m),
-                                           nmin, mode.neff, nmax,
-                                           delta, epsilon)
-                    modes.append(smode)
-                except OverflowError:
-                    # print(mode, nmin, mode.neff, nmax)
-                    pass
-                if mode.nu == 1:
-                    try:
-                        smode = self._findNear(Mode(Family.TE,
-                                                    0, mode.m),
-                                               nmin, mode.neff, nmax,
-                                               delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
-                    try:
-                        smode = self._findNear(Mode(Family.TM,
-                                                    0, mode.m),
-                                               nmin, mode.neff, nmax,
-                                               delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
-                elif mode.nu > 1:
-                    try:
-                        smode = self._findNear(Mode(Family.EH,
-                                                    mode.nu - 1, mode.m),
-                                               nmin, mode.neff, nmax,
-                                               delta, epsilon)
-                        modes.append(smode)
-                    except OverflowError:
-                        pass
-        else:
-            modes += self.solveAll(Mode(Family.TE, 0, 1),
-                                   delta, epsilon, cladding=cladding)
-            modes += self.solveAll(Mode(Family.TM, 0, 1),
-                                   delta, epsilon, cladding=cladding)
-            idxmax = None
-            nm = nmax
-            for nu in count(1):
-                heModes = self.solveAll(Mode(Family.HE, nu, 1),
-                                        delta, epsilon, cladding=cladding,
-                                        nmax=nmax, idxmax=idxmax)
-                if not heModes:
-                    break
-                modes += heModes
-                if nmax:
-                    nm = min(heModes[-1].m, nmax)
-                if nu > 2 and self._ehceq != self._heceq:
-                    ehModes = self.solveAll(Mode(Family.EH, nu-2, 1),
-                                            delta, epsilon, cladding=cladding,
-                                            nmax=nm, idxmax=idxmax)
-                    if ehModes:
-                        modes += ehModes
-                idxmax = heModes[0].neff
-        return sortModes(modes)
-
-    def _ceq(self, mode):
-        """Characteristic equation."""
-        M = {Family.LP: self._lpceq,
-             Family.TE: self._teceq,
-             Family.TM: self._tmceq,
-             Family.HE: self._heceq,
-             Family.EH: self._ehceq}
-        return M[mode.family]
-
-    def _fwl0(self):
-        """Copy of self with wl == 0"""
-        f0 = copy(self)
-        f0._wl = 0
-        return f0
-
-    def __eq__(self, fiber):
-        return (self._wl == fiber._wl and
-                numpy.all(self._r[:-1] == fiber._r[:-1]) and
-                numpy.all(self._n == fiber._n))
+    def __len__(self):
+        return len(self.layers)
 
     def __str__(self):
-        mats = []
-        for mat, mp in zip(self._mat, self._params):
-            mats.append("{}{}".format(mat.__name__, mp))
-        return "Fiber({}, {}, [{}])".format(self._wl,
-                                            self._r[:-1],
-                                            ", ".join(mats))
+        s = "Fiber {\n"
+        for i, layer in enumerate(self.layers):
+            geom = str(layer)
+            radius = self.outerRadius(i)
+            radius = '' if isinf(radius) else ' {:.3f} µm'.format(radius*1e6)
+            name = self.name(i)
+            name = ' "{}"'.format(name) if name else ''
+            s += "    {}{}{}\n".format(geom, radius, name)
+        s += "}"
+        return s
+
+    def fixedMatFiber(self, wl):
+        f = []
+        fp = []
+        m = []
+        mp = []
+        for layer in self.layers:
+            f.append(layer.__class__.__name__)
+            fp.append(layer._fp)
+            m.append("Fixed")
+            mp.append([layer._m.n(wl, *layer._mp)])
+        return Fiber(self._r, f, fp, m, mp, self._names,
+                     self._cutoff.__class__, self._neff.__class__)
+
+    def name(self, layer):
+        return self._names[layer]
+
+    def _layer(self, r):
+        r = abs(r)
+        for i, r_ in enumerate(self._r):
+            if r < r_:
+                return self.layers[i]
+        return self.layers[-1]
+
+    def innerRadius(self, layer):
+        if layer < 0:
+            layer = len(self._r) + layer + 1
+        return self._r[layer-1] if layer else 0
+
+    def outerRadius(self, layer):
+        return self._r[layer] if layer < len(self._r) else float("inf")
+
+    def thickness(self, layer):
+        return self.outerRadius(layer) - self.innerRadius(layer)
+
+    def index(self, r, wl):
+        return self._layer(r).index(r, wl)
+
+    def minIndex(self, layer, wl):
+        return self.layers[layer].minIndex(wl)
+
+    def maxIndex(self, layer, wl):
+        return self.layers[layer].maxIndex(wl)
+
+    def _findCutoffSolver(self):
+        cutoff = FiberSolver
+        if all(isinstance(layer, geometry.StepIndex)
+               for layer in self.layers):
+            nlayers = len(self)
+            if nlayers == 2:  # SSIF
+                cutoff = solver.ssif.Cutoff
+            elif nlayers == 3:
+                cutoff = solver.tlsif.Cutoff
+        return cutoff
+
+    def _findNeffSolver(self):
+        neff = FiberSolver
+        if all(isinstance(layer, geometry.StepIndex)
+               for layer in self.layers):
+            nlayers = len(self)
+            if nlayers == 2:  # SSIF
+                neff = solver.ssif.Neff
+            elif nlayers == 3:
+                neff = solver.mlsif.Neff
+            else:
+                neff = solver.mlsif.Neff
+        return neff
+
+    def setSolvers(self, Cutoff=None, Neff=None):
+        assert Cutoff is None or issubclass(Cutoff, FiberSolver)
+        assert Neff is None or issubclass(Neff, FiberSolver)
+        if Cutoff is None:
+            Cutoff = self._findCutoffSolver()
+        self._cutoff = Cutoff(self)
+        if Neff is None:
+            Neff = self._findNeffSolver()
+        self._neff = Neff(self)
+
+    def set_ne_cache(self, wl, mode, neff):
+        try:
+            self.ne_cache[wl][mode] = neff
+        except KeyError:
+            self.ne_cache[wl] = {mode: neff}
+
+    def NA(self, wl):
+        n1 = max(layer.maxIndex(wl) for layer in self.layers)
+        n2 = self.minIndex(-1, wl)
+        return sqrt(n1*n1 - n2*n2)
+
+    def V0(self, wl):
+        return Wavelength(wl).k0 * self.innerRadius(-1) * self.NA(wl)
+
+    def toWl(self, V0, maxiter=50, tol=1e-15):
+        """Convert V0 number to wavelength.
+
+        An iterative method is used, since the index can be wavelength
+        dependant.
+
+        """
+        if V0 == 0:
+            return float("inf")
+
+        b = self.innerRadius(-1)
+        wl = constants.tpi / V0 * b * self.NA(1.55e-6)
+
+        def f(x):
+            return constants.tpi / V0 * b * self.NA(x)
+
+        if abs(wl - f(wl)) > tol:
+            wl = fixed_point(f, wl)
+
+        return Wavelength(wl)
+
+    def cutoff(self, mode, delta=0.25):
+        try:
+            return self.co_cache[mode]
+        except KeyError:
+            co = self._cutoff(mode, delta)
+            self.co_cache[mode] = co
+            return co
+
+    def cutoffWl(self, mode, delta=0.25):
+        return self.toWl(self.cutoff(mode, delta))
+
+    def neff(self, mode, wl, delta=1e-6, lowbound=None):
+        try:
+            return self.ne_cache[wl][mode]
+        except KeyError:
+            neff = self._neff(wl, mode, delta, lowbound)
+            self.set_ne_cache(wl, mode, neff)
+            return neff
+
+    def beta(self, omega, mode, p=0, delta=1e-6, lowbound=None):
+        wl = Wavelength(omega=omega)
+        if p == 0:
+            neff = self.neff(mode, wl, delta, lowbound)
+            return neff * wl.k0
+
+        m = 5
+        j = (m - 1) // 2
+        h = 1e5
+        lb = lowbound
+        for i in range(m-1, -1, -1):
+            # Precompute neff using previous wavelength
+            o = omega + (i-j) * h
+            wl = Wavelength(omega=o)
+            lb = self.neff(mode, wl, delta, lb) + delta * 1.1
+
+        return derivative(
+            self.beta, omega, p, m, j, h, mode, 0, delta, lowbound)
+
+    def b(self, mode, wl, delta=1e-6, lowbound=None):
+        """Normalized propagation constant"""
+        neff = self.neff(mode, wl, delta, lowbound)
+        nmax = max(layer.maxIndex(wl) for layer in self.layers)
+        ncl = self.minIndex(-1, wl)
+        ncl2 = ncl*ncl
+        return (neff*neff - ncl2) / (nmax*nmax - ncl2)
+
+    def vp(self, mode, wl, delta=1e-6, lowbound=None):
+        return constants.c / self.neff(mode, wl, delta, lowbound)
+
+    def ng(self, mode, wl, delta=1e-6, lowbound=None):
+        return self.beta(Wavelength(wl).omega,
+                         mode, 1, delta, lowbound) * constants.c
+
+    def vg(self, mode, wl, delta=1e-6, lowbound=None):
+        return 1 / self.beta(
+            Wavelength(wl).omega, mode, 1, delta, lowbound)
+
+    def D(self, mode, wl, delta=1e-6, lowbound=None):
+        return -(self.beta(
+                    Wavelength(wl).omega, mode, 2, delta, lowbound) *
+                 constants.tpi * constants.c * 1e6 / (wl * wl))
+
+    def S(self, mode, wl, delta=1e-6, lowbound=None):
+        return (self.beta(
+                    Wavelength(wl).omega, mode, 3, delta, lowbound) *
+                (constants.tpi * constants.c / (wl * wl))**2 * 1e-3)
+
+    def findVmodes(self, wl, numax=None, mmax=None, delta=1e-6):
+        families = (ModeFamily.HE, ModeFamily.EH, ModeFamily.TE, ModeFamily.TM)
+        return self.findModes(families, wl, numax, mmax, delta)
+
+    def findLPmodes(self, wl, ellmax=None, mmax=None, delta=1e-6):
+        families = (ModeFamily.LP,)
+        return self.findModes(families, wl, ellmax, mmax, delta)
+
+    def findModes(self, families, wl, numax=None, mmax=None, delta=1e-6):
+        """Find all modes of given families, within given constraints
+
+
+
+        """
+        modes = set()
+        v0 = self.V0(wl)
+        for fam in families:
+            for nu in count(0):
+                try:
+                    _mmax = mmax[nu]
+                except IndexError:
+                    _mmax = mmax[-1]
+                except TypeError:
+                    _mmax = mmax
+
+                if (fam is ModeFamily.TE or fam is ModeFamily.TM) and nu > 0:
+                    break
+                if (fam is ModeFamily.HE or fam is ModeFamily.EH) and nu == 0:
+                    continue
+                if numax is not None and nu > numax:
+                    break
+                for m in count(1):
+                    if _mmax is not None and m > _mmax:
+                        break
+                    mode = Mode(fam, nu, m)
+                    try:
+                        co = self.cutoff(mode)
+                        if co > v0:
+                            break
+                    except (NotImplementedError, ValueError):
+                        neff = self.neff(mode, wl, delta)
+                        if isnan(neff):
+                            break
+                    modes.add(mode)
+                if m == 1:
+                    break
+        return modes
