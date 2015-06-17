@@ -9,6 +9,7 @@ from itertools import product, islice
 from .fiber import Fiber
 from fibermodes.slrc import SLRC
 from fibermodes.fiber import material as materialmod
+from fibermodes.fiber import geometry as geometrymod
 from fibermodes.fiber.solver.solver import FiberSolver
 from fibermodes.fiber.material.compmaterial import CompMaterial
 
@@ -40,6 +41,8 @@ class LayerProxy(object):
             super().__setattr__(name, value)
         elif name == "material":
             self._material(value)
+        elif name == "type":
+            self._type(value)
         elif name in self._layer:
             self._layer[name] = value
         else:
@@ -58,6 +61,14 @@ class LayerProxy(object):
         if value != self.material:
             self._layer["material"] = value
             self._layer["mparams"] = [0] * materialmod.__dict__[value].nparams
+
+    def _type(self, value):
+        self._layer["type"] = value
+        dp = geometrymod.__dict__[value].DEFAULT_PARAMS
+        tp = self._layer["tparams"]
+        for i in range(len(tp)-1, len(dp)):
+            tp.append(dp[i])
+        # print("_type", value, self._layer["tparams"])
 
     @property
     def radius(self):

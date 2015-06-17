@@ -1,7 +1,7 @@
 
 from PySide import QtGui, QtCore
 from fibermodes import FiberFactory
-from fibermodes.fiber import material
+from fibermodes.fiber import material, geometry
 from fibermodesgui import util, blockSignals
 from fibermodesgui.widgets import AppWindow
 from fibermodesgui.widgets import SLRCWidget
@@ -256,7 +256,7 @@ class FiberEditor(AppWindow):
 
     def _initGeomFrame(self):
         self.geomType = QtGui.QComboBox()
-        self.geomType.addItem("StepIndex")
+        self.geomType.addItems(geometry.__all__)
         self.geomType.setEnabled(False)
         self.geomType.setCurrentIndex(-1)
         self.geomType.currentIndexChanged.connect(self.selectGeomType)
@@ -373,8 +373,12 @@ class FiberEditor(AppWindow):
 
     def selectGeomType(self, index, change=True):
         util.clearLayout(self.geomLayout, 2)
+        layerIndex = self.layerList.currentRow()
+        self.factory.layers[layerIndex].type = self.geomType.currentText()
         if index == 0:
             self.setStepIndexGeom()
+        elif index == 1:
+            self.setSuperGaussianGeom()
         if change:
             self.setDirty(True)
 
@@ -393,6 +397,42 @@ class FiberEditor(AppWindow):
 
         self.geomLayout.addRow(QtGui.QLabel(self.tr("Radius:")),
                                self.radiusInput)
+
+    def setSuperGaussianGeom(self):
+        layerIndex = self.layerList.currentRow()
+        layer = self.factory.layers[layerIndex]
+        self.setStepIndexGeom()
+
+        self.muInput = SLRCWidget()
+        self.muInput.setSuffix(" µm")
+        self.muInput.setScaleFactor(1e6)
+        self.muInput.setRange(-100, 100)
+        self.muInput.codeParams = ['r', 'fp', 'mp']
+        self.muInput.setValue(layer.tparams[1])
+        self.muInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 1, v))
+
+        self.cInput = SLRCWidget()
+        self.cInput.setRange(0.001, 100)
+        self.cInput.codeParams = ['r', 'fp', 'mp']
+        self.cInput.setScaleFactor(1e6)
+        self.cInput.setValue(layer.tparams[2])
+        self.cInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 2, v))
+
+        self.mInput = SLRCWidget()
+        self.mInput.setRange(1, 100)
+        self.mInput.codeParams = ['r', 'fp', 'mp']
+        self.mInput.setValue(layer.tparams[3])
+        self.mInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 3, v))
+
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("Center (mu):")),
+                               self.muInput)
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("Width (c):")),
+                               self.cInput)
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("m parameter:")),
+                               self.mInput)
 
     def updateRadius(self, value):
         self._updateParam("tparams", 0, value)

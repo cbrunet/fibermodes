@@ -1,7 +1,7 @@
 
 from fibermodes.fiber.geometry.geometry import Geometry
 from fibermodes import constants
-from math import sqrt
+from math import sqrt, exp
 import numpy
 from scipy.special import jn, yn, iv, kn
 from scipy.special import j0, y0, i0, k0
@@ -9,21 +9,48 @@ from scipy.special import j1, y1, i1, k1
 from scipy.special import jvp, yvp, ivp, kvp
 
 
-class StepIndex(Geometry):
+class SuperGaussian(Geometry):
 
-    DEFAULT_PARAMS = []
+    DEFAULT_PARAMS = [0, 1e-6, 1]
+
+    def __init__(self, ri, ro, *fp, **kwargs):
+        super().__init__(ri, ro, *fp, **kwargs)
+        mu, self.c, self.m = fp
+        if ri == 0:
+            self.mu = mu
+        else:
+            self.mu = (self.ro - self.ri) / 2 + self.ri + mu
 
     def index(self, r, wl):
         if self.ri <= abs(r) <= self.ro:
-            return self._m.n(wl, *self._mp)
-        else:
-            return None
+
+            n = self._m.n(wl, *self._mp)
+            cn = self._cm.n(wl, *self._cmp)
+
+            if r > 0 or self.ri == 0:
+                a = exp(-0.5 * ((r - self.mu) / self.c)**(2*self.m))
+            else:
+                a = exp(-0.5 * ((r + self.mu) / self.c)**(2*self.m))
+
+            if a > 1:
+                print(r, self.mu, self.c, self.m)
+
+            return cn + a * (n - cn)
+
+        return None
 
     def minIndex(self, wl):
-        return self._m.n(wl, *self._mp)
+        di = abs(self.mu - self.ri)
+        do = abs(self.mu - self.ro)
+        return self.index(self.ri if (di > do) else self.ro, wl)
 
     def maxIndex(self, wl):
-        return self._m.n(wl, *self._mp)
+        if self.ri <= self.mu <= self.ro:
+            return self.index(self.mu, wl)
+
+        di = abs(self.mu - self.ri)
+        do = abs(self.mu - self.ro)
+        return self.index(self.ri if (di < do) else self.ro, wl)
 
     def u(self, r, neff, wl):
         return wl.k0 * r * sqrt(abs(self.maxIndex(wl)**2 - neff**2))

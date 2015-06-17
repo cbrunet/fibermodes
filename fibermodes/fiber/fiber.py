@@ -29,8 +29,11 @@ class Fiber(object):
         self._names = names
 
         self.layers = []
-        for f_, fp_, m_, mp_ in zip(f, fp, m, mp):
-            layer = geometry.__dict__[f_](*fp_, m=m_, mp=mp_)
+        for i, (f_, fp_, m_, mp_) in enumerate(zip(f, fp, m, mp)):
+            ri = self._r[i-1] if i else 0
+            ro = self._r[i] if i < len(r) else float("inf")
+            layer = geometry.__dict__[f_](ri, ro, *fp_,
+                                          m=m_, mp=mp_, cm=m[-1], cmp=mp[-1])
             self.layers.append(layer)
 
         self.co_cache = {Mode("HE", 1, 1): 0,
