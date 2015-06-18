@@ -3,10 +3,10 @@ from fibermodes.fiber.geometry.geometry import Geometry
 from fibermodes import constants
 from math import sqrt, exp
 import numpy
-from scipy.special import jn, yn, iv, kn
-from scipy.special import j0, y0, i0, k0
-from scipy.special import j1, y1, i1, k1
-from scipy.special import jvp, yvp, ivp, kvp
+from scipy.special import jn, iv
+from scipy.special import jvp, ivp
+
+from scipy.integrate import ode
 
 
 class SuperGaussian(Geometry):
@@ -39,6 +39,18 @@ class SuperGaussian(Geometry):
 
         return None
 
+    def indexp(self, r, wl):
+        """First derivative of index."""
+        n = self._m.n(wl, *self._mp)
+        cn = self._cm.n(wl, *self._cmp)
+
+        if r > 0 or self.ri == 0:
+            return ((cn - n) * self.m * n *
+                    ((r - self.mu) / self.c)**(2*self.m - 1) / self.c)
+        else:
+            return ((cn - n) * self.m * n *
+                    ((r + self.mu) / self.c)**(2*self.m) / (self.mu + r))
+
     def minIndex(self, wl):
         di = abs(self.mu - self.ri)
         do = abs(self.mu - self.ro)
@@ -53,131 +65,105 @@ class SuperGaussian(Geometry):
         return self.index(self.ri if (di < do) else self.ro, wl)
 
     def u(self, r, neff, wl):
-        return wl.k0 * r * sqrt(abs(self.maxIndex(wl)**2 - neff**2))
+        return wl.k0 * r * sqrt(abs(self.index(r, wl)**2 - neff**2))
 
-    def Psi(self, r, neff, wl, nu, C):
-        u = self.u(r, neff, wl)
-        if neff < self.maxIndex(wl):
-            psi = C[0] * jn(nu, u) + C[1] * yn(nu, u)
-            psip = u * (C[0] * jvp(nu, u) + C[1] * yvp(nu, u))
-        else:
-            psi = C[0] * iv(nu, u) + C[1] * kn(nu, u)
-            psip = u * (C[0] * ivp(nu, u) + C[1] * kvp(nu, u))
-        return psi, psip
-
-    def lpConstants(self, r, neff, wl, nu, A):
-        u = self.u(r, neff, wl)
-        if neff < self.maxIndex(wl):
-            W = constants.pi / 2
-            return (W * (u * yvp(nu, u) * A[0] - yn(nu, u) * A[1]),
-                    W * (jn(nu, u) * A[1] - u * jvp(nu, u) * A[0]))
-        else:
-            return ((kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
-                    (iv(nu, u) * A[1] - ivp(nu, u) * A[0]))
-
-    def EH_fields(self, ri, ro, nu, neff, wl, EHi):
+    def EH_fields(self, ri, ro, nu, neff, wl, EH):
+        dr = 1e-10
         if ri == 0:
-            self.C = numpy.zeros((4, 2))
-            self.C[0, 0] = 1  # Ez = 1
-            self.C[2, 1] = 1  # Hz = alpha
+            # set initial condition
+            ri = dr
+            n = self.index(ri, wl)
+            u = self.u(ri, neff, wl)
+            if neff < n:
+                ez = jn(nu, u)
+                ezp = jvp(nu, u) * u / ri
+            else:
+                ez = iv(nu, u)
+                ezp = ivp(nu, u) * u / ri
+            hz = 0
+            hzp = 0
+            eza = 0
+            ezap = 0
+            hza = ez
+            hzap = ezp
         else:
-            self.C = self.vConstants(ri, ro, neff, wl, nu, EHi)
+            ez, eza = EH[0]
+            hz, hza = EH[1]
+            # find derivatives...
 
-        return self.ehrfields(ro, neff, wl, nu, self.C)
+        nu2 = nu * nu
+        beta = wl.k0 * neff
+        beta2 = beta * beta
 
-    def ehrfields(self, r, neff, wl, nu, C):
-        n = self.maxIndex(wl)
-        u = self.u(r, neff, wl)
-        EH = numpy.empty(C.shape)
+        def f(r, y):
+            """
+            Bures (3.139)
 
-        if neff < n:
-            c1 = wl.k0 * r / u
-            F3 = jvp(nu, u) / jn(nu, u)
-            F4 = yvp(nu, u) / yn(nu, u)
-        else:
-            c1 = -wl.k0 * r / u
-            F3 = ivp(nu, u) / iv(nu, u)
-            F4 = kvp(nu, u) / kn(nu, u)
+            """
+            r2 = r * r
+            p = (wl.k0 * self.index(r, wl))**2 - beta2
 
-        c2 = neff * nu / u * c1
-        c3 = constants.eta0 * c1
-        c4 = constants.Y0 * n * n * c1
+            np = self.indexp(r, wl)
+            n = self.index(r, wl)
 
-        EH[0] = C[0] + C[1]
-        EH[1] = C[2] + C[3]
-        EH[2] = (c2 * (C[0] + C[1]) - c3 * (F3 * C[2] + F4 * C[3]))
-        EH[3] = (c4 * (F3 * C[0] + F4 * C[1]) - c2 * (C[2] + C[3]))
+            yp = numpy.empty(4)
+            yp[0] = y[2]
+            yp[1] = y[3]
+            yp[2] = (y[0] * (nu2 / r2 - p) +
+                     y[2] * (2 * beta2 / p * np / n - 1 / r) -
+                     y[1] * constants.eta0 * (2 * nu * beta * wl.k0 * np /
+                                              (r * p * n)))
+            yp[3] = (y[1] * (nu2 / r2 - p) +
+                     y[3] * (2 * wl.k0**2 * n * np / p - 1 / r) -
+                     y[0] * constants.Y0 * (2 * nu * beta * wl.k0 * n * np /
+                                            (r * p)))
+            return yp
+
+        def jac(r, y):
+            r2 = r * r
+            p = (wl.k0 * self.index(r, wl))**2 - beta2
+
+            np = self.indexp(r, wl)
+            n = self.index(r, wl)
+
+            m = numpy.empty((4, 4))
+            m[0, :] = (0, 0, 1, 0)
+            m[1, :] = (0, 0, 0, 1)
+            m[2, :] = ((nu2 / r2 - p),
+                       -(constants.eta0 * (2 * nu * beta * wl.k0 * np /
+                                           (r * p * n))),
+                       (2 * wl.k0**2 * n * np / p - 1 / r),
+                       0)
+            m[3, :] = (-constants.Y0 * (2 * nu * beta * wl.k0 * n * np /
+                                        (r * p)),
+                       0,
+                       (nu2 / r2 - p),
+                       (2 * wl.k0**2 * n * np / p - 1 / r))
+            return m
+
+        s = ode(f, jac)
+        s.set_initial_value([ez, hz, ezp, hzp], ri)
+        # while s.successful() and s.t < ro:
+        #     s.integrate(s.t+dr)
+        ez, hz, ezp, hzp = s.integrate(ro)
+
+        s.set_initial_value([eza, hza, ezap, hzap], ri)
+        # while s.successful() and s.t < ro:
+        #     s.integrate(s.t+dr)
+        eza, hza, ezap, hzap = s.integrate(ro)
+
+        EH[0] = ez, eza
+        EH[1] = hz, hza
+
+        # calc ephi and hphi
+        u = self.u(ro, neff, wl)
+        n = self.index(ro, wl)
+        beta = wl.k0 * neff
+        c = 1 / (wl.k0**2 * (n*n - neff*neff))
+
+        EH[2] = c * (beta * EH[0] * nu / ro -
+                     constants.eta0 * wl.k0 * numpy.array([hzp, hzap]))
+        EH[3] = c * (-beta * EH[1] * nu / ro +
+                     constants.Y0 * wl.k0 * n * n * numpy.array([ezp, ezap]))
 
         return EH
-
-    def vConstants(self, ri, ro, neff, wl, nu, EH):
-        a = numpy.zeros((4, 4))
-        n = self.maxIndex(wl)
-        u = self.u(ro, neff, wl)
-        urp = self.u(ri, neff, wl)
-
-        if neff < n:
-            B1 = jn(nu, u)
-            B2 = yn(nu, u)
-            F1 = jn(nu, urp) / B1
-            F2 = yn(nu, urp) / B2
-            F3 = jvp(nu, urp) / B1
-            F4 = yvp(nu, urp) / B2
-            c1 = wl.k0 * ro / u
-        else:
-            B1 = iv(nu, u)
-            B2 = kn(nu, u)
-            F1 = iv(nu, urp) / B1
-            F2 = kn(nu, urp) / B2
-            F3 = ivp(nu, urp) / B1
-            F4 = kvp(nu, urp) / B2
-            c1 = -wl.k0 * ro / u
-        c2 = neff * nu / urp * c1
-        c3 = constants.eta0 * c1
-        c4 = constants.Y0 * n * n * c1
-
-        a[0, 0] = F1
-        a[0, 1] = F2
-        a[1, 2] = F1
-        a[1, 3] = F2
-        a[2, 0] = F1 * c2
-        a[2, 1] = F2 * c2
-        a[2, 2] = -F3 * c3
-        a[2, 3] = -F4 * c3
-        a[3, 0] = F3 * c4
-        a[3, 1] = F4 * c4
-        a[3, 2] = -F1 * c2
-        a[3, 3] = -F2 * c2
-
-        return numpy.linalg.solve(a, EH)
-
-    def tetmConstants(self, ri, ro, neff, wl, EH, c, idx):
-        a = numpy.empty((2, 2))
-        n = self.maxIndex(wl)
-        u = self.u(ro, neff, wl)
-        urp = self.u(ri, neff, wl)
-
-        if neff < n:
-            B1 = j0(u)
-            B2 = y0(u)
-            F1 = j0(urp) / B1
-            F2 = y0(urp) / B2
-            F3 = -j1(urp) / B1
-            F4 = -y1(urp) / B2
-            c1 = wl.k0 * ro / u
-        else:
-            B1 = i0(u)
-            B2 = k0(u)
-            F1 = i0(urp) / B1
-            F2 = k0(urp) / B2
-            F3 = i1(urp) / B1
-            F4 = -k1(urp) / B2
-            c1 = -wl.k0 * ro / u
-        c3 = c * c1
-
-        a[0, 0] = F1
-        a[0, 1] = F2
-        a[1, 0] = F3 * c3
-        a[1, 1] = F4 * c3
-
-        return numpy.linalg.solve(a, EH.take(idx))

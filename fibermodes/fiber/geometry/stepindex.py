@@ -26,7 +26,7 @@ class StepIndex(Geometry):
         return self._m.n(wl, *self._mp)
 
     def u(self, r, neff, wl):
-        return wl.k0 * r * sqrt(abs(self.maxIndex(wl)**2 - neff**2))
+        return wl.k0 * r * sqrt(abs(self.index(r, wl)**2 - neff**2))
 
     def Psi(self, r, neff, wl, nu, C):
         u = self.u(r, neff, wl)

@@ -112,16 +112,12 @@ class Fiber(object):
         return cutoff
 
     def _findNeffSolver(self):
-        neff = FiberSolver
+        neff = solver.mlsif.Neff
         if all(isinstance(layer, geometry.StepIndex)
                for layer in self.layers):
             nlayers = len(self)
             if nlayers == 2:  # SSIF
                 neff = solver.ssif.Neff
-            elif nlayers == 3:
-                neff = solver.mlsif.Neff
-            else:
-                neff = solver.mlsif.Neff
         return neff
 
     def setSolvers(self, Cutoff=None, Neff=None):
