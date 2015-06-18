@@ -58,9 +58,12 @@ class Cutoff(FiberSolver):
 
     def __delta(self, nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq):
         if s1 < 0:
-            f = ivp(nu, u1r1) / iv(nu, u1r1) / u1r1  # c
+            f = ivp(nu, u1r1) / (iv(nu, u1r1) * u1r1)  # c
         else:
-            f = jvp(nu, u1r1) / jn(nu, u1r1) / u1r1  # a b d
+            jnnuu1r1 = jn(nu, u1r1)
+            if jnnuu1r1 == 0:  # Avoid zero division error
+                return float("inf")
+            f = jvp(nu, u1r1) / (jnnuu1r1 * u1r1)  # a b d
 
         if s1 == s2:
             # b d

@@ -86,72 +86,55 @@ class Neff(FiberSolver):
 
     def _teceq(self, neff, wl, nu):
         N = len(self.fiber)
-        C = numpy.zeros((N-1, 4))
-        C[0, :] = [0., 0., 1., 0.]
+        EH = numpy.empty(4)
+        ri = 0
 
-        for i in range(1, N-1):
-            r = self.fiber.innerRadius(i)
+        for i in range(N-1):
             ro = self.fiber.outerRadius(i)
-            EH = self.fiber.layers[i-1].ehrfields(
-                r, neff, wl, nu, C[i-1, :])
-            C[i, 2:] = self.fiber.layers[i].tetmConstants(
-                r, ro, neff, wl, EH, -constants.eta0, (1, 2))
+            self.fiber.layers[i].EH_fields(ri, ro, nu, neff, wl, EH, False)
+            ri = ro
 
         # Last layer
-        r = self.fiber.innerRadius(-1)
-        _, Hz, Ep, _ = self.fiber.layers[N-2].ehrfields(
-                r, neff, wl, nu, C[N-2, :])
-        u = self.fiber.layers[-1].u(r, neff, wl)
+        _, Hz, Ep, _ = EH
+        u = self.fiber.layers[-1].u(ri, neff, wl)
 
         F4 = k1(u) / k0(u)
-        return Ep + wl.k0 * r / u * constants.eta0 * Hz * F4
+        return Ep + wl.k0 * ri / u * constants.eta0 * Hz * F4
 
     def _tmceq(self, neff, wl, nu):
         N = len(self.fiber)
-        C = numpy.zeros((N-1, 4))
-        C[0, :] = [1., 0., 0., 0.]
+        EH = numpy.empty(4)
+        ri = 0
 
-        for i in range(1, N-1):
-            r = self.fiber.innerRadius(i)
+        for i in range(N-1):
             ro = self.fiber.outerRadius(i)
-            EH = self.fiber.layers[i-1].ehrfields(
-                r, neff, wl, nu, C[i-1, :])
-            n = self.fiber.maxIndex(i, wl)
-            C[i, :2] = self.fiber.layers[i].tetmConstants(
-                r, ro, neff, wl, EH, constants.Y0 * n * n, (0, 3))
+            self.fiber.layers[i].EH_fields(ri, ro, nu, neff, wl, EH, True)
+            ri = ro
 
         # Last layer
-        r = self.fiber.innerRadius(-1)
-        Ez, _, _, Hp = self.fiber.layers[N-2].ehrfields(
-                r, neff, wl, nu, C[N-2, :])
-        u = self.fiber.layers[-1].u(r, neff, wl)
+        Ez, _, _, Hp = EH
+        u = self.fiber.layers[-1].u(ri, neff, wl)
         n = self.fiber.maxIndex(-1, wl)
 
         F4 = k1(u) / k0(u)
-        return Hp - wl.k0 * r / u * constants.Y0 * n * n * Ez * F4
+        return Hp - wl.k0 * ri / u * constants.Y0 * n * n * Ez * F4
 
     def _heceq(self, neff, wl, nu):
         N = len(self.fiber)
-        C = numpy.zeros((N-1, 4, 2))
-        C[0, 0, 0] = 1  # A
-        C[0, 2, 1] = 1  # A'
+        EH = numpy.empty((4, 2))
+        ri = 0
 
-        for i in range(1, N-1):
-            r = self.fiber.innerRadius(i)
+        for i in range(N-1):
             ro = self.fiber.outerRadius(i)
-            EH = self.fiber.layers[i-1].ehrfields(
-                r, neff, wl, nu, C[i-1, :, :])
-            C[i, :, :] = self.fiber.layers[i].vConstants(
-                r, ro, neff, wl, nu, EH)
+            self.fiber.layers[i].EH_fields(ri, ro, nu, neff, wl, EH)
+            ri = ro
 
         # Last layer
-        r = self.fiber.innerRadius(-1)
-        EH = self.fiber.layers[N-2].ehrfields(r, neff, wl, nu, C[N-2, :, :])
-        u = self.fiber.layers[N-1].u(r, neff, wl)
+        u = self.fiber.layers[N-1].u(ri, neff, wl)
         n = self.fiber.maxIndex(-1, wl)
 
         F4 = kvp(nu, u) / kn(nu, u)
-        c1 = -wl.k0 * r / u
+        c1 = -wl.k0 * ri / u
         c2 = neff * nu / u * c1
         c3 = constants.eta0 * c1
         c4 = constants.Y0 * n * n * c1

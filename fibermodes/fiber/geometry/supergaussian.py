@@ -75,6 +75,16 @@ class SuperGaussian(Geometry):
             return ((kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
                     (iv(nu, u) * A[1] - ivp(nu, u) * A[0]))
 
+    def EH_fields(self, ri, ro, nu, neff, wl, EHi):
+        if ri == 0:
+            self.C = numpy.zeros((4, 2))
+            self.C[0, 0] = 1  # Ez = 1
+            self.C[2, 1] = 1  # Hz = alpha
+        else:
+            self.C = self.vConstants(ri, ro, neff, wl, nu, EHi)
+
+        return self.ehrfields(ro, neff, wl, nu, self.C)
+
     def ehrfields(self, r, neff, wl, nu, C):
         n = self.maxIndex(wl)
         u = self.u(r, neff, wl)
