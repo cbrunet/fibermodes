@@ -11,10 +11,33 @@ class AppWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.iconPath = os.path.realpath(os.path.dirname(__file__) +
+                                         '/../icons')
+        themePaths = QtGui.QIcon.themeSearchPaths()
+        themePaths.append(self.iconPath)
+        QtGui.QIcon.setThemeSearchPaths(themePaths)
+        if not QtGui.QIcon.themeName():
+            QtGui.QIcon.setThemeName("tango")
+
         self.statusBar()
 
         self.setDocumentName("")
         self._dir = os.getcwd()
+
+    def getIcon(self, iconName):
+        icon = QtGui.QIcon.fromTheme(iconName)
+        if icon.isNull():
+            for subfolder in ("actions", "emblems"):
+                for folder in ("16x16", "22x22", "32x32"):
+                    filePath = "{}/tango/{}/{}/{}.png".format(
+                        self.iconPath, folder, subfolder, iconName)
+                if os.path.isfile(filePath):
+                    icon.addFile(filePath)
+            filePath = "{}/tango/scalable/{}/{}.svg".format(
+                    self.iconPath, subfolder, iconName)
+            if os.path.isfile(filePath):
+                icon.addFile(filePath)
+        return icon
 
     def initActions(self, actions):
         self.actions = {}
@@ -22,7 +45,8 @@ class AppWindow(QtGui.QMainWindow):
             if icon is None:
                 self.actions[key] = QtGui.QAction(name, self)
             else:
-                self.actions[key] = QtGui.QAction(icon, name, self)
+                self.actions[key] = QtGui.QAction(
+                    self.getIcon(icon), name, self)
             if keys:
                 self.actions[key].setShortcuts(keys)
             self.actions[key].triggered.connect(action)

@@ -24,49 +24,49 @@ class FiberEditor(AppWindow):
         actions = {
             'new': (
                 self.tr("&New"),
-                QtGui.QIcon.fromTheme('document-new'),
+                'document-new',
                 QtGui.QKeySequence.New,
                 self.actionNew
             ),
             'open': (
                 self.tr("&Open"),
-                QtGui.QIcon.fromTheme('document-open'),
+                'document-open',
                 QtGui.QKeySequence.Open,
                 self.actionOpen
             ),
             'save': (
                 self.tr("&Save"),
-                QtGui.QIcon.fromTheme('document-save'),
+                'document-save',
                 QtGui.QKeySequence.Save,
                 self.save
             ),
             'saveas': (
                 self.tr("Save &As..."),
-                QtGui.QIcon.fromTheme('document-save'),
+                'document-save-as',
                 QtGui.QKeySequence.SaveAs,
                 self.actionSaveAs
             ),
             'quit': (
                 self.tr("&Quit"),
-                QtGui.QIcon.fromTheme('application-exit'),
+                None,  # 'application-exit',
                 QtGui.QKeySequence.Quit,
                 self.close
             ),
             'info': (
                 self.tr("&Fiber properties"),
-                QtGui.QIcon.fromTheme('document-properties'),
+                'document-properties',
                 [QtGui.QKeySequence("Ctrl+I")],
                 self.actionInfo
             ),
             'add': (
                 self.tr("&Add layer"),
-                QtGui.QIcon.fromTheme('list-add'),
+                'list-add',
                 [QtGui.QKeySequence("Ctrl+Shift++")],
                 self.actionAddLayer
             ),
             'remove': (
                 self.tr("&Remove layer"),
-                QtGui.QIcon.fromTheme('list-remove'),
+                'list-remove',
                 [QtGui.QKeySequence("Ctrl+-")],
                 self.actionRemoveLayer
             ),
@@ -273,8 +273,7 @@ class FiberEditor(AppWindow):
         self.matType.setEnabled(False)
         self.matType.setCurrentIndex(-1)
         self.matType.currentIndexChanged.connect(self.selectMatType)
-        self.matPropBut = QtGui.QPushButton(
-                            QtGui.QIcon.fromTheme('help-about'), "")
+        self.matPropBut = QtGui.QPushButton(self.getIcon('info'), "")
         self.matPropBut.clicked.connect(self.aboutFiberMaterial)
         self.matPropBut.setEnabled(False)
         layout = QtGui.QHBoxLayout()
