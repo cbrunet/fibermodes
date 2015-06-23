@@ -32,8 +32,7 @@ class SuperGaussian(Geometry):
             else:
                 a = exp(-0.5 * ((r + self.mu) / self.c)**(2*self.m))
 
-            if a > 1:
-                print(r, self.mu, self.c, self.m)
+            assert a <= 1
 
             return cn + a * (n - cn)
 
@@ -67,7 +66,7 @@ class SuperGaussian(Geometry):
     def u(self, r, neff, wl):
         return wl.k0 * r * sqrt(abs(self.index(r, wl)**2 - neff**2))
 
-    def EH_fields(self, ri, ro, nu, neff, wl, EH):
+    def EH_fields(self, ri, ro, nu, neff, wl, EH, tm=False):
         dr = 1e-10
         if ri == 0:
             # set initial condition
@@ -86,6 +85,8 @@ class SuperGaussian(Geometry):
             ezap = 0
             hza = ez
             hzap = ezp
+        elif nu == 0:
+            ez, hz = EH
         else:
             ez, eza = EH[0]
             hz, hza = EH[1]
@@ -100,6 +101,7 @@ class SuperGaussian(Geometry):
             Bures (3.139)
 
             """
+            assert r != 0
             r2 = r * r
             p = (wl.k0 * self.index(r, wl))**2 - beta2
 
@@ -141,19 +143,27 @@ class SuperGaussian(Geometry):
                        (2 * wl.k0**2 * n * np / p - 1 / r))
             return m
 
-        s = ode(f, jac)
-        s.set_initial_value([ez, hz, ezp, hzp], ri)
-        # while s.successful() and s.t < ro:
-        #     s.integrate(s.t+dr)
-        ez, hz, ezp, hzp = s.integrate(ro)
+        s = ode(f, jac).set_integrator("dopri5")
 
-        s.set_initial_value([eza, hza, ezap, hzap], ri)
-        # while s.successful() and s.t < ro:
-        #     s.integrate(s.t+dr)
-        eza, hza, ezap, hzap = s.integrate(ro)
+        if nu == 0:
+            s.set_initial_value([ez, hz, ezp, hzp], ri)
+            ez, hz, ezp, hzp = s.integrate(ro)
 
-        EH[0] = ez, eza
-        EH[1] = hz, hza
+            EH = ez, hz
+            Ezp = numpy.array([ezp])
+            Hzp = numpy.array([hzp])
+        else:
+            s.set_initial_value([ez, hz, ezp, hzp], ri)
+            ez, hz, ezp, hzp = s.integrate(ro)
+
+            s.set_initial_value([eza, hza, ezap, hzap], ri)
+            eza, hza, ezap, hzap = s.integrate(ro)
+
+            EH[0] = ez, eza
+            EH[1] = hz, hza
+
+            Ezp = numpy.array([ezp, ezap])
+            Hzp = numpy.array([hzp, hzap])
 
         # calc ephi and hphi
         u = self.u(ro, neff, wl)
@@ -162,8 +172,8 @@ class SuperGaussian(Geometry):
         c = 1 / (wl.k0**2 * (n*n - neff*neff))
 
         EH[2] = c * (beta * EH[0] * nu / ro -
-                     constants.eta0 * wl.k0 * numpy.array([hzp, hzap]))
+                     constants.eta0 * wl.k0 * Hzp)
         EH[3] = c * (-beta * EH[1] * nu / ro +
-                     constants.Y0 * wl.k0 * n * n * numpy.array([ezp, ezap]))
+                     constants.Y0 * wl.k0 * n * n * Ezp)
 
         return EH

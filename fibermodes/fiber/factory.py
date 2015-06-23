@@ -154,29 +154,32 @@ class FiberFactory(object):
         return LayersProxy(self)
 
     def addLayer(self, pos=None, name="", radius=0,
-                 material="Fixed", **kwargs):
+                 material="Fixed", geometry="StepIndex",
+                 **kwargs):
         if pos is None:
             pos = len(self._fibers["layers"])
         layer = {
             "name": name,
-            "type": "StepIndex",
-            "tparams": [radius],
+            "type": geometry,
+            "tparams": [radius] + kwargs.pop("tparams", []),
             "material": material,
-            "mparams": [],
+            "mparams": kwargs.pop("mparams", []),
         }
         if material == "Fixed":
-            index = kwargs.get("index", 1.444)
-            layer["mparams"].append(index)
+            index = kwargs.pop("index", 1.444)
+            layer["mparams"] = [index]
         else:
             Mat = materialmod.__dict__[material]
             if issubclass(Mat, CompMaterial):
                 if "x" in kwargs:
-                    layer["mparams"].append(kwargs["x"])
+                    x = kwargs.pop("x")
                 elif "index" in kwargs and "wl" in kwargs:
-                    x = Mat.xFromN(kwargs["wl"], kwargs["index"])
-                    layer["mparams"].append(x)
+                    x = Mat.xFromN(kwargs.pop("wl"), kwargs.pop("index"))
                 else:
-                    layer["mparams"].append(0)
+                    x = 0
+                layer["mparams"] = x
+        assert len(kwargs) == 0, "unknown arguments {}".format(
+            ", ".join(kwargs.keys()))
         self._fibers["layers"].insert(pos, layer)
 
     def removeLayer(self, pos=-1):
