@@ -11,6 +11,19 @@ class ModeTableView(QtGui.QTableView):
         self.setSortingEnabled(True)
 
 
+PARAMS = {
+    "cutoff (wavelength": (1e9, "nm"),
+    "vp": (1e-6, "m / s"),
+    "vg": (1e-6, "m / us"),
+    "D": (1, "ps / (nm km)"),
+    "S": (1, "ps / (nm² km)"),
+    "beta0": (1e-9, "1 / nm"),
+    "beta1": (1e3, "ps / nm"),
+    "beta2": (1e15, "ps² / nm"),
+    "beta3": (1e27, "ps³ / nm"),
+}
+
+
 class ModeTableModel(QtCore.QAbstractTableModel):
 
     def __init__(self, doc, parent=None):
@@ -38,6 +51,8 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         except KeyError:
             v = None
 
+        p = self._doc.params[index.column()]
+        m, u = PARAMS.get(p, (1, ""))
         if role == QtCore.Qt.DisplayRole:
             if v is None:
                 return '...'
@@ -46,21 +61,16 @@ class ModeTableModel(QtCore.QAbstractTableModel):
             elif isinf(v):
                 return 'oo'
             else:
-                if self._doc.params[index.column()] == 'cutoff':
-                    return "{:.5f} nm".format(v * 1e9)
-                elif self._doc.params[index.column()] == 'D':
-                    return "{:.5f} ps / (nm km)".format(v * 1e9)
-                else:
-                    return "{:.5f}".format(v)
+                if u:
+                    u = " "+u
+                return "{:.5f}{}".format(v*m, u)
         elif role == QtCore.Qt.ToolTipRole:
             if v is None:
                 return None
             elif isinf(v):
                 return 'infinity'
-            elif self._doc.params[index.column()] == 'cutoff':
-                return v * 1e9
             else:
-                return v
+                return v*m
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
         self.dataChanged.emit(index, index)

@@ -22,7 +22,11 @@ def msToStr(ms, displayms=True):
 
 class ModeSolver(AppWindow):
 
-    PARAMETERS = ("cutoff", "neff", "ng", "D", "S")
+    PARAMETERS = (("cutoff (V)", "cutoff (wavelength)"),
+                  ("neff", "b", "vp", "beta0"),
+                  ("ng", "vg", "beta1"),
+                  ("D", "beta2"),
+                  ("S", "beta3"))
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -247,11 +251,15 @@ class ModeSolver(AppWindow):
         simParamLayout.addLayout(simParamFormLayout)
 
         self.simParamBoxes = {}
-        for param in self.PARAMETERS:
-            box = QtGui.QCheckBox(self.tr("Find {}").format(param))
-            box.toggled.connect(self.updateParams)
-            simParamLayout.addWidget(box)
-            self.simParamBoxes[param] = box
+        for row in self.PARAMETERS:
+            hlayout = QtGui.QHBoxLayout()
+            for param in row:
+                box = QtGui.QCheckBox(param)
+                box.toggled.connect(self.updateParams)
+                hlayout.addWidget(box)
+                self.simParamBoxes[param] = box
+            hlayout.addStretch(1)
+            simParamLayout.addLayout(hlayout)
 
         simParamsGroup = QtGui.QGroupBox(self.tr("Simulation Parameters"))
         simParamsGroup.setLayout(simParamLayout)
@@ -376,9 +384,10 @@ class ModeSolver(AppWindow):
 
     def updateParams(self, checked):
         params = []
-        for p in self.PARAMETERS:
-            if self.simParamBoxes[p].isChecked():
-                params.append(p)
+        for row in self.PARAMETERS:
+            for p in row:
+                if self.simParamBoxes[p].isChecked():
+                    params.append(p)
         self.doc.params = params
 
     def initProgressBar(self):

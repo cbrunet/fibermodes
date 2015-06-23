@@ -27,6 +27,21 @@ class SolverDocument(QtCore.QThread):
         self.running = False
         self.ready = False
 
+        self.PARAMFCT = {
+            "cutoff (V)": self.simulator.cutoff,
+            "cutoff (wavelength)": self.simulator.cutoffWl,
+            "neff": self.simulator.neff,
+            "b": self.simulator.b,
+            "vp": self.simulator.vp,
+            "beta0": self.simulator.beta0,
+            "ng": self.simulator.ng,
+            "vg": self.simulator.vg,
+            "beta1": self.simulator.beta1,
+            "D": self.simulator.D,
+            "beta2": self.simulator.beta2,
+            "S": self.simulator.S,
+            "beta3": self.simulator.beta3}
+
     @property
     def initialized(self):
         return self.simulator.initialized
@@ -143,10 +158,7 @@ class SolverDocument(QtCore.QThread):
             self.computeStarted.emit()
 
             for j, p in enumerate(self.params):
-                if p == "cutoff":
-                    fct = self.simulator.cutoffWl
-                else:
-                    fct = getattr(self.simulator, p)
+                fct = self.PARAMFCT[p]
 
                 for fnum, resultf in enumerate(fct()):
                     if not self.running:

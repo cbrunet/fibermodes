@@ -58,6 +58,28 @@ class _FSimulator(object):
                 cod[i][m] = co[m]
         return cod
 
+    def _beta(self, p):
+        r = [{} for _ in self._wavelengths]
+        for i, wl in enumerate(self._wavelengths):
+            for m in self.modes()[i]:
+                lowbound = self._lowbound(m, i)
+                r[i][m] = self._fiber.beta(wl.omega, m, p=p,
+                                           delta=self._delta,
+                                           lowbound=lowbound)
+        return r
+
+    def beta0(self):
+        return self._beta(0)
+
+    def beta1(self):
+        return self._beta(1)
+
+    def beta2(self):
+        return self._beta(2)
+
+    def beta3(self):
+        return self._beta(3)
+
     def _neff(self, mode, wlidx):
         lowbound = self._lowbound(mode, wlidx)
         wl = self._wavelengths[wlidx]
