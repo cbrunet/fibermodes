@@ -34,72 +34,72 @@ class ModeSolver(AppWindow):
         actions = {
             'save': (
                 self.tr("&Save results"),
-                QtGui.QIcon.fromTheme('document-save'),
+                'document-save',
                 QtGui.QKeySequence.Save,
                 self.save),
             'quit': (
                 self.tr("&Quit"),
-                QtGui.QIcon.fromTheme('application-exit'),
+                None,  # 'application-exit',
                 QtGui.QKeySequence.Quit,
                 self.close
             ),
             'new': (
                 self.tr("&New fiber file"),
-                QtGui.QIcon.fromTheme('document-new'),
+                'document-new',
                 QtGui.QKeySequence.New,
                 self.fiberSelector.editFiber
             ),
             'open': (
                 self.tr("&Load fiber file"),
-                QtGui.QIcon.fromTheme('document-open'),
+                'document-open',
                 QtGui.QKeySequence.Open,
                 self.fiberSelector.chooseFiber
             ),
             'edit': (
                 self.tr("&Edit fiber"),
-                None,
+                'pen',
                 [],
                 self.fiberSelector.editFiber
             ),
             'info': (
                 self.tr("&Fiber properties"),
-                QtGui.QIcon.fromTheme('document-properties'),
+                'document-properties',
                 [QtGui.QKeySequence("Ctrl+I")],
                 self.fiberSelector.fiberProperties
             ),
             'start': (
                 self.tr("&Run simulation"),
-                QtGui.QIcon.fromTheme('media-playback-start'),
+                'media-playback-start',
                 [QtGui.QKeySequence("F5")],
                 self.run_simulation
             ),
             'stop': (
                 self.tr("&Stop simulation"),
-                QtGui.QIcon.fromTheme('media-playback-stop'),
+                'media-playback-stop',
                 [QtGui.QKeySequence("Ctrl+.")],
                 self.stop_simulation
             ),
             'paramwin': (
                 self.tr("&Parameters"),
-                None,
+                'function',
                 [QtGui.QKeySequence("F2")],
                 self.togglePanes
             ),
             'tablewin': (
                 self.tr("&Result table"),
-                None,
+                'table',
                 [QtGui.QKeySequence("F3")],
                 self.togglePanes
             ),
             'graphwin': (
                 self.tr("&Graph"),
-                None,
+                'statistics',
                 [QtGui.QKeySequence("F4")],
                 self.togglePanes
             ),
             'fullscreen': (
                 self.tr("&Fullscreen"),
-                QtGui.QIcon.fromTheme('view-fullscreen'),
+                'view-fullscreen',
                 [QtGui.QKeySequence("F11")],
                 self.toggleFullscreen
             ),
@@ -194,7 +194,7 @@ class ModeSolver(AppWindow):
         self.doc.computeFinished.connect(self.stopProgressBar)
 
     def _parametersFrame(self):
-        self.fiberSelector = FiberSelector(self.doc)
+        self.fiberSelector = FiberSelector(self.doc, self)
         self.fiberSelector.fileLoaded.connect(self.updateFiber)
         self.fiberSelector.fiberEdited.connect(self.updateFiber)
 

@@ -11,8 +11,8 @@ class FiberSelector(QtGui.QFrame):
     fileLoaded = QtCore.Signal()
     fiberEdited = QtCore.Signal()
 
-    def __init__(self, doc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, doc, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
 
         self._doc = doc
 
@@ -20,15 +20,16 @@ class FiberSelector(QtGui.QFrame):
         self.fiberName.setTextFormat(QtCore.Qt.RichText)
 
         self.chooseButton = QtGui.QPushButton(
-            QtGui.QIcon.fromTheme('document-open'),
+            parent.getIcon('document-open'),
             self.tr("Choose"))
         self.chooseButton.clicked.connect(self.chooseFiber)
 
-        self.editButton = QtGui.QPushButton(self.tr("New"))
+        self.editButton = QtGui.QPushButton(parent.getIcon('document-new'),
+                                            self.tr("New"))
         self.editButton.clicked.connect(self.editFiber)
 
         self.propButton = QtGui.QPushButton(
-            QtGui.QIcon.fromTheme('document-properties'),
+            parent.getIcon('info'),
             "")
         self.propButton.setEnabled(False)
         self.propButton.clicked.connect(self.fiberProperties)
@@ -40,12 +41,15 @@ class FiberSelector(QtGui.QFrame):
         layout.addWidget(self.propButton)
         self.setLayout(layout)
 
+        self.editIcon = parent.getIcon('pen')
+
     def updateFiberName(self):
         name = self._doc.factory.name
         if not name:
             name = os.path.basename(self._doc.filename)
         self.fiberName.setText(name)
         self.editButton.setText(self.tr("Edit"))
+        self.editButton.setIcon(self.editIcon)
         self.propButton.setEnabled(True)
 
     def chooseFiber(self):

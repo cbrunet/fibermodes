@@ -1,28 +1,29 @@
 
-import numpy
-from matplotlib import pyplot
+from fibermodes import FiberFactory, Wavelength, Mode
 
 
-def n(r, ncl, a, b, c, m=1):
-    return ncl + a * numpy.exp(-(((r-b)/c)**(2*m) / 2))
+def main():
+    wl = Wavelength(1550e-9)
 
+    ff1 = FiberFactory()
+    ff1.addLayer(name="core", radius=8e-6, material="Fixed",
+                 geometry="StepIndex", index=1.454)
+    ff1.addLayer(name="cladding", index=1.444)
 
-def dn(r, ncl, a, b, c, m=1):
-    return -a * numpy.exp(-(((r-b)/c)**(2*m) / 2)) * m * ((r - b) / c)**(2*m-1)
+    fiber1 = ff1[0]
+    neff1 = fiber1.neff(Mode("HE", 1, 1), wl)
+    print(neff1)
+
+    ff2 = FiberFactory()
+    ff2.addLayer(name="core", radius=8e-6, material="Fixed",
+                 geometry="SuperGaussian", tparams=[0, 2e-6, 1],
+                 index=1.454)
+    ff2.addLayer(name="cladding", index=1.444)
+
+    fiber2 = ff2[0]
+    neff2 = fiber2.neff(Mode("HE", 1, 1), wl, lowbound=neff1)
+    print(neff2)
 
 
 if __name__ == '__main__':
-    R = numpy.linspace(0, 15e-6, 1000)
-    ncl = 1.444
-    a = 0.03
-    b = 6e-6
-    c = 2e-6
-    m = 1
-
-    N = n(R, ncl, a, b, c, m)
-    pyplot.plot(R*1e6, N)
-    pyplot.ylim((ncl, ncl+a))
-
-    pyplot.figure()
-    pyplot.plot(R*1e6, dn(R, ncl, a, b, c, m))
-    pyplot.show()
+    main()

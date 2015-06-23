@@ -1,7 +1,7 @@
 
 from PySide import QtGui, QtCore
 from fibermodes import FiberFactory
-from fibermodes.fiber import material
+from fibermodes.fiber import material, geometry
 from fibermodesgui import util, blockSignals
 from fibermodesgui.widgets import AppWindow
 from fibermodesgui.widgets import SLRCWidget
@@ -24,49 +24,49 @@ class FiberEditor(AppWindow):
         actions = {
             'new': (
                 self.tr("&New"),
-                QtGui.QIcon.fromTheme('document-new'),
+                'document-new',
                 QtGui.QKeySequence.New,
                 self.actionNew
             ),
             'open': (
                 self.tr("&Open"),
-                QtGui.QIcon.fromTheme('document-open'),
+                'document-open',
                 QtGui.QKeySequence.Open,
                 self.actionOpen
             ),
             'save': (
                 self.tr("&Save"),
-                QtGui.QIcon.fromTheme('document-save'),
+                'document-save',
                 QtGui.QKeySequence.Save,
                 self.save
             ),
             'saveas': (
                 self.tr("Save &As..."),
-                QtGui.QIcon.fromTheme('document-save'),
+                'document-save-as',
                 QtGui.QKeySequence.SaveAs,
                 self.actionSaveAs
             ),
             'quit': (
                 self.tr("&Quit"),
-                QtGui.QIcon.fromTheme('application-exit'),
+                None,  # 'application-exit',
                 QtGui.QKeySequence.Quit,
                 self.close
             ),
             'info': (
                 self.tr("&Fiber properties"),
-                QtGui.QIcon.fromTheme('document-properties'),
+                'document-properties',
                 [QtGui.QKeySequence("Ctrl+I")],
                 self.actionInfo
             ),
             'add': (
                 self.tr("&Add layer"),
-                QtGui.QIcon.fromTheme('list-add'),
+                'list-add',
                 [QtGui.QKeySequence("Ctrl+Shift++")],
                 self.actionAddLayer
             ),
             'remove': (
                 self.tr("&Remove layer"),
-                QtGui.QIcon.fromTheme('list-remove'),
+                'list-remove',
                 [QtGui.QKeySequence("Ctrl+-")],
                 self.actionRemoveLayer
             ),
@@ -256,7 +256,7 @@ class FiberEditor(AppWindow):
 
     def _initGeomFrame(self):
         self.geomType = QtGui.QComboBox()
-        self.geomType.addItem("StepIndex")
+        self.geomType.addItems(geometry.__all__)
         self.geomType.setEnabled(False)
         self.geomType.setCurrentIndex(-1)
         self.geomType.currentIndexChanged.connect(self.selectGeomType)
@@ -273,8 +273,7 @@ class FiberEditor(AppWindow):
         self.matType.setEnabled(False)
         self.matType.setCurrentIndex(-1)
         self.matType.currentIndexChanged.connect(self.selectMatType)
-        self.matPropBut = QtGui.QPushButton(
-                            QtGui.QIcon.fromTheme('help-about'), "")
+        self.matPropBut = QtGui.QPushButton(self.getIcon('info'), "")
         self.matPropBut.clicked.connect(self.aboutFiberMaterial)
         self.matPropBut.setEnabled(False)
         layout = QtGui.QHBoxLayout()
@@ -373,8 +372,12 @@ class FiberEditor(AppWindow):
 
     def selectGeomType(self, index, change=True):
         util.clearLayout(self.geomLayout, 2)
+        layerIndex = self.layerList.currentRow()
+        self.factory.layers[layerIndex].type = self.geomType.currentText()
         if index == 0:
             self.setStepIndexGeom()
+        elif index == 1:
+            self.setSuperGaussianGeom()
         if change:
             self.setDirty(True)
 
@@ -393,6 +396,42 @@ class FiberEditor(AppWindow):
 
         self.geomLayout.addRow(QtGui.QLabel(self.tr("Radius:")),
                                self.radiusInput)
+
+    def setSuperGaussianGeom(self):
+        layerIndex = self.layerList.currentRow()
+        layer = self.factory.layers[layerIndex]
+        self.setStepIndexGeom()
+
+        self.muInput = SLRCWidget()
+        self.muInput.setSuffix(" µm")
+        self.muInput.setScaleFactor(1e6)
+        self.muInput.setRange(-100, 100)
+        self.muInput.codeParams = ['r', 'fp', 'mp']
+        self.muInput.setValue(layer.tparams[1])
+        self.muInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 1, v))
+
+        self.cInput = SLRCWidget()
+        self.cInput.setRange(0.001, 100)
+        self.cInput.codeParams = ['r', 'fp', 'mp']
+        self.cInput.setScaleFactor(1e6)
+        self.cInput.setValue(layer.tparams[2])
+        self.cInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 2, v))
+
+        self.mInput = SLRCWidget()
+        self.mInput.setRange(1, 100)
+        self.mInput.codeParams = ['r', 'fp', 'mp']
+        self.mInput.setValue(layer.tparams[3])
+        self.mInput.valueChanged.connect(
+            lambda v: self._updateParam("tparams", 3, v))
+
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("Center (mu):")),
+                               self.muInput)
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("Width (c):")),
+                               self.cInput)
+        self.geomLayout.addRow(QtGui.QLabel(self.tr("m parameter:")),
+                               self.mInput)
 
     def updateRadius(self, value):
         self._updateParam("tparams", 0, value)

@@ -11,8 +11,13 @@ from scipy.special import jvp, yvp, ivp, kvp
 
 class StepIndex(Geometry):
 
+    DEFAULT_PARAMS = []
+
     def index(self, r, wl):
-        return self._m.n(wl, *self._mp)
+        if self.ri <= abs(r) <= self.ro:
+            return self._m.n(wl, *self._mp)
+        else:
+            return None
 
     def minIndex(self, wl):
         return self._m.n(wl, *self._mp)
@@ -21,7 +26,7 @@ class StepIndex(Geometry):
         return self._m.n(wl, *self._mp)
 
     def u(self, r, neff, wl):
-        return wl.k0 * r * sqrt(abs(self.maxIndex(wl)**2 - neff**2))
+        return wl.k0 * r * sqrt(abs(self.index(r, wl)**2 - neff**2))
 
     def Psi(self, r, neff, wl, nu, C):
         u = self.u(r, neff, wl)
@@ -43,17 +48,45 @@ class StepIndex(Geometry):
             return ((kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
                     (iv(nu, u) * A[1] - ivp(nu, u) * A[0]))
 
-    def ehrfields(self, r, neff, wl, nu, C):
-        n = self.maxIndex(wl)
-        u = self.u(r, neff, wl)
-        EH = numpy.empty(C.shape)
+    def EH_fields(self, ri, ro, nu, neff, wl, EH, tm=True):
+        """
 
+        modify EH in-place (for speed)
+
+        """
+        n = self.maxIndex(wl)
+        u = self.u(ro, neff, wl)
+
+        if ri == 0:
+            if nu == 0:
+                if tm:
+                    C = numpy.array([1., 0., 0., 0.])
+                else:
+                    C = numpy.array([0., 0., 1., 0.])
+            else:
+                C = numpy.zeros((4, 2))
+                C[0, 0] = 1  # Ez = 1
+                C[2, 1] = 1  # Hz = alpha
+        elif nu == 0:
+            C = numpy.zeros(4)
+            if tm:
+                c = constants.Y0 * n * n
+                idx = (0, 3)
+                C[:2] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
+            else:
+                c = -constants.eta0
+                idx = (1, 2)
+                C[2:] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
+        else:
+            C = self.vConstants(ri, ro, neff, wl, nu, EH)
+
+        # Compute EH fields
         if neff < n:
-            c1 = wl.k0 * r / u
+            c1 = wl.k0 * ro / u
             F3 = jvp(nu, u) / jn(nu, u)
             F4 = yvp(nu, u) / yn(nu, u)
         else:
-            c1 = -wl.k0 * r / u
+            c1 = -wl.k0 * ro / u
             F3 = ivp(nu, u) / iv(nu, u)
             F4 = kvp(nu, u) / kn(nu, u)
 

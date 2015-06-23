@@ -29,8 +29,11 @@ class Fiber(object):
         self._names = names
 
         self.layers = []
-        for f_, fp_, m_, mp_ in zip(f, fp, m, mp):
-            layer = geometry.__dict__[f_](*fp_, m=m_, mp=mp_)
+        for i, (f_, fp_, m_, mp_) in enumerate(zip(f, fp, m, mp)):
+            ri = self._r[i-1] if i else 0
+            ro = self._r[i] if i < len(r) else float("inf")
+            layer = geometry.__dict__[f_](ri, ro, *fp_,
+                                          m=m_, mp=mp_, cm=m[-1], cmp=mp[-1])
             self.layers.append(layer)
 
         self.co_cache = {Mode("HE", 1, 1): 0,
@@ -109,16 +112,12 @@ class Fiber(object):
         return cutoff
 
     def _findNeffSolver(self):
-        neff = FiberSolver
+        neff = solver.mlsif.Neff
         if all(isinstance(layer, geometry.StepIndex)
                for layer in self.layers):
             nlayers = len(self)
             if nlayers == 2:  # SSIF
                 neff = solver.ssif.Neff
-            elif nlayers == 3:
-                neff = solver.mlsif.Neff
-            else:
-                neff = solver.mlsif.Neff
         return neff
 
     def setSolvers(self, Cutoff=None, Neff=None):

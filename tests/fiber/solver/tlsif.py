@@ -528,7 +528,7 @@ class TestTLSIF(unittest.TestCase):
 
         vgc = 1 / fiber.ng(Mode("EH", 1, 1), wl)
         self.assertGreater(vgc, 0.683)
-        self.assertLess(vgc, 0.6835)
+        self.assertLess(vgc, 0.6836)
 
         # Fig 3.32
         # wl = Wavelength(900e-9)
