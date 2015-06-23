@@ -438,6 +438,7 @@ class ModeSolver(AppWindow):
         dlg = SimParamsDialog(self.doc)
         dlg.exec_()
         self.doc.numProcs = dlg.numProcs.value()
+        self.doc.simulator.delta = float(dlg.delta.text())
 
     def togglePanes(self):
         states = [
