@@ -1,6 +1,6 @@
 
 from PySide import QtCore
-from fibermodes import FiberFactory, PSimulator
+from fibermodes import FiberFactory, Simulator, PSimulator
 
 
 class SolverDocument(QtCore.QThread):
@@ -23,6 +23,7 @@ class SolverDocument(QtCore.QThread):
         self.modes = []
 
         self.simulator = PSimulator()
+        self._numProcs = 0
         self.running = False
         self.ready = False
 
@@ -101,6 +102,21 @@ class SolverDocument(QtCore.QThread):
     def wavelengths(self, value):
         self.simulator.set_wavelengths(value)
         self.start()
+
+    @property
+    def numProcs(self):
+        return self._numProcs
+
+    @numProcs.setter
+    def numProcs(self, value):
+        if value == self._numProcs:
+            return
+
+        self._numProcs = value
+        if value == 1:
+            self.simulator = Simulator(clone=self.simulator, )
+        else:
+            self.simulator = PSimulator(clone=self.simulator, processes=value)
 
     def start(self):
         if not self.simulator.initialized:

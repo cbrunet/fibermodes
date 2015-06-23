@@ -7,6 +7,7 @@ from .fiberslider import FiberSlider
 from .wavelengthslider import WavelengthSlider
 from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
+from .simparams import SimParamsDialog
 
 
 def msToStr(ms, displayms=True):
@@ -79,6 +80,12 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("Ctrl+.")],
                 self.stop_simulation
             ),
+            'simparams': (
+                self.tr("Advanced &Parameters"),
+                'document-properties',
+                [],
+                self.simParams
+            ),
             'paramwin': (
                 self.tr("&Parameters"),
                 'function',
@@ -125,7 +132,9 @@ class ModeSolver(AppWindow):
             (
                 self.tr("&Simulation"), [
                     'start',
-                    'stop'
+                    'stop',
+                    '-',
+                    'simparams',
                 ]
             ),
             (
@@ -424,6 +433,11 @@ class ModeSolver(AppWindow):
         self.actions['stop'].setEnabled(False)
         self.actions['start'].setEnabled(True)
         self.actions['start'].setChecked(False)
+
+    def simParams(self):
+        dlg = SimParamsDialog(self.doc)
+        dlg.exec_()
+        self.doc.numProcs = dlg.numProcs.value()
 
     def togglePanes(self):
         states = [

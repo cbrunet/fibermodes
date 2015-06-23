@@ -108,20 +108,30 @@ class Simulator(object):
 
     def __init__(self, factory=None, wavelengths=None,
                  numax=None, mmax=None, vectorial=True, scalar=False,
-                 delta=1e-6):
-        self._fibers = None
-        self._fsims = None
-        self._wavelengths = None
+                 delta=1e-6, clone=None):
+        if clone is not None:
+            self._fibers = clone._fibers
+            self._wavelengths = clone._wavelengths
+            self._numax = clone._numax
+            self._mmax = clone._mmax
+            self._vectorial = clone._vectorial
+            self._scalar = clone._scalar
+            self.delta = clone.delta
+            self.factory = clone.factory
+        else:
+            self._fibers = None
+            self._fsims = None
+            self._wavelengths = None
 
-        self._numax = numax
-        self._mmax = mmax
-        self._vectorial = vectorial
-        self._scalar = scalar
-        self.delta = delta
+            self._numax = numax
+            self._mmax = mmax
+            self._vectorial = vectorial
+            self._scalar = scalar
+            self.delta = delta
 
-        self.set_factory(factory)
-        if wavelengths:
-            self.set_wavelengths(wavelengths)
+            self.set_factory(factory)
+            if wavelengths:
+                self.set_wavelengths(wavelengths)
         self._build_fsims()
 
     def _build_fsims(self):
