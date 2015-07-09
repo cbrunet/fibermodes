@@ -1,6 +1,6 @@
 
-from fibermodes.fiber.geometry.geometry import Geometry
-from fibermodes import constants
+from .geometry import Geometry
+from ... import constants
 from math import sqrt, exp
 import numpy
 from scipy.special import jn, iv
