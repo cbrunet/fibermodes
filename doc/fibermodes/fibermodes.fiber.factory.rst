@@ -5,13 +5,11 @@ fibermodes.fiber.factory
 
 .. automodule:: fibermodes.fiber.factory
     
-    .. autoclass:: Factory
+    .. autoclass:: FiberFactory
       :members:
       :undoc-members:
       :show-inheritance:
 
       .. automethod:: __call__
- 
-    .. autofunction:: fixedFiber
 
     .. autoclass:: FiberFactoryValidationError

@@ -11,9 +11,10 @@ Modules list
 
     constants
     fiber
-    material
+    functions
     mode
     simulator
+    slrc
     wavelength
 
 
@@ -29,21 +30,12 @@ Module contents
 
     .. autosummary::
 
-        FiberFactory
+        ~fibermodes.fiber.factory.FiberFactory
         ~fibermodes.mode.Mode
         ModeFamily
         ~fibermodes.simulator.simulator.Simulator
+        ~fibermodes.simulator.psimulator.PSimulator
         ~fibermodes.wavelength.Wavelength
-
-    .. rubric:: Functions
-
-    .. autosummary::
-
-        ~fibermodes.fiber.factory.fixedFiber
-
-    .. class:: FiberFactory
-
-        alias of :py:class:`fibermodes.fiber.factory.Factory`.
 
     .. class:: ModeFamily
 

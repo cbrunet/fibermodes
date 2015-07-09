@@ -4,24 +4,39 @@ fibermodes.fiber.fiber
 .. automodule:: fibermodes.fiber.fiber
     :members:
     :undoc-members:
-
-    .. rubric:: Properties
-
-    .. autosummary::
-    
-        ~Fiber.na
-        ~Fiber.V0
    
     .. rubric:: Class members
 
     .. autosummary::
     
-        ~Fiber.csolve
+        ~Fiber.fixedMatFiber
+        ~Fiber.name
+        ~Fiber.innerRadius
+        ~Fiber.outerRadius
+        ~Fiber.thickness
+        ~Fiber.index
+        ~Fiber.minIndex
+        ~Fiber.maxIndex
+        ~Fiber.setSolvers
+        ~Fiber.set_ne_cache
+        ~Fiber.NA
+        ~Fiber.V0
+        ~Fiber.toWl
         ~Fiber.cutoff
-        ~Fiber.get
-        ~Fiber.lpModes
-        ~Fiber.solve
-        ~Fiber.solveAll
-        ~Fiber.vModes
+        ~Fiber.cutoffWl
+        ~Fiber.neff
+        ~Fiber.beta
+        ~Fiber.b
+        ~Fiber.vp
+        ~Fiber.ng
+        ~Fiber.vg
+        ~Fiber.D
+        ~Fiber.S
+        ~Fiber.findVmodes
+        ~Fiber.findLPmodes
+        ~Fiber.findModes
+        
 
     .. rubric:: Class details
+
+    .. autoclass:: MaxIterationsReachedWarning

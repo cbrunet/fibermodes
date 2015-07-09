@@ -13,6 +13,6 @@ Submodules list
 
   factory
   fiber
-  ssif
-  tlsif
-  mlsif
+  geometry
+  material
+  solver

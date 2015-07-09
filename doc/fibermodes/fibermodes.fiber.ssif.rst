@@ -1,7 +1,0 @@
-fibermodes.fiber.ssif
-=====================
-
-.. automodule:: fibermodes.fiber.ssif
-    :members:
-    :undoc-members:
-   
