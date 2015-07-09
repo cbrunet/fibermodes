@@ -142,3 +142,5 @@ class Neff(FiberSolver):
         E = EH[2, :] - (c2 * EH[0, :] - c3 * F4 * EH[1, :])
         H = EH[3, :] - (c4 * F4 * EH[0, :] - c2 * EH[1, :])
         return E[0]*H[1] - E[1]*H[0]
+
+    _ehceq = _heceq

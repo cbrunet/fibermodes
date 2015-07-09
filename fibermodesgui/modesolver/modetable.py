@@ -10,9 +10,12 @@ class ModeTableView(QtGui.QTableView):
         self.setModel(model)
         self.setSortingEnabled(True)
 
+    def selectionChanged(self, selected, deselected):
+        return super().selectionChanged(selected, deselected)
+
 
 PARAMS = {
-    "cutoff (wavelength": (1e9, "nm"),
+    "cutoff (wavelength)": (1e9, "nm"),
     "vp": (1e-6, "m / s"),
     "vg": (1e-6, "m / us"),
     "D": (1, "ps / (nm km)"),

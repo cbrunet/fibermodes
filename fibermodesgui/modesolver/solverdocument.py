@@ -1,6 +1,7 @@
 
 from PySide import QtCore
-from fibermodes import FiberFactory, Simulator, PSimulator
+from fibermodes import FiberFactory, Simulator, PSimulator, Mode
+import csv
 
 
 class SolverDocument(QtCore.QThread):
@@ -174,3 +175,26 @@ class SolverDocument(QtCore.QThread):
     def stop_thread(self):
         self.running = False
         self.wait()
+
+    def clear_all_caches(self):
+        """Clear caches from the simulator.
+
+        """
+        self.modes = []
+        self.values = {}
+        for fiber in self.simulator.fibers:
+            fiber.co_cache = {Mode("HE", 1, 1): 0,
+                              Mode("LP", 0, 1): 0}
+            fiber.ne_cache = {}
+
+    def export(self, filename, wlnum, fnum):
+        with open(filename, 'w', newline='') as csvfile:
+            wr = csv.writer(csvfile)
+            headline = ["Mode"] + self.params
+            wr.writerow(headline)
+
+            for mode in self.modes[fnum][wlnum]:
+                r = [self.values[(fnum, wlnum, mode, j)]
+                     for j in range(len(self.params))]
+                r.insert(0, str(mode))
+                wr.writerow(r)

@@ -1,6 +1,8 @@
 
 from PySide import QtGui, QtCore
 import os
+from functools import partial
+import logging
 
 
 class AppWindow(QtGui.QMainWindow):
@@ -10,6 +12,73 @@ class AppWindow(QtGui.QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        logging.basicConfig()
+
+        self.actions = {}
+        actions = {
+            'capturewarnings': (
+                self.tr("C&apture warnings"),
+                None,
+                [],
+                None
+            ),
+            'loglevel': {
+                'logcritical': (
+                    self.tr("Critical"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.CRITICAL)
+                ),
+                'logerror': (
+                    self.tr("Error"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.ERROR)
+                ),
+                'logwarning': (
+                    self.tr("Warning"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.WARNING)
+                ),
+                'loginfo': (
+                    self.tr("Info"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.INFO)
+                ),
+                'logdebug': (
+                    self.tr("Debug"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.DEBUG)
+                ),
+                'lognotset': (
+                    self.tr("Not set"),
+                    None,
+                    [],
+                    partial(logging.root.setLevel, logging.NOTSET)
+                ),
+            }
+        }
+        self.initActions(actions)
+        self.actions['capturewarnings'].setCheckable(True)
+        self.actions['capturewarnings'].toggled.connect(
+            logging.captureWarnings)
+        self.actions['lognotset'].setChecked(True)
+        self.logmenu = (
+            self.tr("&Logging"), [
+                'lognotset',
+                'logdebug',
+                'loginfo',
+                'logwarning',
+                'logerror',
+                'logcritical',
+                '-',
+                'capturewarnings'
+            ]
+        )
 
         self.iconPath = os.path.realpath(os.path.dirname(__file__) +
                                          '/../icons')
@@ -40,27 +109,55 @@ class AppWindow(QtGui.QMainWindow):
         return icon
 
     def initActions(self, actions):
-        self.actions = {}
-        for key, (name, icon, keys, action) in actions.items():
-            if icon is None:
-                self.actions[key] = QtGui.QAction(name, self)
+        for key, actiondef in actions.items():
+            if isinstance(actiondef, dict):
+                self.actions[key] = QtGui.QActionGroup(self)
+                for gkey, gactiondef in actiondef.items():
+                    self.initAction(gkey, gactiondef, self.actions[key])
+                    self.actions[gkey].setCheckable(True)
             else:
-                self.actions[key] = QtGui.QAction(
-                    self.getIcon(icon), name, self)
-            if keys:
-                self.actions[key].setShortcuts(keys)
+                self.initAction(key, actiondef, self)
+
+    def initAction(self, key, actiondef, parent):
+        name, icon, keys, action = actiondef
+        if icon is None:
+            self.actions[key] = QtGui.QAction(name, parent)
+        else:
+            self.actions[key] = QtGui.QAction(
+                self.getIcon(icon), name, parent)
+        if keys:
+            self.actions[key].setShortcuts(keys)
+        if action:
             self.actions[key].triggered.connect(action)
 
     def initMenubars(self, menubar, menus):
+        """Create the menu bar.
+
+        :param menubar: instance of QMenuBar
+        :param menus: list of tuple. Each tuple contains: name of menu, and
+                      list of action names.
+
+        """
         for name, items in menus:
-            menu = menubar.addMenu(name)
-            for menuitem in items:
-                if isinstance(menuitem, tuple):
-                    self.initMenubars(menu, menuitem)
-                elif menuitem == '-':
-                    menu.addSeparator()
-                else:
-                    menu.addAction(self.actions[menuitem])
+            self.initMenu(menubar, name, items)
+
+    def initMenu(self, menubar, name, items):
+        """Add a menu or a submenu to the menu bar.
+
+        :param menubar: instance of QMenuBar or QMenu
+        :param name: name of menu
+        :param items: list of action names, or '-' for separator,
+                      or tuple with name of submenu and items of submenu.
+
+        """
+        menu = menubar.addMenu(name)
+        for menuitem in items:
+            if isinstance(menuitem, tuple):
+                self.initMenu(menu, menuitem[0], menuitem[1])
+            elif menuitem == '-':
+                menu.addSeparator()
+            else:
+                menu.addAction(self.actions[menuitem])
 
     def initToolbars(self, toolbars):
         for toolbar in toolbars:

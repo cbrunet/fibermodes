@@ -8,6 +8,7 @@ from .wavelengthslider import WavelengthSlider
 from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
 from .simparams import SimParamsDialog
+from .chareq import CharEqDialog
 
 
 def msToStr(ms, displayms=True):
@@ -42,6 +43,12 @@ class ModeSolver(AppWindow):
                 'document-save',
                 QtGui.QKeySequence.Save,
                 self.save),
+            'exportcur': (
+                self.tr("&Export current table"),
+                'export',
+                [QtGui.QKeySequence("Ctrl+E")],
+                self.export_current_table
+            ),
             'quit': (
                 self.tr("&Quit"),
                 None,  # 'application-exit',
@@ -84,6 +91,18 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("Ctrl+.")],
                 self.stop_simulation
             ),
+            'plotchareq': (
+                self.tr("&Plot characteristic equation"),
+                None,
+                [],
+                self.plot_chareq
+            ),
+            'clearcaches': (
+                self.tr("&Clear all caches"),
+                None,
+                [],
+                self.doc.clear_all_caches
+            ),
             'simparams': (
                 self.tr("Advanced &Parameters"),
                 'document-properties',
@@ -120,6 +139,7 @@ class ModeSolver(AppWindow):
             (
                 self.tr("&File"), [
                     'save',
+                    'exportcur',
                     '-',
                     'quit'
                 ]
@@ -142,6 +162,13 @@ class ModeSolver(AppWindow):
                 ]
             ),
             (
+                self.tr("&Debug"), [
+                    'plotchareq',
+                    self.logmenu,
+                    'clearcaches',
+                ]
+            ),
+            (
                 self.tr("&Window"), [
                     'paramwin',
                     'tablewin',
@@ -153,7 +180,7 @@ class ModeSolver(AppWindow):
         ]
 
         toolbars = [
-            ['save'],
+            ['save', 'exportcur'],
             ['start', 'stop'],
             ['paramwin', 'tablewin', 'graphwin'],
         ]
@@ -162,6 +189,7 @@ class ModeSolver(AppWindow):
         self.initMenubars(self.menuBar(), menus)
         self.initToolbars(toolbars)
 
+        self.actions['exportcur'].setEnabled(False)
         self.actions['edit'].setEnabled(False)
         self.actions['info'].setEnabled(False)
         self.actions['start'].setCheckable(True)
@@ -281,13 +309,13 @@ class ModeSolver(AppWindow):
 
     def _modesFrame(self):
         self.modeTableModel = ModeTableModel(self.doc, self)
-        modeTableProxy = QtGui.QSortFilterProxyModel(self)
-        modeTableProxy.setSourceModel(self.modeTableModel)
-        modeTableProxy.setSortRole(QtCore.Qt.ToolTipRole)
-        modeTableProxy.setDynamicSortFilter(True)
-        modeTableView = ModeTableView(modeTableProxy)
+        self.modeTableProxy = QtGui.QSortFilterProxyModel(self)
+        self.modeTableProxy.setSourceModel(self.modeTableModel)
+        self.modeTableProxy.setSortRole(QtCore.Qt.ToolTipRole)
+        self.modeTableProxy.setDynamicSortFilter(True)
+        self.modeTableView = ModeTableView(self.modeTableProxy)
         self.modeTableModel.dataChanged.connect(
-            modeTableView.resizeColumnsToContents)
+            self.modeTableView.resizeColumnsToContents)
 
         self.fiberSlider = FiberSlider()
         self.fiberSlider.valueChanged.connect(self.setFiber)
@@ -301,7 +329,7 @@ class ModeSolver(AppWindow):
 
         layout2 = QtGui.QVBoxLayout()
         layout2.addLayout(layout1)
-        layout2.addWidget(modeTableView, stretch=1)
+        layout2.addWidget(self.modeTableView, stretch=1)
 
         frame = QtGui.QFrame()
         frame.setLayout(layout2)
@@ -396,6 +424,7 @@ class ModeSolver(AppWindow):
         self.time.start()
         self.estimation = 0
         self.timer.start(0)
+        self.actions['exportcur'].setEnabled(False)
 
     def updateProgressBar(self):
         tot = self.progressBar.maximum()
@@ -416,6 +445,7 @@ class ModeSolver(AppWindow):
         self.timer.stop()
         self.updateTime()
         self.plotFrame.updatePlot()
+        self.actions['exportcur'].setEnabled(True)
 
     def updateTime(self):
         elapsed = self.time.elapsed()
@@ -443,6 +473,13 @@ class ModeSolver(AppWindow):
         self.actions['start'].setEnabled(True)
         self.actions['start'].setChecked(False)
 
+    def plot_chareq(self):
+        sel = self.modeTableView.selectedIndexes()
+        idx = self.modeTableProxy.mapToSource(sel[0])
+        mode = self.modeTableModel.modes[idx.row()]
+        dlg = CharEqDialog(mode, self)
+        dlg.show()
+
     def simParams(self):
         dlg = SimParamsDialog(self.doc)
         dlg.exec_()
@@ -469,3 +506,18 @@ class ModeSolver(AppWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def export_current_table(self):
+        wlnum = self.modeTableModel._wl
+        fnum = self.modeTableModel._fnum
+
+        exportDialog = QtGui.QFileDialog()
+        exportDialog.setWindowTitle(self.tr("Export results"))
+        exportDialog.setDirectory(self._dir)
+        exportDialog.setAcceptMode(QtGui.QFileDialog.AcceptSave)
+        exportDialog.setNameFilter(self.tr("Comma Separated Values (*.csv)"))
+        exportDialog.setDefaultSuffix('csv')
+        if exportDialog.exec_() == QtGui.QFileDialog.Accepted:
+            filename = exportDialog.selectedFiles()[0]
+            self._dir = exportDialog.directory()
+            self.doc.export(filename, wlnum, fnum)
