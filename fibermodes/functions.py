@@ -1,9 +1,10 @@
+"""Miscellaneous mathematical functions."""
 
 from math import factorial
 
 # A[(k, m, i)]
 A = {
-    # First devivative
+    # First derivative
     # Three points
     (1, 3, 0): (-3, 4, -1),
     (1, 3, 1): (-1, 0, 1),

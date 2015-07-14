@@ -11,6 +11,9 @@ Modules list
 
     constants
     fiber
+    fiber.material
+    fiber.geometry
+    fiber.solver
     functions
     mode
     simulator

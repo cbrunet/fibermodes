@@ -1,4 +1,7 @@
-"""Fiber factory module."""
+"""A FiberFactory is used to build
+:py:class:`~fibermodes.fiber.fiber.Fiber` objects.
+
+"""
 
 import json
 import time
@@ -19,7 +22,7 @@ __version__ = "0.0.1"
 
 class FiberFactoryValidationError(Exception):
 
-    """
+    """Exception emmited when fiber file does not validate.
 
     """
     pass
@@ -93,11 +96,21 @@ class LayersProxy(object):
 
 class FiberFactory(object):
 
-    """FiberFactory is used to instantiate a Fiber or a serie of Fiber objects.
+    """FiberFactory is used to instantiate a
+    :py:class:`~fibermodes.fiber.fiber.Fiber` or a serie of
+    :py:class:`~fibermodes.fiber.fiber.Fiber` objects.
 
     It can read fiber definition from json file, and write it back.
     Convenient functions are available to set fiber parameters, and to
     iterate through fiber objects.
+
+    All fibers build from a given factory share the same number
+    of layers, the same kind of geometries, and the same
+    materials. However, parameters can vary.
+
+    Args:
+        filename: Name of fiber file to load, or None to construct
+                  empty Fiberfactory object.
 
     """
 
@@ -119,6 +132,11 @@ class FiberFactory(object):
 
     @property
     def name(self):
+        """Name of the fiber.
+
+        The name simply is a string identifier.
+
+        """
         return self._fibers["name"]
 
     @name.setter
@@ -127,6 +145,11 @@ class FiberFactory(object):
 
     @property
     def author(self):
+        """Author of the fiber definition.
+
+        Used as a reference.
+
+        """
         return self._fibers["author"]
 
     @author.setter
@@ -135,6 +158,9 @@ class FiberFactory(object):
 
     @property
     def description(self):
+        """Description of the fiber build form this factory.
+
+        """
         return self._fibers["description"]
 
     @description.setter
@@ -143,19 +169,51 @@ class FiberFactory(object):
 
     @property
     def crdate(self):
+        """Creation date of this factory.
+
+        """
         return self._fibers["crdate"]
 
     @property
     def tstamp(self):
+        """Timestamp (modification date).
+
+        This is automatically updated when the fiber factory is saved.
+
+        """
         return self._fibers["tstamp"]
 
     @property
     def layers(self):
+        """List of layers.
+
+        """
         return LayersProxy(self)
 
     def addLayer(self, pos=None, name="", radius=0,
                  material="Fixed", geometry="StepIndex",
                  **kwargs):
+        """Insert a new layer in the factory.
+
+        Please note that some parameters are specific to some
+        Materials of Geometry.
+
+        Args:
+            pos(int or None): Position the the inserted layer.
+                              By default, new layer is inserted at the end.
+            name(string): Layer name.
+            radius(float): Radius of the layer (in meters).
+            material(string): Name of the Material (default: Fixed)
+            geometry(string): Name of the Geometry (default: StepIndex)
+            tparams(list): Parameters for the Geometry
+            mparams(list): Parameters for the Material
+            index(float): Index of the layer (for Fixed Material, otherwise
+                          parameters are calculated to give this index)
+            x(float): Molar concentration for the Material
+            wl(float): Wavelength (in m) used for calculating parameters
+                       (when index is given)
+
+        """
         if pos is None:
             pos = len(self._fibers["layers"])
         layer = {
@@ -183,24 +241,75 @@ class FiberFactory(object):
         self._fibers["layers"].insert(pos, layer)
 
     def removeLayer(self, pos=-1):
+        """Remore layer at given position (default: last layer)
+
+        Args:
+            pos(int): Index of the layer to remove.
+
+        """
         self._fibers["layers"].pop(pos)
 
     def dump(self, fp, **kwargs):
+        """Dumps fiber factory to a file.
+
+        Args:
+            fp: File pointer.
+            **kwargs: See json.dumps
+
+        """
         fp.write(self.dumps(**kwargs))
 
     def dumps(self, **kwargs):
+        """Dumps fiber factory to a string.
+
+        Args:
+            **kwargs: See json.dumps.
+
+        Returns:
+            JSON string.
+
+        """
         self._fibers["tstamp"] = time.time()
         return json.dumps(self._fibers, **kwargs)
 
     def load(self, fp, **kwargs):
+        """Loads fiber factory from file.
+
+        File contents is validated when loaded, and version is
+        upgraded is needed.
+
+        Args:
+            fp: File pointer.
+            **kwargs: See json.loads
+
+        """
         self.loads(fp.read(), **kwargs)
 
     def loads(self, s, **kwargs):
+        """Loads fiber factory from JSON string.
+
+        String contents is validated when loaded, and version is
+        upgraded is needed.
+
+        Args:
+            s(string): JSON string
+            **kwargs: See json.loads
+
+        """
         fibers = json.loads(s, **kwargs)
         self.validate(fibers)
         self._fibers = fibers
 
     def validate(self, obj):
+        """Validates that obj is a valid fiber factory.
+
+        Args:
+            obj(dict): Dict of fiber factory parameters.
+
+        Raises:
+            FiberFactoryValidationError: Object does not validate.
+
+        """
         for key in ("version", "name", "description",
                     "author", "crdate", "tstamp", "layers"):
             if key not in obj.keys():

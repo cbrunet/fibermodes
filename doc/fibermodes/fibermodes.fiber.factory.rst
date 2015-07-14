@@ -10,6 +10,4 @@ fibermodes.fiber.factory
       :undoc-members:
       :show-inheritance:
 
-      .. automethod:: __call__
-
     .. autoclass:: FiberFactoryValidationError

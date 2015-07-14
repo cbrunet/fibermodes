@@ -1,3 +1,17 @@
+"""A Fiber represents a physical fiber
+(:py:mod:`~fibermodes.fiber.material` and
+ :py:mod:`~fibermodes.fiber.geometry`).
+
+Using a Fiber object, and passing
+:py:class:`~fibermodes.wavelength.Wavelength`.
+as argument, you can compute different modal properties.
+To generate a Fiber object, you should use a
+:py:class:`~fibermodes.fiber.factory.FiberFactory`.
+To sweep different fiber parameters and/or wavelengths,
+you should use a :py:class:`~fibermodes.simulator.simulator.Simulator`.
+
+"""
+
 
 from . import geometry
 from . import solver
@@ -11,15 +25,12 @@ import logging
 from scipy.optimize import fixed_point
 
 
-class MaxIterationsReachedWarning(UserWarning):
-
-    """
-
-    """
-    pass
-
-
 class Fiber(object):
+
+    """The Fiber object usually is build using
+    :py:class:`~fibermodes.fiber.factory.FiberFactory`.
+
+    """
 
     logger = logging.getLogger(__name__)
 

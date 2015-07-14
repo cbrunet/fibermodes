@@ -1,1 +1,5 @@
-""" Common fiber functions, and definitions of different kinds of fibers."""
+"""A Fiber represents a physical fiber
+(:py:mod:`~fibermodes.fiber.material` and
+ :py:mod:`~fibermodes.fiber.geometry`).
+
+"""

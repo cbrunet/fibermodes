@@ -36,7 +36,3 @@ fibermodes.fiber.fiber
         ~Fiber.findLPmodes
         ~Fiber.findModes
         
-
-    .. rubric:: Class details
-
-    .. autoclass:: MaxIterationsReachedWarning

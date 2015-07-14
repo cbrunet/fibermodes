@@ -10,14 +10,3 @@ fibermodes.functions
    .. autosummary::
    
       derivative
-      factorial
-   
-   
-
-   
-   
-   
-
-   
-   
-   

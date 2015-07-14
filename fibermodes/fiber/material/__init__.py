@@ -1,3 +1,7 @@
+"""A material describes the refractive index of a layer as function of
+:py:class:`~fibermodes.wavelength.Wavelength`.
+
+"""
 
 from .fixed import Fixed
 from .air import Air

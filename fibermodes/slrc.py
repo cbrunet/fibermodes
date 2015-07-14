@@ -1,3 +1,9 @@
+"""Scalar, list, range or code object.
+
+This is a convenient object used to encapsulate a parameter that can
+be either a scalar (float), a list of floats, a range, or a function (code).
+
+"""
 
 import math
 import logging

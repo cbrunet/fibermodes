@@ -1,6 +1,9 @@
 """ This package provides tools for solving modes in different kind of
 optical fibers.
 
+The following classes can be imported directly from fibermodes.
+All those classes are imported if using import *
+
 """
 
 from .wavelength import Wavelength
