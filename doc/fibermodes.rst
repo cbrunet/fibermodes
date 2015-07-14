@@ -42,4 +42,5 @@ Module contents
 
     .. class:: ModeFamily
 
-        alias of :py:class:`fibermodes.mode.Family`.
+        :py:class:`~enum.Enum` for the kind (family) of mode.
+        *Alias of* :py:class:`~fibermodes.mode.Family`.

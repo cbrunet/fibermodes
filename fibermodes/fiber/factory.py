@@ -97,8 +97,8 @@ class LayersProxy(object):
 class FiberFactory(object):
 
     """FiberFactory is used to instantiate a
-    :py:class:`~fibermodes.fiber.fiber.Fiber` or a serie of
-    :py:class:`~fibermodes.fiber.fiber.Fiber` objects.
+    :py:class:`~fibermodes.fiber.fiber.Fiber` or a series of
+    Fiber objects.
 
     It can read fiber definition from json file, and write it back.
     Convenient functions are available to set fiber parameters, and to
@@ -195,9 +195,6 @@ class FiberFactory(object):
                  **kwargs):
         """Insert a new layer in the factory.
 
-        Please note that some parameters are specific to some
-        Materials of Geometry.
-
         Args:
             pos(int or None): Position the the inserted layer.
                               By default, new layer is inserted at the end.
@@ -212,6 +209,17 @@ class FiberFactory(object):
             x(float): Molar concentration for the Material
             wl(float): Wavelength (in m) used for calculating parameters
                        (when index is given)
+
+        Please note that some parameters are specific to some
+        :py:mod:`~fibermodes.fiber.material` or
+        :py:mod:`~fibermodes.fiber.geometry`:
+
+        :py:class:`~fibermodes.fiber.material.fixed.Fixed` material
+            **index** is required. **mparams** is ignored.
+
+        :py:class:`~fibermodes.fiber.material.compmaterial.CompMaterial` (:py:class:`~fibermodes.fiber.material.sio2geo2.SiO2GeO2`)
+            You can specify either **x** or **index** and **wl**.
+            **mparams** is ignored.
 
         """
         if pos is None:
