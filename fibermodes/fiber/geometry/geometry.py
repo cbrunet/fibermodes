@@ -4,11 +4,13 @@ from fibermodes.fiber import material
 
 class Geometry(object):
 
-    def __init__(self, ri, ro, *fp, m, mp, cm, cmp):
+    def __init__(self, ri, ro, *fp, m, mp, **kwargs):
         self._m = material.__dict__[m]()  # instantiate material object
         self._mp = mp
-        self._cm = material.__dict__[cm]()
-        self._cmp = cmp
+        cm = kwargs.get("cm", None)
+        if cm:
+            self._cm = material.__dict__[cm]()
+            self._cmp = kwargs.get("cmp")
         self._fp = fp
         self.ri = ri
         self.ro = ro

@@ -217,7 +217,8 @@ class FiberFactory(object):
         :py:class:`~fibermodes.fiber.material.fixed.Fixed` material
             **index** is required. **mparams** is ignored.
 
-        :py:class:`~fibermodes.fiber.material.compmaterial.CompMaterial` (:py:class:`~fibermodes.fiber.material.sio2geo2.SiO2GeO2`)
+        :py:class:`~fibermodes.fiber.material.compmaterial.CompMaterial` \
+(:py:class:`~fibermodes.fiber.material.sio2geo2.SiO2GeO2`)
             You can specify either **x** or **index** and **wl**.
             **mparams** is ignored.
 
@@ -243,7 +244,7 @@ class FiberFactory(object):
                     x = Mat.xFromN(kwargs.pop("wl"), kwargs.pop("index"))
                 else:
                     x = 0
-                layer["mparams"] = x
+                layer["mparams"] = [x]
         assert len(kwargs) == 0, "unknown arguments {}".format(
             ", ".join(kwargs.keys()))
         self._fibers["layers"].insert(pos, layer)

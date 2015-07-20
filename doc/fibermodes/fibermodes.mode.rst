@@ -12,12 +12,5 @@ fibermodes.mode
 
       Family
       Mode
-      SMode
-
-    .. rubric:: Functions
-
-    .. autosummary::
-
-      sortModes
 
     .. rubric:: Module details

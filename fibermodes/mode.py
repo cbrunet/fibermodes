@@ -136,153 +136,153 @@ class Mode(object):
         return m2 < self
 
 
-class SMode(Mode):
+# class SMode(Mode):
 
-    """Solved mode. This is a mode, associated with an effective index."""
+#     """Solved mode. This is a mode, associated with an effective index."""
 
-    def __init__(self, fiber, mode, neff):
-        """Build a SMode object, from a Mode and an effective index.
+#     def __init__(self, fiber, mode, neff):
+#         """Build a SMode object, from a Mode and an effective index.
 
-        Usually, you do not need to call this directly. SMode objects
-        are build using the mode solver.
+#         Usually, you do not need to call this directly. SMode objects
+#         are build using the mode solver.
 
-        """
-        self._family = mode.family
-        self._nu = mode.nu
-        self._m = mode.m
+#         """
+#         self._family = mode.family
+#         self._nu = mode.nu
+#         self._m = mode.m
 
-        self._fiber = fiber
-        self._neff = neff
-        self._beta = None
+#         self._fiber = fiber
+#         self._neff = neff
+#         self._beta = None
 
-    def beta(self, order=0):
-        if self._beta:
-            return self._beta[order]
-        else:
-            return None
+#     def beta(self, order=0):
+#         if self._beta:
+#             return self._beta[order]
+#         else:
+#             return None
 
-    @property
-    def bnorm(self):
-        """Normalized propagation constant"""
-        return ((self.neff - self._fiber._n[-1]) /
-                (max(self._fiber._n) - self._fiber._n[-1]))
+#     @property
+#     def bnorm(self):
+#         """Normalized propagation constant"""
+#         return ((self.neff - self._fiber._n[-1]) /
+#                 (max(self._fiber._n) - self._fiber._n[-1]))
 
-    @property
-    def neff(self):
-        """Effective index of the mode."""
-        return self._neff
+#     @property
+#     def neff(self):
+#         """Effective index of the mode."""
+#         return self._neff
 
-    @property
-    def mode(self):
-        """Return (unsolved) mode object built from this solved mode."""
-        return Mode(self.family, self.nu, self.m)
+#     @property
+#     def mode(self):
+#         """Return (unsolved) mode object built from this solved mode."""
+#         return Mode(self.family, self.nu, self.m)
 
-    def __eq__(self, m2):
-        if isinstance(m2, SMode):
-            return self.neff == m2.neff
-        else:
-            return self.mode == m2
+#     def __eq__(self, m2):
+#         if isinstance(m2, SMode):
+#             return self.neff == m2.neff
+#         else:
+#             return self.mode == m2
 
-    def __ne__(self, m2):
-        return not self == m2
+#     def __ne__(self, m2):
+#         return not self == m2
 
-    def __lt__(self, m2):
-        return self.neff < m2.neff
+#     def __lt__(self, m2):
+#         return self.neff < m2.neff
 
-    def __le__(self, m2):
-        return self.neff <= m2.neff
+#     def __le__(self, m2):
+#         return self.neff <= m2.neff
 
-    def __ge__(self, m2):
-        return self.neff >= m2.neff
+#     def __ge__(self, m2):
+#         return self.neff >= m2.neff
 
-    def __gt__(self, m2):
-        return self.neff > m2.neff
+#     def __gt__(self, m2):
+#         return self.neff > m2.neff
 
-    def rfield(self, R):
-        coefs = self._fiber._constants(self._neff, self)
+#     def rfield(self, R):
+#         coefs = self._fiber._constants(self._neff, self)
 
-        # print(str(self))
-        # for c in coefs:
-        #     print(c)
-        # print()
+#         # print(str(self))
+#         # for c in coefs:
+#         #     print(c)
+#         # print()
 
-        F = numpy.empty((6, 0))
-        for i in range(self._fiber._r.size):
-            rho = self._fiber._r[i]
-            if i == 0:
-                r = R[R < rho]
-            elif i + 1 < self._fiber._r.size:
-                r = R[(R >= self._fiber._r[i-1]) & (R < rho)]
-            else:
-                r = R[R >= rho]
+#         F = numpy.empty((6, 0))
+#         for i in range(self._fiber._r.size):
+#             rho = self._fiber._r[i]
+#             if i == 0:
+#                 r = R[R < rho]
+#             elif i + 1 < self._fiber._r.size:
+#                 r = R[(R >= self._fiber._r[i-1]) & (R < rho)]
+#             else:
+#                 r = R[R >= rho]
 
-            A, B, C, D = coefs[4*i:4*i+4]
-            k0 = self._fiber._wl.k0
-            u2 = k0**2 * (self._fiber._n[i]**2 - self._neff**2)
-            u = sqrt(abs(u2))
-            ur = u * r
+#             A, B, C, D = coefs[4*i:4*i+4]
+#             k0 = self._fiber._wl.k0
+#             u2 = k0**2 * (self._fiber._n[i]**2 - self._neff**2)
+#             u = sqrt(abs(u2))
+#             ur = u * r
 
-            if u2 > 0:
-                f1 = jn(self._nu, ur)
-                f2 = yn(self._nu, ur) if i else 0
-                f1p = jvp(self._nu, ur)
-                f2p = yvp(self._nu, ur) if i else 0
-            else:
-                f1 = iv(self._nu, ur)
-                f2 = kn(self._nu, ur) if i else 0
-                f1p = ivp(self._nu, ur)
-                f2p = kvp(self._nu, ur) if i else 0
+#             if u2 > 0:
+#                 f1 = jn(self._nu, ur)
+#                 f2 = yn(self._nu, ur) if i else 0
+#                 f1p = jvp(self._nu, ur)
+#                 f2p = yvp(self._nu, ur) if i else 0
+#             else:
+#                 f1 = iv(self._nu, ur)
+#                 f2 = kn(self._nu, ur) if i else 0
+#                 f1p = ivp(self._nu, ur)
+#                 f2p = kvp(self._nu, ur) if i else 0
 
-            n2 = self._fiber._n[i]**2
+#             n2 = self._fiber._n[i]**2
 
-            ez = A * f1 + B * f2
-            hz = C * f1 + D * f2
+#             ez = A * f1 + B * f2
+#             hz = C * f1 + D * f2
 
-            er = k0 / u * (self._neff * (A * f1p + B * f2p) -
-                           eta0 * self._nu / ur * hz)
-            ep = k0 / u * (self._neff * self._nu / ur * ez -
-                           eta0 * (C * f1p + D * f2p))
+#             er = k0 / u * (self._neff * (A * f1p + B * f2p) -
+#                            eta0 * self._nu / ur * hz)
+#             ep = k0 / u * (self._neff * self._nu / ur * ez -
+#                            eta0 * (C * f1p + D * f2p))
 
-            hr = k0 / u * (self._neff * (C * f1p + D * f2p) -
-                           n2 * self._nu / ur / eta0 * ez)
-            hp = k0 / u * (self._neff * self._nu / ur * hz -
-                           n2 / eta0 * (A * f1p + B * f2p))
-            if (u2 < 0):
-                er *= -1
-                ep *= -1
-                hr *= -1
-                hp *= -1
+#             hr = k0 / u * (self._neff * (C * f1p + D * f2p) -
+#                            n2 * self._nu / ur / eta0 * ez)
+#             hp = k0 / u * (self._neff * self._nu / ur * hz -
+#                            n2 / eta0 * (A * f1p + B * f2p))
+#             if (u2 < 0):
+#                 er *= -1
+#                 ep *= -1
+#                 hr *= -1
+#                 hp *= -1
 
-            # I = numpy.square(ez) + numpy.square(er) + numpy.square(ep)
-            I = numpy.vstack((ez, er, ep, hz, hr, hp))
-            F = numpy.hstack((F, I))
-        return F
+#             # I = numpy.square(ez) + numpy.square(er) + numpy.square(ep)
+#             I = numpy.vstack((ez, er, ep, hz, hr, hp))
+#             F = numpy.hstack((F, I))
+#         return F
 
 
-def sortModes(modes):
-    """Sort :class:`list` of :class:`SMode`, *in-place* (list is modified).
+# def sortModes(modes):
+#     """Sort :class:`list` of :class:`SMode`, *in-place* (list is modified).
 
-    Modes are sorted from highest to lowest effective index.
-    *m* parameters of the modes are adjusted.
+#     Modes are sorted from highest to lowest effective index.
+#     *m* parameters of the modes are adjusted.
 
-    :param modes: Unsorted :class:`list` of :class:`~fibermodes.mode.SMode`
-                  (solved mode) object.
-    :rtype: Sorted :class:`list` of :class:`~fibermodes.mode.SMode`
-            (solved mode) object.
+#     :param modes: Unsorted :class:`list` of :class:`~fibermodes.mode.SMode`
+#                   (solved mode) object.
+#     :rtype: Sorted :class:`list` of :class:`~fibermodes.mode.SMode`
+#             (solved mode) object.
 
-    """
-    modes.sort(reverse=True)
-    mparams = {}
-    for i, m in enumerate(modes):
-        key = (m.family, m.nu) if m.family != Family.EH else (Family.HE, m.nu)
-        if key[0] == Family.HE:
-            k2 = (Family.EH, m.nu)
-            if mparams.get(key, 0) != mparams.get(k2, 0):
-                key = k2
-            modes[i].family = key[0]
-        mval = mparams.get(key, 0) + 1
-        modes[i].m = mparams[key] = mval
-    return modes
+#     """
+#     modes.sort(reverse=True)
+#     mparams = {}
+#     for i, m in enumerate(modes):
+#         key = (m.family, m.nu) if m.family != Family.EH else (Family.HE, m.nu)
+#         if key[0] == Family.HE:
+#             k2 = (Family.EH, m.nu)
+#             if mparams.get(key, 0) != mparams.get(k2, 0):
+#                 key = k2
+#             modes[i].family = key[0]
+#         mval = mparams.get(key, 0) + 1
+#         modes[i].m = mparams[key] = mval
+#     return modes
 
 
 if __name__ == '__main__':
