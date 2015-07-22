@@ -31,11 +31,17 @@ class StepIndex(Geometry):
     def Psi(self, r, neff, wl, nu, C):
         u = self.u(r, neff, wl)
         if neff < self.maxIndex(wl):
-            psi = C[0] * jn(nu, u) + C[1] * yn(nu, u)
-            psip = u * (C[0] * jvp(nu, u) + C[1] * yvp(nu, u))
+            psi = (C[0] * jn(nu, u) + C[1] * yn(nu, u) if C[1] else
+                   C[0] * jn(nu, u))
+            psip = u * (C[0] * jvp(nu, u) + C[1] * yvp(nu, u) if C[1] else
+                        C[0] * jvp(nu, u))
         else:
-            psi = C[0] * iv(nu, u) + C[1] * kn(nu, u)
-            psip = u * (C[0] * ivp(nu, u) + C[1] * kvp(nu, u))
+            psi = (C[0] * iv(nu, u) + C[1] * kn(nu, u) if C[1] else
+                   C[0] * iv(nu, u))
+            psip = u * (C[0] * ivp(nu, u) + C[1] * kvp(nu, u) if C[1] else
+                        C[0] * ivp(nu, u))
+        if numpy.isnan(psi):
+            print(neff, self.maxIndex(wl), C, r)
         return psi, psip
 
     def lpConstants(self, r, neff, wl, nu, A):

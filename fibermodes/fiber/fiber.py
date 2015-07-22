@@ -20,9 +20,11 @@ from math import sqrt, isnan, isinf
 from fibermodes import Wavelength, Mode, ModeFamily
 from fibermodes import constants
 from fibermodes.functions import derivative
+from fibermodes.field import Field
 from itertools import count
 import logging
 from scipy.optimize import fixed_point
+from functools import lru_cache
 
 
 class Fiber(object):
@@ -290,3 +292,19 @@ class Fiber(object):
                 if m == 1:
                     break
         return modes
+
+    def field(self, mode, wl, r, np=101):
+        """Return electro-magnetic field.
+
+        """
+        return Field(self, mode, wl, r, np)
+
+    @lru_cache(maxsize=None)
+    def _rfield(self, mode, wl, r):
+        neff = self.neff(mode, wl)
+        fct = {ModeFamily.LP: self._neff._lpfield,
+               ModeFamily.TE: self._neff._tefield,
+               ModeFamily.TM: self._neff._tmfield,
+               ModeFamily.EH: self._neff._ehfield,
+               ModeFamily.HE: self._neff._hefield}
+        return fct[mode.family](wl, mode.nu, neff, r)

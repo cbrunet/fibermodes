@@ -3,7 +3,7 @@ from fibermodes import Wavelength, Mode, ModeFamily
 from fibermodes import constants
 from math import isnan, sqrt
 import numpy
-from scipy.special import kn, kvp, k0, k1
+from scipy.special import kn, kvp, k0, k1, jn, jvp, yn, yvp, iv, ivp
 
 
 class Neff(FiberSolver):
@@ -68,6 +68,74 @@ class Neff(FiberSolver):
                                    lowbound=lowbound-delta,
                                    highbound=highbound+delta,
                                    delta=-delta)
+
+    def _lpfield(self, wl, nu, neff, r):
+        N = len(self.fiber)
+        C = numpy.array((1, 0))
+
+        for i in range(1, N):
+            rho = self.fiber.innerRadius(i)
+            if r < rho:
+                layer = self.fiber.layers[i-1]
+                break
+            A = self.fiber.layers[i-1].Psi(rho, neff, wl, nu, C)
+            C = self.fiber.layers[i].lpConstants(rho, neff, wl, nu, A)
+        else:
+            layer = self.fiber.layers[-1]
+            u = layer.u(rho, neff, wl)
+            C = (0, A[0] / kn(nu, u))
+
+        ex, _ = layer.Psi(r, neff, wl, nu, C)
+        hy = neff * constants.Y0 * ex
+
+        return numpy.array((ex, 0, 0)), numpy.array((0, hy, 0))
+
+    def _tefield(self, wl, nu, neff, r):
+        pass
+
+    def _tmfield(self, wl, nu, neff, r):
+        N = len(self.fiber)
+        C = numpy.array((1, 0))
+        EH = numpy.zeros(4)
+        ri = 0
+
+        for i in range(N-1):
+            ro = self.fiber.outerRadius(i)
+            layer = self.fiber.layers[i]
+            n = layer.maxIndex(wl)
+            u = layer.u(ro, neff, wl)
+
+            if i > 0:
+                C = layer.tetmConstants(ri, ro, neff, wl, EH,
+                                        constants.Y0 * n * n, (0, 3))
+
+            if r < ro:
+                break
+
+            if neff < n:
+                c1 = wl.k0 * ro / u
+                F3 = jvp(nu, u) / jn(nu, u)
+                F4 = yvp(nu, u) / yn(nu, u)
+            else:
+                c1 = -wl.k0 * ro / u
+                F3 = ivp(nu, u) / iv(nu, u)
+                F4 = kvp(nu, u) / kn(nu, u)
+
+            c4 = constants.Y0 * n * n * c1
+
+            EH[0] = C[0] + C[1]
+            EH[3] = c4 * (F3 * C[0] + F4 * C[1])
+
+            ri = ro
+        else:
+            layer = self.fiber.layers[-1]
+            u = layer.u(ro, neff, wl)
+            # C =
+
+    def _hefield(self, wl, nu, neff, r):
+        pass
+
+    _ehfield = _hefield
 
     def _lpceq(self, neff, wl, nu):
         N = len(self.fiber)
