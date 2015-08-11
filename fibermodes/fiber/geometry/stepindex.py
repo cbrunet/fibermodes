@@ -66,25 +66,25 @@ class StepIndex(Geometry):
         if ri == 0:
             if nu == 0:
                 if tm:
-                    C = numpy.array([1., 0., 0., 0.])
+                    self.C = numpy.array([1., 0., 0., 0.])
                 else:
-                    C = numpy.array([0., 0., 1., 0.])
+                    self.C = numpy.array([0., 0., 1., 0.])
             else:
-                C = numpy.zeros((4, 2))
-                C[0, 0] = 1  # Ez = 1
-                C[2, 1] = 1  # Hz = alpha
+                self.C = numpy.zeros((4, 2))
+                self.C[0, 0] = 1  # Ez = 1
+                self.C[2, 1] = 1  # Hz = alpha
         elif nu == 0:
-            C = numpy.zeros(4)
+            self.C = numpy.zeros(4)
             if tm:
                 c = constants.Y0 * n * n
                 idx = (0, 3)
-                C[:2] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
+                self.C[:2] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
             else:
                 c = -constants.eta0
                 idx = (1, 2)
-                C[2:] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
+                self.C[2:] = self.tetmConstants(ri, ro, neff, wl, EH, c, idx)
         else:
-            C = self.vConstants(ri, ro, neff, wl, nu, EH)
+            self.C = self.vConstants(ri, ro, neff, wl, nu, EH)
 
         # Compute EH fields
         if neff < n:
@@ -100,10 +100,12 @@ class StepIndex(Geometry):
         c3 = constants.eta0 * c1
         c4 = constants.Y0 * n * n * c1
 
-        EH[0] = C[0] + C[1]
-        EH[1] = C[2] + C[3]
-        EH[2] = (c2 * (C[0] + C[1]) - c3 * (F3 * C[2] + F4 * C[3]))
-        EH[3] = (c4 * (F3 * C[0] + F4 * C[1]) - c2 * (C[2] + C[3]))
+        EH[0] = self.C[0] + self.C[1]
+        EH[1] = self.C[2] + self.C[3]
+        EH[2] = (c2 * (self.C[0] + self.C[1]) -
+                 c3 * (F3 * self.C[2] + F4 * self.C[3]))
+        EH[3] = (c4 * (F3 * self.C[0] + F4 * self.C[1]) -
+                 c2 * (self.C[2] + self.C[3]))
 
         return EH
 

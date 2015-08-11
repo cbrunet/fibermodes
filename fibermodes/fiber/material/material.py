@@ -5,8 +5,6 @@ A material gives a refractive index, as function of the wavelength.
 """
 
 import warnings
-from math import sqrt
-import numpy
 
 
 class OutOfRangeWarning(UserWarning):
@@ -18,22 +16,6 @@ class OutOfRangeWarning(UserWarning):
 
     """
     pass
-
-
-def claussiusMossotti(wl, a, b, z, x):
-    """ Claussius-Mossotti interpolation scheme.
-
-    :param wl: Wavelength (in meter)
-    :param a: A parameter (3 numbers array) for Silica
-    :param b: B parameter (3 numbers array)
-    :param z: z parameter (3 numbers array)
-    :param x: molar fraction
-    :rtype: float
-
-    """
-    wl2 = wl * wl
-    s = numpy.sum((a + b * x) * wl2 / (wl2 - z * z))
-    return sqrt((2 * s + 1) / (1 - s))
 
 
 class Material(object):

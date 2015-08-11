@@ -53,7 +53,8 @@ class FiberSolver(object):
                 delta /= 10
             else:
                 break
-        print("maxiter reached", maxiter)
+        self.logger.warning("maxiter reached ({}, {}, {})".format(
+                            maxiter, lowbound, highbound))
         return float("nan")
 
     def _findBetween(self, fct, lowbound, highbound, args=()):

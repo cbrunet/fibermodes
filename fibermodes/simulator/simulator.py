@@ -152,7 +152,7 @@ class Simulator(object):
             self.delta = delta
 
             self.set_factory(factory)
-            if wavelengths:
+            if wavelengths is not None:
                 self.set_wavelengths(wavelengths)
         self._build_fsims()
 

@@ -11,3 +11,6 @@ scripts/*.tex
 *.fiber
 *.xmi
 *.dump
+*.mat
+*.dat
+*.data

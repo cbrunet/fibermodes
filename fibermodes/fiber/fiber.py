@@ -157,7 +157,7 @@ class Fiber(object):
     def V0(self, wl):
         return Wavelength(wl).k0 * self.innerRadius(-1) * self.NA(wl)
 
-    def toWl(self, V0, maxiter=50, tol=1e-15):
+    def toWl(self, V0, maxiter=500, tol=1e-15):
         """Convert V0 number to wavelength.
 
         An iterative method is used, since the index can be wavelength
@@ -174,7 +174,7 @@ class Fiber(object):
             return constants.tpi / V0 * b * self.NA(x)
 
         if abs(wl - f(wl)) > tol:
-            wl = fixed_point(f, wl)
+            wl = fixed_point(f, wl, xtol=tol, maxiter=maxiter)
 
         return Wavelength(wl)
 

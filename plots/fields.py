@@ -1,4 +1,4 @@
-from fibermodes import FiberFactory, Wavelength, Mode
+from fibermodes import FiberFactory, Wavelength, Mode, ModeFamily
 from matplotlib import pyplot
 from matplotlib.patches import Circle
 import numpy
@@ -25,7 +25,8 @@ def fromVDelta(V, Delta, wl):
 def SMF28():
     f = FiberFactory()
     f.addLayer(name="core", radius=4.5e-6, index=1.449)
-    f.addLayer(name="cladding", index=1.444)
+    f.addLayer(name="cladding", radius=62.5e-6, index=1.444)
+    f.addLayer(name="air", index=1)
     return f[0]
 
 
@@ -37,6 +38,17 @@ def RCF2():
     f = FiberFactory()
     f.addLayer(name="center", radius=r1, material="Silica")
     f.addLayer(name="ring", radius=r2, material="SiO2GeO2", x=x)
+    f.addLayer(name="cladding", material="Silica")
+    fiber = f[0]
+    print(fiber)
+    return fiber
+
+
+def ACF():
+    f = FiberFactory()
+    f.addLayer(name="air", radius=9.1e-6, material="Air")
+    f.addLayer(name="ring", radius=11.3e-6, material="SiO2GeO2", x=0.192)
+    f.addLayer(name="trench", radius=16.2e-6, material="SiO2F", x=0.013)
     f.addLayer(name="cladding", material="Silica")
     fiber = f[0]
     print(fiber)
@@ -70,7 +82,7 @@ def plotFields(fields):
         plotFiber(ax, fiber)
 
 
-def plotProfile(fiber, mode, wl, r=10e-6, np=101):
+def plotExProfile(fiber, mode, wl, r=10e-6, np=101):
 
     def plotLayers(ax):
         for i in range(1, len(fiber)):
@@ -91,20 +103,64 @@ def plotProfile(fiber, mode, wl, r=10e-6, np=101):
     plotLayers(ax)
 
 
-if __name__ == '__main__':
+def plotEHProfile(fiber, mode, wl, r=10e-6, np=101):
+    def plotLayers(ax):
+        for i in range(1, len(fiber)):
+            ax.axvline(-fiber.innerRadius(i) * 1e6, ls="--")
+            ax.axvline(fiber.innerRadius(i) * 1e6, ls="--")
+
+    fig = pyplot.figure()
+    R = numpy.linspace(-r, r, np)
+    E = numpy.zeros((R.size, 3))
+    H = numpy.zeros((R.size, 3))
+    for i, r_ in enumerate(R):
+        E[i, :], H[i, :] = fiber._rfield(mode, wl, abs(r_))
+    # E
+    ax = fig.add_subplot(2, 1, 1)
+    ax.set_title(str(mode))
+    ax.set_xlabel("r (µm)")
+    ax.plot(R*1e6, E[:, 0], label="Er")
+    ax.plot(R*1e6, E[:, 1], label="Ephi")
+    ax.plot(R*1e6, E[:, 2], label="Ez")
+    ax.legend()
+    ax.set_xlim((-r*1e6, r*1e6))
+    plotLayers(ax)
+    # H
+    ax = fig.add_subplot(2, 1, 2)
+    ax.set_title(str(mode))
+    ax.set_xlabel("r (µm)")
+    ax.plot(R*1e6, H[:, 0], label="Hr")
+    ax.plot(R*1e6, H[:, 1], label="Hphi")
+    ax.plot(R*1e6, H[:, 2], label="Hz")
+    ax.legend()
+    ax.set_xlim((-r*1e6, r*1e6))
+    plotLayers(ax)
+
+
+def Alberto():
+    # R = 25e-6
     R = 20e-6
-    NP = 501
+    NP = 201
     wl = Wavelength(1550e-9)
+    # fiber = ACF()
     fiber = RCF2()
     for i in range(len(fiber)):
         print(fiber.maxIndex(i, wl))
 
-    modes = fiber.findLPmodes(wl)
+    modes = fiber.findVmodes(wl)
+    # modes = (Mode("HE", 1, 1),)
     for mode in modes:
+        if mode.family not in (ModeFamily.HE, ModeFamily.EH):
+            continue
         # mode = Mode("LP", 0, 1)
         print()
         print(str(mode))
         fields = fiber.field(mode, wl, R, np=NP)
+
+        Er = numpy.zeros(((NP-1)//2+1, 3))
+        Hr = numpy.zeros(Er.shape)
+        for i, r in enumerate(numpy.linspace(0, R, Er.shape[0])):
+            Er[i, :], Hr[i, :] = fiber._rfield(mode, wl, r)
 
         mdict = {
             'name': str(mode),
@@ -112,7 +168,8 @@ if __name__ == '__main__':
             'Aeff': fields.Aeff(),
             'Nm': fields.N(),
             'Im': fields.I(),
-            'Fxy': fields.Et(),
+            'Er': Er,
+            'Hr': Hr,
         }
 
         print("neff: {:.4f}".format(mdict['neff']))
@@ -123,9 +180,18 @@ if __name__ == '__main__':
 
         io.savemat(str(mode), mdict)
 
-        # modes = fiber.findVmodes(wl)
-        # for mode in modes:
-        # plotFields(fields)
-        plotProfile(fiber, mode, wl, R, NP)
+        plotEHProfile(fiber, mode, wl, R, NP)
         pyplot.savefig(str(mode)+'.pdf')
+
+
+def Bures328():
+    fiber = SMF28()
+    wl = Wavelength(1550e-9)
+    mode = Mode("HE", 1, 1)
+
+    plotEHProfile(fiber, mode, wl, np=201)
+
+if __name__ == '__main__':
+    Alberto()
+
     pyplot.show()

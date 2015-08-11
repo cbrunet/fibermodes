@@ -1,7 +1,7 @@
 from .solver import FiberSolver
 from fibermodes import Wavelength, Mode, ModeFamily
 from fibermodes import constants
-from math import isnan, sqrt
+from math import isnan, sqrt, factorial
 import numpy
 from scipy.special import kn, kvp, k0, k1, jn, jvp, yn, yvp, iv, ivp
 
@@ -132,8 +132,68 @@ class Neff(FiberSolver):
             u = layer.u(ro, neff, wl)
             # C =
 
+        return numpy.array((0, ephi, 0)), numpy.array((hr, 0, hz))
+
     def _hefield(self, wl, nu, neff, r):
-        pass
+        self._heceq(neff, wl, nu)
+        for i, rho in enumerate(self.fiber._r):
+            if r < rho:
+                break
+        else:
+            i += 1
+        layer = self.fiber.layers[i]
+        n = layer.maxIndex(wl)
+        u = layer.u(rho, neff, wl)
+        urp = u * r / rho
+
+        c1 = rho / u
+        c2 = wl.k0 * c1
+        c3 = nu * c1 / r if r else 0  # To avoid div by 0
+        c6 = constants.Y0 * n * n
+
+        if neff < n:
+            B1 = jn(nu, u)
+            B2 = yn(nu, u)
+            F1 = jn(nu, urp) / B1
+            F2 = yn(nu, urp) / B2 if i > 0 else 0
+            F3 = jvp(nu, urp) / B1
+            F4 = yvp(nu, urp) / B2 if i > 0 else 0
+        else:
+            c2 = -c2
+            B1 = iv(nu, u)
+            B2 = kn(nu, u)
+            F1 = iv(nu, urp) / B1
+            F2 = kn(nu, urp) / B2 if i > 0 else 0
+            F3 = ivp(nu, urp) / B1
+            F4 = kvp(nu, urp) / B2 if i > 0 else 0
+
+        A, B, Ap, Bp = layer.C[:, 0] + layer.C[:, 1] * self.alpha
+
+        Ez = A * F1 + B * F2
+        Ezp = A * F3 + B * F4
+        Hz = Ap * F1 + Bp * F2
+        Hzp = Ap * F3 + Bp * F4
+
+        if r == 0 and nu == 1:
+            # Asymptotic expansion of Ez (or Hz):
+            # J1(ur/p)/r (r->0) = u/(2p)
+            if neff < n:
+                f = 1 / (2 * jn(nu, u))
+            else:
+                f = 1 / (2 * iv(nu, u))
+            c3ez = A * f
+            c3hz = Ap * f
+        else:
+            c3ez = c3 * Ez
+            c3hz = c3 * Hz
+
+        Er = c2 * (neff * Ezp - constants.eta0 * c3hz)
+        Ep = c2 * (neff * c3ez - constants.eta0 * Hzp)
+
+        Hr = c2 * (neff * Hzp - c6 * c3ez)
+        Hp = c2 * (-neff * c3hz + c6 * Ezp)
+
+        return numpy.array((Er, Ep, Ez)), numpy.array((Hr, Hp, Hz))
 
     _ehfield = _hefield
 
@@ -198,6 +258,11 @@ class Neff(FiberSolver):
             ri = ro
 
         # Last layer
+        C = numpy.zeros((4, 2))
+        C[1, :] = EH[0, :]
+        C[3, :] = EH[1, :]
+        self.fiber.layers[N-1].C = C
+
         u = self.fiber.layers[N-1].u(ri, neff, wl)
         n = self.fiber.maxIndex(-1, wl)
 
@@ -209,6 +274,12 @@ class Neff(FiberSolver):
 
         E = EH[2, :] - (c2 * EH[0, :] - c3 * F4 * EH[1, :])
         H = EH[3, :] - (c4 * F4 * EH[0, :] - c2 * EH[1, :])
+
+        if E[1] != 0:
+            self.alpha = -E[0] / E[1]
+        else:
+            self.alpha = -H[0] / H[1]
+
         return E[0]*H[1] - E[1]*H[0]
 
     _ehceq = _heceq

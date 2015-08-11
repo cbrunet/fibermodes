@@ -1,6 +1,6 @@
 import numpy
 from itertools import product
-from fibermodes import Mode, ModeFamily
+from fibermodes import Mode, ModeFamily, Wavelength
 from fibermodes import constants
 
 
@@ -11,7 +11,7 @@ class Field(object):
     def __init__(self, fiber, mode, wl, r, np=101):
         self.fiber = fiber
         self.mode = mode
-        self.wl = wl
+        self.wl = Wavelength(wl)
         self.np = np
         self.xlim = (-r, r)
         self.ylim = (-r, r)
@@ -225,3 +225,7 @@ class Field(object):
         """Normalization constant."""
         neff = self.fiber.neff(Mode(ModeFamily.HE, 1, 1), self.wl)
         return 0.5 * constants.epsilon0 * neff * constants.c * self.I()
+
+    def S(self):
+        """Pointing vector"""
+        pass
