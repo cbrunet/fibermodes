@@ -48,14 +48,15 @@ a :py:class:`~fibermodes.mode.Mode` object::
 The constructor of Mode also accept a string to specify the family.
 
 The effective index also depends on the :py:class:`~fibermodes.wavelength.Wavelength`.
-We can explicitly build a Wavelength object, or we could simply give
-it as a float number (in meters)::
+We can explicitly build a Wavelength object::
 
     wl = Wavelength(1550e-9)
 
 Now we can compute the effective index::
 
     neff = fiber.neff(he11, wl)
+
+The wavelength parameter could also simply be given as a float number (in meters).
 
 Suppose we want to be sure the designed fiber is really single mode. We could
 request the fiber to find all the modes at a given wavelength::

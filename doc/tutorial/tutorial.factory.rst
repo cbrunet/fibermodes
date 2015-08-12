@@ -35,6 +35,7 @@ Defining fiber layers
 
 The first step is to create a new empty FiberFactory object::
 
+    from fibermodes import FiberFactory
     factory = FiberFactory()
 
 If we want, we can add some metadata to the fiber factory.
