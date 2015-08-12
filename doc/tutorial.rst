@@ -8,3 +8,4 @@ Contents:
    :maxdepth: 2
 
    tutorial/tutorial.smf
+   tutorial/tutorial.factory
