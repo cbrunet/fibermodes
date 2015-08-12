@@ -145,12 +145,10 @@ of parameters are built. For example::
 
 would print *30*, because there are 10 radius combined with 3 indexes.
 
-When the FiberFactory build fibers, it ensures that radius of inner layers
-are smaller than radius of outer layers. It also remove unneeded layers,
-for example if two consecutive layer have the same refractive index, or if
-the layer radius is 0. Therefore, the number of generated fibers could be smaller
-than the product of the number of parameters.
-
+When the FiberFactory build fibers, it removes unneeded layers.
+For example if two consecutive layer have the same refractive index, or if
+the layer radius is 0. Therefore, the resulting fiber could have a smaller number
+of layer that the number of layers in the FiberFactory itself.
 
 Specifying parameters as code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -186,7 +184,7 @@ Suppose you want to define a family of ring-core fibers, where the ring is
 2 µm thick. You could do it like this::
 
     factory = FiberFactory()
-    factory.addLayer(radius={'start': 1e-6, 'end': 10e-6, 'num'=10})
+    factory.addLayer(radius={'start': 1e-6, 'end': 10e-6, 'num': 10})
     factory.addLayer(radius="return r[0] + 2e-6", index=1.474)
     factory.addLayer()
 
@@ -200,7 +198,7 @@ but the same *V* number (*V=10*)::
     return n
     """
     factory = FiberFactory()
-    factory.addLayer(radius={'start': 1e-6, 'end': 10e-6, 'num'=10},
+    factory.addLayer(radius={'start': 1e-6, 'end': 10e-6, 'num': 10},
                      index=code)
     factory.addLayer(index=1.444)
 

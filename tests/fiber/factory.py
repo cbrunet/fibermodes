@@ -42,6 +42,44 @@ class TestFiberFactory(unittest.TestCase):
                                   'num': 5}
         self.assertEqual(len(f), 15)
 
+    def testDefaultLayerAttributes(self):
+        f = FiberFactory()
+        f.addLayer()
+
+        self.assertEqual(f.layers[0].mparams[0], 1.444)
+        self.assertEqual(f.layers[0].material, "Fixed")
+        self.assertEqual(f.layers[0].type, "StepIndex")
+        self.assertEqual(f.layers[0].radius, 0)
+
+    def testRadiusZero(self):
+        f = FiberFactory()
+        f.addLayer(radius=0)
+        f.addLayer(radius=4e-6, index=1.474)
+        f.addLayer()
+        fiber = f[0]
+
+        self.assertEqual(len(fiber), 2)
+
+    def testEqualIndexes(self):
+        f = FiberFactory()
+        f.addLayer(radius=1e-6, index=1.474)
+        f.addLayer(radius=4e-6, index=1.474)
+        f.addLayer()
+        fiber = f[0]
+
+        self.assertEqual(len(fiber), 2)
+
+    @unittest.expectedFailure
+    def testImpossibleRadius(self):
+        """TODO: not implemented yet"""
+
+        f = FiberFactory()
+        f.addLayer(radius=10e-6, index=1.174)
+        f.addLayer(radius=4e-6, index=1.444)
+        f.addLayer()
+
+        self.assertEqual(len(f), 0)
+
     def testFactoryGetItem(self):
         f = FiberFactory('tests/fiber/smf28.fiber')
         f.layers[0].radius = [2e-6, 3e-6, 4e-6]
