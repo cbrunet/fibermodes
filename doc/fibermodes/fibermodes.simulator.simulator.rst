@@ -9,21 +9,15 @@ fibermodes.simulator.simulator
 
    .. autosummary::
 
-     ~Simulator.addConstraint
-     ~Simulator.delConstraint
-     ~Simulator.getBeta
-     ~Simulator.getLPModes
-     ~Simulator.getNeff
-     ~Simulator.getParam
-     ~Simulator.getVModes
-     ~Simulator.setMaterials
-     ~Simulator.setMaterialsParams
-     ~Simulator.setRadii
-     ~Simulator.setRadius
-     ~Simulator.setRadiusFct
-     ~Simulator.setWavelength
-     ~Simulator.solveLP
-     ~Simulator.solveV
+      ~Simulator.fibers
+      ~Simulator.initialized
+      ~Simulator.mmax
+      ~Simulator.numax
+      ~Simulator.scalar
+      ~Simulator.set_factory
+      ~Simulator.set_wavelengths
+      ~Simulator.vectorial
+      ~Simulator.wavelengths
 
 
    .. rubric:: Class details

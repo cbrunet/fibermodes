@@ -99,6 +99,19 @@ class Mode(object):
         return not (self == m2)
 
     def __lt__(self, m2):
+        """Function used to sort modes.
+
+        The mode order is somewhat arbitrary, but determined:
+
+        1. Modes are sorted by *m* parameter;
+        2. Modes of the same family are sorted by *nu* parameter;
+        3. Modes of different families are sorted by *ell* parameter,
+           where *ell* = *nu* + 1 for EH modes, *nu* - 1 for HE modes,
+           1 for TE and TM modes, and *nu* for LP modes.
+        4. Modes with same *ell* are sorted by family, in the following
+           order: LP, EH, TE, HE, TM.
+
+        """
         if self.m == m2.m:
             if self.family == m2.family:
                 result = self.nu < m2.nu

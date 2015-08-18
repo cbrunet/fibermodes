@@ -9,3 +9,5 @@ Contents:
 
    tutorial/tutorial.smf
    tutorial/tutorial.factory
+   tutorial/tutorial.simulator
+   

@@ -1,3 +1,18 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 """The simulator allows to link fibers with wavelengths, to simulate
 an array of parameters.
 
@@ -126,7 +141,25 @@ class _FSimulator(object):
 
 class Simulator(object):
 
-    """Simulator class."""
+    """The Simulator links :py:class:`~fibermodes.fiber.factory.FiberFactory`
+    with a list of wavelengths, and provides a convenient way to compute
+    a range of modal properties.
+
+    Args:
+        factory(:py:class:`~fibermodes.fiber.factory.FiberFactory`): A
+            FiberFactory object.
+        wavelengths(list): A list of wavelengths.
+        numax(int): Maximum nu parameter used when finding modes, or None to
+            find all modes.
+        mmax(int): Maximum m parameter used when finding modes, or None to
+            find all modes.
+        vectorial(bool): Find vector modes.
+        scalar(bool): Find scalar modes.
+        delta(float): Delta parameter used for mode solver (smaller is mode
+            precise, bigger is faster).
+        clone(Simulator): Simulator object to clone.
+
+    """
 
     def __init__(self, factory=None, wavelengths=None,
                  numax=None, mmax=None, vectorial=True, scalar=False,
@@ -165,10 +198,28 @@ class Simulator(object):
                                 for fiber in self._fibers)
 
     def set_wavelengths(self, value):
+        """Set the list of wavelengths.
+
+        It can be used if this was not done in the constructor, or to modify
+        the current list of wavelengths.
+
+        Args:
+            value(list): List of wavelengths (in meters)
+
+        """
         self._wavelengths = tuple(Wavelength(w) for w in iter(SLRC(value)))
         self._build_fsims()
 
     def set_factory(self, factory):
+        """Set the FiberFactory.
+
+        It can be used if this was not done in the constructor, or to modify
+        the current FiberFactory.
+
+        Args:
+            factory(FiberFactory): FiberFactory object to use in simulator.
+
+        """
         if isinstance(factory, str):
             factory = FiberFactory(factory)
         self.factory = factory
@@ -178,6 +229,12 @@ class Simulator(object):
 
     @property
     def fibers(self):
+        """List of fibers, generated from the FiberFactory.
+
+        Raises:
+            ValueError: No FiberFactory was initialized.
+
+        """
         if self._fibers is None:
             raise ValueError("Object not initialized. You must call "
                              "set_factory first.")
@@ -185,6 +242,14 @@ class Simulator(object):
 
     @property
     def wavelengths(self):
+        """List of wavelengths.
+
+        This list always is sorted.
+
+        Raises:
+            ValueError: List of wavelengths was not initialized.
+
+        """
         if self._wavelengths is None:
             raise ValueError("Object not initialized. You must call "
                              "set_wavelengths first.")
@@ -192,6 +257,7 @@ class Simulator(object):
 
     @property
     def numax(self):
+        """Maximum nu when finding modes."""
         return self._numax
 
     @numax.setter
@@ -201,6 +267,7 @@ class Simulator(object):
 
     @property
     def mmax(self):
+        """Maximum m when finding modes."""
         return self._mmax
 
     @mmax.setter
@@ -210,6 +277,7 @@ class Simulator(object):
 
     @property
     def vectorial(self):
+        """Whether to search for vector modes."""
         return self._vectorial
 
     @vectorial.setter
@@ -219,6 +287,7 @@ class Simulator(object):
 
     @property
     def scalar(self):
+        """Whether to search for scalar modes."""
         return self._scalar
 
     @scalar.setter
@@ -228,6 +297,7 @@ class Simulator(object):
 
     @property
     def initialized(self):
+        """Whether FiberFactory and wavelengths are set."""
         return not (self._fibers is None or self._wavelengths is None)
 
     def __getattr__(self, name):
