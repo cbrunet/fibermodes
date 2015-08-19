@@ -21,7 +21,7 @@ class PSimulator(Simulator):
     def __getattr__(self, name):
         def wrapper():
             if self.pool is not None:
-                self.pool.join()
+                self.terminate()
             self.pool = Pool(self.numProcs)
 
             r = self.pool.imap(partial(applyf, name=name), self._fsims)
