@@ -193,7 +193,7 @@ class Fiber(object):
         try:
             return self.ne_cache[wl][mode]
         except KeyError:
-            neff = self._neff(wl, mode, delta, lowbound)
+            neff = self._neff(Wavelength(wl), mode, delta, lowbound)
             self.set_ne_cache(wl, mode, neff)
             return neff
 
