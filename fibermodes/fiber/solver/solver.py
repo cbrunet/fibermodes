@@ -57,11 +57,14 @@ class FiberSolver(object):
                             maxiter, lowbound, highbound))
         return float("nan")
 
-    def _findBetween(self, fct, lowbound, highbound, args=()):
+    def _findBetween(self, fct, lowbound, highbound, args=(), maxj=15):
         v = [lowbound, highbound]
         s = [fct(lowbound, *args), fct(highbound, *args)]
 
         for j in count():  # probably not needed...
+            if j == maxj:
+                self.logger.warning("_findBetween: max iter reached")
+                return float("nan")
             for i in range(len(s)-1):
                 a, b = v[i], v[i+1]
                 fa, fb = s[i], s[i+1]

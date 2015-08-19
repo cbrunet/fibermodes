@@ -56,13 +56,15 @@ class Neff(FiberSolver):
     """neff for standard step-index fiber"""
 
     def __call__(self, wl, mode, delta, lowbound):
+        epsilon = 1e-12
+
         co = self.fiber.cutoff(mode)
         if self.fiber.V0(wl) < co:
             return float("nan")
 
         nco = self.fiber.maxIndex(0, wl)
         r = self.fiber.outerRadius(0)
-        highbound = sqrt(nco**2 - (co / (r * wl.k0))**2) - delta
+        highbound = sqrt(nco**2 - (co / (r * wl.k0))**2) - epsilon
 
         if mode.family is ModeFamily.LP:
             nm = Mode(ModeFamily.LP, mode.nu+1, mode.m)
@@ -74,8 +76,8 @@ class Neff(FiberSolver):
             nm = Mode(ModeFamily.LP, 1, mode.m+1)
         co = self.fiber.cutoff(nm)
         try:
-            lowbound = max(sqrt(nco**2 - (co / (r * wl.k0))**2) + delta,
-                           self.fiber.minIndex(-1, wl) + delta)
+            lowbound = max(sqrt(nco**2 - (co / (r * wl.k0))**2) + epsilon,
+                           self.fiber.minIndex(-1, wl) + epsilon)
         except ValueError:
             lowbound = nco
 
