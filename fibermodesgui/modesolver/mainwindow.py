@@ -9,6 +9,8 @@ from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
 from .simparams import SimParamsDialog
 from .chareq import CharEqDialog
+from fibermodesgui.wavelengthcalculator import WavelengthCalculator
+from fibermodesgui import blockSignals
 
 
 def msToStr(ms, displayms=True):
@@ -91,6 +93,12 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("Ctrl+.")],
                 self.stop_simulation
             ),
+            'wlcalc': (
+                self.tr("&Wavelength calculator"),
+                'accessories-calculator',
+                [QtGui.QKeySequence("F7")],
+                self.toggle_wlcalc
+            ),
             'plotchareq': (
                 self.tr("&Plot characteristic equation"),
                 None,
@@ -162,6 +170,11 @@ class ModeSolver(AppWindow):
                 ]
             ),
             (
+                self.tr("&Tools"), [
+                    'wlcalc'
+                ]
+            ),
+            (
                 self.tr("&Debug"), [
                     'plotchareq',
                     self.logmenu,
@@ -182,6 +195,7 @@ class ModeSolver(AppWindow):
         toolbars = [
             ['save', 'exportcur'],
             ['start', 'stop'],
+            ['wlcalc'],
             ['paramwin', 'tablewin', 'graphwin'],
         ]
 
@@ -196,6 +210,7 @@ class ModeSolver(AppWindow):
         self.actions['stop'].setCheckable(True)
         self.actions['stop'].setChecked(True)
         self.actions['stop'].setEnabled(False)
+        self.actions['wlcalc'].setCheckable(True)
         self.actions['paramwin'].setCheckable(True)
         self.actions['paramwin'].setChecked(True)
         self.actions['tablewin'].setCheckable(True)
@@ -206,6 +221,8 @@ class ModeSolver(AppWindow):
         self.wavelengthInput.setValue(1550e-9)
         self.setDirty(False)
         self.closed.connect(self.doc.stop_thread)
+
+        self.wlcalc = None
 
     def _initLayout(self):
         self.progressBar = QtGui.QProgressBar()
@@ -472,6 +489,17 @@ class ModeSolver(AppWindow):
         self.actions['stop'].setEnabled(False)
         self.actions['start'].setEnabled(True)
         self.actions['start'].setChecked(False)
+
+    def toggle_wlcalc(self):
+        if self.wlcalc is None:
+            self.wlcalc = WavelengthCalculator(self)
+            self.wlcalc.hidden.connect(self.actions['wlcalc'].toggle)
+
+        if self.actions['wlcalc'].isChecked():
+            self.wlcalc.show()
+        else:
+            with blockSignals(self.wlcalc):
+                self.wlcalc.hide()
 
     def plot_chareq(self):
         sel = self.modeTableView.selectedIndexes()
