@@ -19,9 +19,3 @@ http://ao.osa.org/abstract.cfm?URI=ao-23-24-4486
     XRANGE = 1
     MATERIALS = (Silica, Germania)
 
-
-# Article (Sunak1989)
-# Sunak, H. & Bastien, S.
-# Refractive index and material dispersion interpolation of doped silica
-# in the 0.6-1.8 mu m wavelength region
-# Photonics Technology Letters, IEEE, 1989, 1, 142-145
