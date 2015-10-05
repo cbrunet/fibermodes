@@ -133,7 +133,7 @@ class SLRC(object):
             low = self._value['start']
             high = self._value['end']
             n = self._value['num']
-            return low + index*(high-low)/(n-1)
+            return low + index*(high-low)/(n-1) if n > 1 else low
         else:
             return self.value
 
