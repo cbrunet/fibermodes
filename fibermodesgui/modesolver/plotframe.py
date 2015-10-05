@@ -203,10 +203,15 @@ class PlotFrame(QtGui.QFrame):
         self.plotLegend = QtGui.QCheckBox(self.tr("Show legend"))
         self.plotLegend.stateChanged.connect(self.updatePlot)
 
+        self.showCutoffs = QtGui.QCheckBox(self.tr("Show cutoffs"))
+        self.showCutoffs.stateChanged.connect(self.updatePlot)
+        self.showCutoffs.setEnabled(False)
+
         layout = QtGui.QHBoxLayout()
         layout.addWidget(QtGui.QLabel(self.tr("x axis:")))
         layout.addWidget(self.xAxisSelector)
         layout.addWidget(self.plotLegend)
+        layout.addWidget(self.showCutoffs)
         layout.addStretch(1)
         return layout
 
@@ -231,9 +236,13 @@ class PlotFrame(QtGui.QFrame):
         elif self.legend is not None:
             self.legend.scene().removeItem(self.legend)
             self.legend = None
+
         self._updateXAxis()
+
         for i in range(len(self.doc.params)):
             self.plotGraph(i)
+        if self.showCutoffs.isEnabled and self.showCutoffs.isChecked():
+            self.plotCutoffs()
 
     def _updateXAxis(self):
         index = self.xAxisSelector.currentIndex()
@@ -252,6 +261,13 @@ class PlotFrame(QtGui.QFrame):
         self.plot.getPlotItem().setLabel('bottom',
                                          self.xAxisSelector.currentText(),
                                          units)
+
+        if index == WAVELENGTHS and "cutoff (wavelength)" in self.doc.params:
+            self.showCutoffs.setEnabled(True)
+        elif index == VNUMBER and "cutoff (V)" in self.doc.params:
+            self.showCutoffs.setEnabled(True)
+        else:
+            self.showCutoffs.setEnabled(False)
 
     def plotGraph(self, row):
         what = self.plotModel.data(self.plotModel.index(row, 0),
@@ -291,3 +307,16 @@ class PlotFrame(QtGui.QFrame):
             symbb = col if mark else None
             self.plot.plot(X, Y, pen=col, symbol=symb,
                            symbolBrush=symbb, name=str(m))
+
+    def plotCutoffs(self):
+        # TODO: colors...
+        xaxis = self.xAxisSelector.currentIndex()
+        if xaxis == WAVELENGTHS:
+            index = self.doc.params.index("cutoff (wavelength)")
+        else:
+            index = self.doc.params.index("cutoff (V)")
+        for (f, w, m, j), v in self.doc.values.items():
+            if j == index and f == self._fnum and w == 0:
+                if self.X[0] < v < self.X[-1]:
+                    self.plot.addLine(x=v,
+                                      pen=pg.mkPen(style=QtCore.Qt.DashLine))
