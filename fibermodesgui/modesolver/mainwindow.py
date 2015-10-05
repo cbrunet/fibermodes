@@ -328,7 +328,7 @@ class ModeSolver(AppWindow):
         self.modeTableModel = ModeTableModel(self.doc, self)
         self.modeTableProxy = QtGui.QSortFilterProxyModel(self)
         self.modeTableProxy.setSourceModel(self.modeTableModel)
-        self.modeTableProxy.setSortRole(QtCore.Qt.ToolTipRole)
+        self.modeTableProxy.setSortRole(QtCore.Qt.UserRole)
         self.modeTableProxy.setDynamicSortFilter(True)
         self.modeTableView = ModeTableView(self.modeTableProxy)
         self.modeTableModel.dataChanged.connect(

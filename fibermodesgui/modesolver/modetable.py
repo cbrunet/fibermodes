@@ -74,6 +74,8 @@ class ModeTableModel(QtCore.QAbstractTableModel):
                 return 'infinity'
             else:
                 return v*m
+        elif role == QtCore.Qt.UserRole:
+            return float(v) if v is not None else v
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
         self.dataChanged.emit(index, index)
