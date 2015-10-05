@@ -65,8 +65,8 @@ class Neff(FiberSolver):
             delta = (lowbound - highbound) / 10
 
         return self._findFirstRoot(fct[mode.family], args=(wl, mode.nu),
-                                   lowbound=lowbound-delta,
-                                   highbound=highbound+delta,
+                                   lowbound=lowbound-1e-15,
+                                   highbound=highbound+1e-15,
                                    delta=-delta)
 
     def _lpfield(self, wl, nu, neff, r):
@@ -254,7 +254,10 @@ class Neff(FiberSolver):
 
         for i in range(N-1):
             ro = self.fiber.outerRadius(i)
-            self.fiber.layers[i].EH_fields(ri, ro, nu, neff, wl, EH)
+            try:
+                self.fiber.layers[i].EH_fields(ri, ro, nu, neff, wl, EH)
+            except ZeroDivisionError:
+                return float("inf")
             ri = ro
 
         # Last layer

@@ -20,9 +20,13 @@ class Cutoff(FiberSolver):
                ModeFamily.HE: self._hecoeq,
                ModeFamily.EH: self._ehcoeq
                }
-        if mode.m > 1:
-            pm = Mode(mode.family, mode.nu, mode.m - 1)
-            lowbound = self.fiber.cutoff(pm, delta) + delta
+        if mode.family is ModeFamily.EH:
+            pm = Mode(ModeFamily.HE, mode.nu, mode.m)
+            lowbound = self.fiber.cutoff(pm, delta) + delta / 100
+        elif mode.m > 1:
+            f = ModeFamily.EH if mode.family is ModeFamily.HE else mode.family
+            pm = Mode(f, mode.nu, mode.m - 1)
+            lowbound = self.fiber.cutoff(pm, delta) + delta / 100
         else:
             lowbound = delta
         return self._findFirstRoot(fct[mode.family],
