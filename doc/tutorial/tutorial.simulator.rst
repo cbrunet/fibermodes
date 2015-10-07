@@ -27,9 +27,8 @@ how it works. We build the simulator object, and we retrieve the list of
 supported modes at 1550 nm::
 
     sim = Simulator(factory, [1550e-9])
-    modes = next(sim.modes())[0]
-    for mode in sorted(modes):
-        print(str(mode), sep=', ')
+    modes = next(sim.modes())[0]  # modes of first wavelength of next fiber
+    print(", ".join(str(mode) for mode in sorted(modes)))
     print()
 
 The simulator object takes two parameters: a fiber factory, and a list of
@@ -53,7 +52,7 @@ if our simulator was using more than one wavelength, it would return a list
 of cutoffs for each wavelength; the cutoffs would be the same, but some wavelength
 could return cutoffs for more modes, if it supports more modes::
 
-    cutoffs = next(sim.cutoff())[0]
+    cutoffs = next(sim.cutoff())[0]  # first wavelength of next fiber
     for mode, co in cutoffs.items():
         print(str(mode), co)
 
@@ -61,7 +60,7 @@ In this example, the cutoffs variable is a dictionary. Keys are the modes,
 and values are the cutoffs, expressed as *V* number. We can also get cutoffs
 as wavelengths::
 
-    cutoffswl = next(sim.cutoffWl())[0]
+    cutoffswl = next(sim.cutoffWl())[0]  # first wavelength of next fiber
     for mode, co in cutoffswl.items():
     	print(str(mode), str(co))
 
@@ -80,14 +79,19 @@ wavelengths we want to simulate, as well as the
     
     wavelengths = numpy.linspace(1530e-9, 1580e-9, 11)
     factory = FiberFactory()
-    factory.addLayer(radius=10e-6, index=1.474)
+    factory.addLayer(radius=4e-6, index=1.474)
     factory.addLayer()
 
 Then we build the Simulator object, and we compute the effective indexes::
 
-    sim = Simulator(factory, wavelengths)
+    sim = Simulator(factory, wavelengths, delta=1e-5)
     neffiter = sim.neff()
 
+The delta parameter, passed to the Simulator constructor, is simply the interval
+used by the solver to find the characteristic function zeros. An higher value
+decrease computation time, but increase the risk to skip some zeros. A lower value
+increase computation time, but increase the risk to skip some roots. Usually, 
+an highly multimode fiber will require a lower delta.
 The neff() function returns an iterator. In the current example, it yields only
 one value, because the FiberFactory produces a single fiber. If the FiberFactory
 was defining many fibers, the returned iterator would yield values for each
@@ -117,6 +121,8 @@ we can use the list of modes from the first wavelength::
         pyplot.plot(wavelengths, neffma, label=str(mode))
     pyplot.legend()
     pyplot.show()
+
+.. image:: neffwl.png
 
 Simulator accepts most functions of :py:class:`~fibermodes.fiber.fiber.Fiber`,
 including neff(), b(), vp(), ng(), vg(), D(), and S(). It also have the
@@ -148,7 +154,7 @@ wavelength to the Simulator::
     factory.addLayer(radius=r2, index=1.474)
     factory.addLayer(index=1.444)
 
-    sim = PSimulator(factory, [1550e-9], vectorial=vectorial, scalar=scalar,
+    sim = PSimulator(factory, [1550e-9], vectorial=False, scalar=True,
                      numax=6, mmax=2)
 
 The :py:class:`~fibermodes.simulator.psimulator.PSimulator` is identical to
@@ -175,5 +181,8 @@ and we plot *V* versus *rho* for each mode::
         if vco.min() < Vlim[1] and vco.max() > Vlim[0]:
             pyplot.plot(vco, rho, label=str(mode))
 
-    pyplot.set_xlim(Vlim)
-    pyplot.set_ylim((0, 1))
+    pyplot.xlim(Vlim)
+    pyplot.ylim((0, 1))
+    pyplot.show()
+
+.. image:: modalmap.png
