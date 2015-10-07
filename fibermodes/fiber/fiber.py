@@ -1,6 +1,6 @@
 """A Fiber represents a physical fiber
 (:py:mod:`~fibermodes.fiber.material` and
- :py:mod:`~fibermodes.fiber.geometry`).
+:py:mod:`~fibermodes.fiber.geometry`).
 
 Using a Fiber object, and passing
 :py:class:`~fibermodes.wavelength.Wavelength`.

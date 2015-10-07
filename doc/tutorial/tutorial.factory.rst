@@ -63,7 +63,7 @@ Parameters can be given to specify position, name, geometry, and material.
 For example, to create a step-index layer named "core", of 4 µm radius,
 with Silica doped with 10% of  Germania::
 
-    factory.addlayer(pos=0, name="core", type="StepIndex", radius=4e-6,
+    factory.addLayer(pos=0, name="core", geometry="StepIndex", radius=4e-6,
                      material="SiO2GeO2", x=0.1)
 
 It is also possible to specify index and wavelength, and the material will
@@ -127,6 +127,28 @@ Suppose now we want to plot effective index as function of core index::
 
     pyplot.plot(n, neff)
     pyplot.show()
+
+
+.. image:: ncoreneff.png
+
+
+Generating the fibers
+~~~~~~~~~~~~~~~~~~~~~
+
+In the previous example, we generated the fibers by iterating over the factory
+object. For example, to generate all fibers in a list, we can do::
+
+    fibers = list(factory)
+
+We can also access fibers by index. For example, to get the fifth fiber::
+
+    fiber = factory[4]
+
+If multiple parameters are specified as list, the product of parameter combinations
+is generated. For example, if there are two core radii, and three core indexes, 
+there will be six different fibers generated. The number of generated fibers can be
+queried using the `len` function.
+
 
 
 Specifying parameters as range
@@ -221,7 +243,7 @@ using :py:meth:`~fibermodes.fiber.factory.FiberFactory.load`,
 
 You can also give the file name to the FiberFactory constructor::
 
-    factory = FiberFactory('myfiber.fiber')
+    factory = FiberFactory('myfiber.json')
 
 When you save the factory to a file, the timestamp is update
 automatically. Therefore, you always know when the object was last modified.

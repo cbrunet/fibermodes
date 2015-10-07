@@ -28,13 +28,14 @@ class CompMaterial(Material):
 
     @classmethod
     def xFromN(cls, wl, n):
-        M1, M2 = cls.MATERIALS
-        n1 = M1.n(wl)
-        n2 = M2.n(wl)
-        if n1 < n2:
-            assert n1 <= n <= n2
-        else:
-            assert n2 <= n <= n1
+        if cls.MATERIALS is not None:
+            M1, M2 = cls.MATERIALS
+            n1 = M1.n(wl)
+            n2 = M2.n(wl)
+            if n1 < n2:
+                assert n1 <= n <= n2
+            else:
+                assert n2 <= n <= n1
 
         x = 1 if cls.XRANGE is None else cls.XRANGE
         return brentq(lambda x: cls.n(wl, x)-n, 0, x)
