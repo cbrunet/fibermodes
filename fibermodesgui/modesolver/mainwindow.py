@@ -256,6 +256,7 @@ class ModeSolver(AppWindow):
         self.splitter.addWidget(self._modesFrame())
         self.plotFrame = PlotFrame(self)
         self.plotFrame.modified.connect(self.setDirty)
+        self.modeTableView.selChanged.connect(self.plotFrame.updateModeSel)
         self.splitter.addWidget(self.plotFrame)
         self.setCentralWidget(self.splitter)
 
@@ -434,8 +435,8 @@ class ModeSolver(AppWindow):
             'wl': self.wavelengthInput._value,
             'modes': self.modeSelector.currentIndex(),
             'params': self.doc.params,
-            'numax': self.doc.numax,
-            'mmax': self.doc.mmax,
+            'numax': self.doc.numax if self.doc.numax is not None else -1,
+            'mmax': self.doc.mmax if self.doc.mmax is not None else -1,
             'fnum': self.fiberSlider.fiberInput.value(),
             'wlnum': self.wavelengthSlider.wavelengthInput.value(),
             'panes': {

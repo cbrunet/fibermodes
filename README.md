@@ -15,7 +15,7 @@ Requirements:
 - numpy
 - scipy
 
- For GUI:
+For GUI:
 
  - pyside
  - pyqtgraph

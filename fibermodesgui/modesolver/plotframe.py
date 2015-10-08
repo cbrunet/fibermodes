@@ -237,6 +237,7 @@ class PlotFrame(QtGui.QFrame):
         super().__init__(parent)
         self.doc = parent.doc
         self._wl = self._fnum = 0
+        self._modesel = []
 
         self.plotOptions = PlotOptions(self)
 
@@ -280,6 +281,10 @@ class PlotFrame(QtGui.QFrame):
 
     def setWavelength(self, value):
         self._wl = value - 1
+        self.updatePlot()
+
+    def updateModeSel(self, modes):
+        self._modesel = modes
         self.updatePlot()
 
     def updatePlot(self):
@@ -379,8 +384,10 @@ class PlotFrame(QtGui.QFrame):
             col = color if color else m.color()
             symb = MARKM[m.family] if mark == 'Mode' else mark
             symbb = col if mark else None
-            self.plot.plot(X, Y, pen=col, symbol=symb,
-                           symbolBrush=symbb, name=str(m))
+            pen = pg.mkPen(color=col, width=3 if m in self._modesel else 1)
+            spen = pg.mkPen(color='w', width=2 if m in self._modesel else 1)
+            self.plot.plot(X, Y, pen=pen, symbol=symb,
+                           symbolBrush=symbb, symbolPen=spen, name=str(m))
             miny = min(Y)
             maxy = max(Y)
             self.miny = min(miny, self.miny)
@@ -398,9 +405,10 @@ class PlotFrame(QtGui.QFrame):
                     color = self.plotModel.data(self.plotModel.index(j, 1),
                                                 role=QtCore.Qt.BackgroundRole)
                     col = color if color else m.color()
-                    self.plot.addLine(x=v,
-                                      pen=pg.mkPen(color=col,
-                                                   style=QtCore.Qt.DashLine))
+                    self.plot.addLine(
+                        x=v, pen=pg.mkPen(color=col,
+                                          style=QtCore.Qt.DashLine),
+                                          width=3 if m in self._modesel else 1)
 
     def plotLayers(self):
         if self.plotModel.rowCount() == 0:

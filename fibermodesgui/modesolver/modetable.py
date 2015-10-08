@@ -5,12 +5,26 @@ from math import isnan, isinf
 
 class ModeTableView(QtGui.QTableView):
 
+    selChanged = QtCore.Signal(list)
+
     def __init__(self, model, parent=None):
         super().__init__(parent)
         self.setModel(model)
         self.setSortingEnabled(True)
 
+    def selectedModes(self):
+        rows = set()
+        for index in self.selectedIndexes():
+            rows.add(index.row())
+
+        modes = []
+        for row in rows:
+            modes.append(self.model().headerData(row, QtCore.Qt.Vertical,
+                                                 QtCore.Qt.UserRole))
+        return modes
+
     def selectionChanged(self, selected, deselected):
+        self.selChanged.emit(self.selectedModes())
         return super().selectionChanged(selected, deselected)
 
 
@@ -82,14 +96,17 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         return True
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.DisplayRole:
-            try:
-                if orientation == QtCore.Qt.Horizontal:
+        try:
+            if orientation == QtCore.Qt.Horizontal:
+                if role == QtCore.Qt.DisplayRole:
                     return self._doc.params[section]
-                else:
+            else:
+                if role == QtCore.Qt.DisplayRole:
                     return str(self.modes[section])
-            except IndexError:
-                return None
+                elif role == QtCore.Qt.UserRole:
+                    return self.modes[section]
+        except IndexError:
+            return None
 
     def setFiber(self, fnum):
         self._fnum = fnum - 1
