@@ -1,0 +1,1 @@
+{"tstamp": 1430929482.0542128, "version": "0.0.1", "crdate": 1430334051.4237318, "author": "Charles Brunet", "description": "Single mode fiber", "name": "smf28", "layers": [{"material": "Fixed", "tparams": [4.5e-06], "mparams": [1.4489], "name": "core", "type": "StepIndex"}, {"material": "Fixed", "tparams": [0], "mparams": [1.4444], "name": "cladding", "type": "StepIndex"}]}
