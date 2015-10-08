@@ -55,7 +55,12 @@ class Cutoff(FiberSolver):
                                (self.fiber.minIndex(i, wl)
                                 for i in range(3)), dtype=float, count=3))
             n1sq, n2sq, n3sq = Nsq
-            Usq = [wl.k0**2 * (nsq - n3sq) for nsq in Nsq]
+            if wl == 0:
+                # Avoid floating point error. But there should be a
+                # way to do it better.
+                Usq = [float("inf")]*3
+            else:
+                Usq = [wl.k0**2 * (nsq - n3sq) for nsq in Nsq]
             s1, s2, s3 = numpy.sign(Usq)
             u1, u2, u3 = numpy.sqrt(numpy.abs(Usq))
             return u1*r1, u2*r1, u2*r2, s1, s2, n1sq, n2sq, n3sq
