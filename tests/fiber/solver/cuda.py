@@ -19,7 +19,7 @@ try:
 except ImportError as e:
     class TestCuda(unittest.TestCase):
 
-        @unittest.skip('Missing dependency - ' + e.message)
+        @unittest.skip('Missing dependency - ' + str(e))
         def test_fail():
             pass
 
