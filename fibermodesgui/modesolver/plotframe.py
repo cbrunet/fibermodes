@@ -2,7 +2,6 @@ from PySide import QtGui, QtCore
 import pyqtgraph as pg
 from fibermodesgui import blockSignals
 from fibermodes import ModeFamily
-from itertools import count
 
 
 FIBERS, WAVELENGTHS, VNUMBER, MODES = range(4)
@@ -10,6 +9,49 @@ YAXISLIST = QtCore.Qt.UserRole + 1
 MARK = ["None", "Mode", 'o', 's', 't', 'd', '+']
 MARKM = {ModeFamily.HE: 'o', ModeFamily.EH: 's', ModeFamily.TE: 't',
          ModeFamily.TM: 'd', ModeFamily.LP: '+'}
+
+
+class PlotOptions(QtGui.QDialog):
+
+    def __init__(self, parent, f=0):
+        super().__init__(parent, f)
+        self.parent = parent
+
+        self.showLegend = QtGui.QCheckBox(self.tr("Show legend"))
+        self.showLegend.stateChanged.connect(parent.updatePlot)
+
+        self.showCutoffs = QtGui.QCheckBox(self.tr("Show cutoffs"))
+        self.showCutoffs.stateChanged.connect(parent.updatePlot)
+        self.showCutoffs.setEnabled(False)
+
+        self.showLayers = QtGui.QCheckBox(self.tr("Show layer boundaries"))
+        self.showLayers.stateChanged.connect(parent.updatePlot)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(self.showLegend)
+        layout.addWidget(self.showCutoffs)
+        layout.addWidget(self.showLayers)
+        self.setLayout(layout)
+
+    def hideEvent(self, event):
+        self.parent.optionsBut.setChecked(False)
+        return super().hideEvent(event)
+
+    def save(self):
+        return {
+            'legend': self.showLegend.isChecked(),
+            'cutoffs': self.showCutoffs.isChecked(),
+            'layers': self.showLayers.isChecked()
+        }
+
+    def load(self, options):
+        with blockSignals(self.showLegend):
+            self.showLegend.setChecked(options['legend'])
+        with blockSignals(self.showCutoffs):
+            self.showCutoffs.setChecked(options['cutoffs'])
+        with blockSignals(self.showLayers):
+            self.showLayers.setChecked(options['layers'])
+        self.parent.updatePlot()
 
 
 class ColorPickerItemDelegate(QtGui.QStyledItemDelegate):
@@ -83,7 +125,7 @@ class PlotModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.doc = parent.doc
 
-        self.plots = [[0, QtGui.QColor("red"), 0]]
+        self.plots = [[0, QtGui.QColor("red").rgba(), 0]]
         self.usecolor = [False]
 
     def rowCount(self, parent=QtCore.QModelIndex):
@@ -108,6 +150,8 @@ class PlotModel(QtCore.QAbstractTableModel):
                     return ''
 
         elif index.column() == 1:  # color
+            value = QtGui.QColor.fromRgba(value)
+
             if role == QtCore.Qt.CheckStateRole:
                 return (QtCore.Qt.Checked if self.usecolor[index.row()]
                         else QtCore.Qt.Unchecked)
@@ -148,6 +192,8 @@ class PlotModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.CheckStateRole:
             self.usecolor[index.row()] = (value == QtCore.Qt.Checked)
         else:
+            if index.column() == 1:
+                value = value.rgba()
             self.plots[index.row()][index.column()] = value
         self.dataChanged.emit(index, index)
         return True
@@ -171,13 +217,28 @@ class PlotModel(QtCore.QAbstractTableModel):
             else:
                 return str(section + 1)
 
+    def save(self):
+        return {
+            'plots': self.plots,
+            'usecolor': self.usecolor
+        }
+
+    def load(self, data):
+        self.plots = data['plots']
+        self.usecolor = data['usecolor']
+        self.layoutChanged.emit()
+
 
 class PlotFrame(QtGui.QFrame):
+
+    modified = QtCore.Signal()
 
     def __init__(self, parent):
         super().__init__(parent)
         self.doc = parent.doc
         self._wl = self._fnum = 0
+
+        self.plotOptions = PlotOptions(self)
 
         self.plot = pg.PlotWidget()
         self.legend = None
@@ -200,18 +261,16 @@ class PlotFrame(QtGui.QFrame):
         self.xAxisSelector.currentIndexChanged.connect(self.updatePlot)
         self.xAxisSelector.setCurrentIndex(VNUMBER)
 
-        self.plotLegend = QtGui.QCheckBox(self.tr("Show legend"))
-        self.plotLegend.stateChanged.connect(self.updatePlot)
-
-        self.showCutoffs = QtGui.QCheckBox(self.tr("Show cutoffs"))
-        self.showCutoffs.stateChanged.connect(self.updatePlot)
-        self.showCutoffs.setEnabled(False)
+        self.optionsBut = QtGui.QPushButton(
+            QtGui.QIcon.fromTheme('document-properties'),
+            self.tr("Options"))
+        self.optionsBut.setCheckable(True)
+        self.optionsBut.toggled.connect(self.plotOptions.setVisible)
 
         layout = QtGui.QHBoxLayout()
         layout.addWidget(QtGui.QLabel(self.tr("x axis:")))
         layout.addWidget(self.xAxisSelector)
-        layout.addWidget(self.plotLegend)
-        layout.addWidget(self.showCutoffs)
+        layout.addWidget(self.optionsBut)
         layout.addStretch(1)
         return layout
 
@@ -227,9 +286,8 @@ class PlotFrame(QtGui.QFrame):
         if not self.doc.initialized:
             return
 
-        self.curcol = count()
         self.plot.clear()
-        if self.plotLegend.isChecked():
+        if self.plotOptions.showLegend.isChecked():
             if self.legend is not None:
                 self.legend.scene().removeItem(self.legend)
             self.legend = self.plot.addLegend()
@@ -239,10 +297,22 @@ class PlotFrame(QtGui.QFrame):
 
         self._updateXAxis()
 
-        for i in range(len(self.doc.params)):
+        self.miny = float("inf")
+        self.maxy = -float("inf")
+        for i in range(self.plotModel.rowCount()):
             self.plotGraph(i)
-        if self.showCutoffs.isEnabled and self.showCutoffs.isChecked():
+        try:
+            viewBox = self.plot.getPlotItem().getViewBox()
+            viewBox.setYRange(self.miny, self.maxy)
+        except:
+            pass
+
+        if (self.plotOptions.showCutoffs.isEnabled() and
+                self.plotOptions.showCutoffs.isChecked()):
             self.plotCutoffs()
+
+        if self.plotOptions.showLayers.isChecked():
+            self.plotLayers()
 
     def _updateXAxis(self):
         index = self.xAxisSelector.currentIndex()
@@ -263,11 +333,15 @@ class PlotFrame(QtGui.QFrame):
                                          units)
 
         if index == WAVELENGTHS and "cutoff (wavelength)" in self.doc.params:
-            self.showCutoffs.setEnabled(True)
+            self.plotOptions.showCutoffs.setEnabled(True)
         elif index == VNUMBER and "cutoff (V)" in self.doc.params:
-            self.showCutoffs.setEnabled(True)
+            self.plotOptions.showCutoffs.setEnabled(True)
         else:
-            self.showCutoffs.setEnabled(False)
+            self.plotOptions.showCutoffs.setEnabled(False)
+
+        viewBox = self.plot.getPlotItem().getViewBox()
+        viewBox.setXRange(self.X[0], self.X[-1])
+        self.modified.emit()
 
     def plotGraph(self, row):
         what = self.plotModel.data(self.plotModel.index(row, 0),
@@ -302,14 +376,17 @@ class PlotFrame(QtGui.QFrame):
             elif xaxis == WAVELENGTHS:
                 X = [self.X[x] for x in X]
 
-            col = color if color else pg.intColor(next(self.curcol))
+            col = color if color else m.color()
             symb = MARKM[m.family] if mark == 'Mode' else mark
             symbb = col if mark else None
             self.plot.plot(X, Y, pen=col, symbol=symb,
                            symbolBrush=symbb, name=str(m))
+            miny = min(Y)
+            maxy = max(Y)
+            self.miny = min(miny, self.miny)
+            self.maxy = max(maxy, self.maxy)
 
     def plotCutoffs(self):
-        # TODO: colors...
         xaxis = self.xAxisSelector.currentIndex()
         if xaxis == WAVELENGTHS:
             index = self.doc.params.index("cutoff (wavelength)")
@@ -318,5 +395,61 @@ class PlotFrame(QtGui.QFrame):
         for (f, w, m, j), v in self.doc.values.items():
             if j == index and f == self._fnum and w == 0:
                 if self.X[0] < v < self.X[-1]:
+                    color = self.plotModel.data(self.plotModel.index(j, 1),
+                                                role=QtCore.Qt.BackgroundRole)
+                    col = color if color else m.color()
                     self.plot.addLine(x=v,
-                                      pen=pg.mkPen(style=QtCore.Qt.DashLine))
+                                      pen=pg.mkPen(color=col,
+                                                   style=QtCore.Qt.DashLine))
+
+    def plotLayers(self):
+        if self.plotModel.rowCount() == 0:
+            return
+        what = self.plotModel.data(self.plotModel.index(0, 0),
+                                   QtCore.Qt.UserRole)
+        p = self.doc.params[what]
+        norm = True if p == 'b' else False
+
+        xaxis = self.xAxisSelector.currentIndex()
+        if xaxis == FIBERS:
+            wl = self.doc.wavelengths[self._wl]
+            if norm:
+                n1 = [max(layer.maxIndex(wl) for layer in fiber.layers)
+                      for fiber in self.doc.fibers]
+                n2 = [fiber.maxIndex(-1, wl) for fiber in self.doc.fibers]
+            for i in range(len(self.doc.fibers[0])):  # TODO: merged layers...
+                n = [fiber.maxIndex(i, wl) for fiber in self.doc.fibers]
+                if norm:
+                    for i in range(len(n)):
+                        n[i] = (n[i]**2 - n2[i]**2) / (n1[i]**2 - n2[i]**2)
+                self.plot.plot(self.X, n,
+                               pen=pg.mkPen(color='w',
+                                            style=QtCore.Qt.DotLine))
+        else:
+            fiber = self.doc.fibers[self._fnum]
+            wls = (self.doc.wavelengths if xaxis == WAVELENGTHS
+                   else self.doc.wavelengths[::-1])
+            if norm:
+                n1 = [max(layer.maxIndex(wl) for layer in fiber.layers)
+                      for wl in wls]
+                n2 = [fiber.maxIndex(-1, wl) for wl in wls]
+            for layer in fiber.layers:
+                n = [layer.maxIndex(wl) for wl in wls]
+                if norm:
+                    for i in range(len(n)):
+                        n[i] = (n[i]**2 - n2[i]**2) / (n1[i]**2 - n2[i]**2)
+                self.plot.plot(self.X, n,
+                               pen=pg.mkPen(color='w',
+                                            style=QtCore.Qt.DotLine))
+
+    def save(self):
+        return {
+            'xaxis': self.xAxisSelector.currentIndex(),
+            'options': self.plotOptions.save(),
+            'yaxis': self.plotModel.save()
+        }
+
+    def load(self, options):
+        self.xAxisSelector.setCurrentIndex(int(options['xaxis']))
+        self.plotOptions.load(options['options'])
+        self.plotModel.load(options['yaxis'])

@@ -11,6 +11,10 @@ from .simparams import SimParamsDialog
 from .chareq import CharEqDialog
 from fibermodesgui.wavelengthcalculator import WavelengthCalculator
 from fibermodesgui import blockSignals
+import os.path
+import json
+from tempfile import TemporaryFile
+from shutil import copyfileobj
 
 
 def msToStr(ms, displayms=True):
@@ -40,8 +44,14 @@ class ModeSolver(AppWindow):
         self._initLayout()
 
         actions = {
+            'open': (
+                self.tr("&Open"),
+                'document-open',
+                QtGui.QKeySequence.Open,
+                self.actionOpen
+            ),
             'save': (
-                self.tr("&Save results"),
+                self.tr("&Save"),
                 'document-save',
                 QtGui.QKeySequence.Save,
                 self.save),
@@ -63,7 +73,7 @@ class ModeSolver(AppWindow):
                 QtGui.QKeySequence.New,
                 self.fiberSelector.editFiber
             ),
-            'open': (
+            'load': (
                 self.tr("&Load fiber file"),
                 'document-open',
                 QtGui.QKeySequence.Open,
@@ -146,6 +156,7 @@ class ModeSolver(AppWindow):
         menus = [
             (
                 self.tr("&File"), [
+                    'open',
                     'save',
                     'exportcur',
                     '-',
@@ -155,7 +166,7 @@ class ModeSolver(AppWindow):
             (
                 self.tr("Fibe&r"), [
                     'new',
-                    'open',
+                    'load',
                     '-',
                     'edit',
                     'info',
@@ -193,7 +204,7 @@ class ModeSolver(AppWindow):
         ]
 
         toolbars = [
-            ['save', 'exportcur'],
+            ['open', 'save', 'exportcur'],
             ['start', 'stop'],
             ['wlcalc'],
             ['paramwin', 'tablewin', 'graphwin'],
@@ -244,6 +255,7 @@ class ModeSolver(AppWindow):
         self.splitter.addWidget(self._parametersFrame())
         self.splitter.addWidget(self._modesFrame())
         self.plotFrame = PlotFrame(self)
+        self.plotFrame.modified.connect(self.setDirty)
         self.splitter.addWidget(self.plotFrame)
         self.setCentralWidget(self.splitter)
 
@@ -357,11 +369,102 @@ class ModeSolver(AppWindow):
 
         return frame
 
-    def setDirty(self, df):
-        if not self.doc.factory:
-            self.actions['save'].setEnabled(False)
+    def documentName(self):
+        if self.doc.factory:
+            fn = self.doc.filename
+            p, f = os.path.split(fn)
+            b, e = os.path.splitext(f)
+            return os.path.join(p, b+".solver")
+        return ""
+
+    def actionOpen(self, filename=None):
+        if not self._closeDocument():
+            return
+
+        if filename is None:
+            openDialog = QtGui.QFileDialog()
+            openDialog.setWindowTitle(self.tr("Open solver..."))
+            openDialog.setDirectory(self._dir)
+            openDialog.setAcceptMode(QtGui.QFileDialog.AcceptOpen)
+            openDialog.setNameFilter(self.tr("Solver (*.solver)"))
+            if openDialog.exec_() == QtGui.QFileDialog.Accepted:
+                filename = openDialog.selectedFiles()[0]
+                self._dir = openDialog.directory()
+
+        if filename is not None:
+            if self.load(filename):
+                self._dir = os.path.dirname(filename)
+                self.setDirty(False)
+                self.statusBar().showMessage(self.tr("Solver loaded"), 5000)
+
+    def load(self, filename):
+        # Test for fiber file
+        p, f = os.path.split(filename)
+        b, e = os.path.splitext(f)
+        fiberfile = os.path.join(p, b+".fiber")
+        if os.path.exists(fiberfile):
+            self.doc.filename = fiberfile
+            self.fiberSelector.fileLoaded.emit()
         else:
-            self.actions['save'].setEnabled(df)
+            # Trouver fiberfile...
+            print(fiberfile, "not found")
+            return False
+
+        with open(filename, 'r') as f:
+            s = json.load(f)
+            self.wavelengthInput.setValue(s['wl'])
+            self.modeSelector.setCurrentIndex(int(s['modes']))
+            self.doc.params = s['params']
+            for p, box in self.simParamBoxes.items():
+                with blockSignals(box):
+                    box.setChecked(p in self.doc.params)
+            self.nuMaxInput.setValue(int(s['numax']))
+            self.mMaxInput.setValue(int(s['mmax']))
+            self.fiberSlider.fiberInput.setValue(int(s['fnum']))
+            self.wavelengthSlider.wavelengthInput.setValue(int(s['wlnum']))
+            self.actions['paramwin'].setChecked(s['panes']['params'])
+            self.actions['tablewin'].setChecked(s['panes']['modes'])
+            self.actions['graphwin'].setChecked(s['panes']['graph'])
+            self.togglePanes()
+            self.plotFrame.load(s['graph'])
+        return True
+
+    def save(self):
+        s = {
+            'wl': self.wavelengthInput._value,
+            'modes': self.modeSelector.currentIndex(),
+            'params': self.doc.params,
+            'numax': self.doc.numax,
+            'mmax': self.doc.mmax,
+            'fnum': self.fiberSlider.fiberInput.value(),
+            'wlnum': self.wavelengthSlider.wavelengthInput.value(),
+            'panes': {
+                'params': int(self.actions['paramwin'].isChecked()),
+                'modes': int(self.actions['tablewin'].isChecked()),
+                'graph': int(self.actions['graphwin'].isChecked())},
+            'graph': self.plotFrame.save()
+        }
+
+        # Use temporary file to prevent overwriting existing file in case
+        # of error
+        with TemporaryFile(mode="w+") as f:
+            json.dump(s, f)
+            f.seek(0)
+            with open(self.documentName(), 'w') as fd:
+                copyfileobj(f, fd)
+
+        self.setDirty(False)
+        self.statusBar().showMessage(self.tr("Fiber saved"), 5000)
+        super().save()
+
+    def setDirty(self, df=True):
+        if 'save' in self.actions:
+            if not self.doc.factory:
+                self.actions['save'].setEnabled(False)
+            else:
+                self.actions['save'].setEnabled(df)
+        if not self.doc.factory:
+            df = False
         super().setDirty(df)
 
     def _updateFiberCount(self):
@@ -395,17 +498,21 @@ class ModeSolver(AppWindow):
 
     def setMode(self, index):
         self.doc.modeKind = self.modeSelector.currentText()
+        self.setDirty(True)
 
     def setMaxNu(self, value):
         self.doc.numax = value
+        self.setDirty(True)
 
     def setMaxM(self, value):
         self.doc.mmax = value
+        self.setDirty(True)
 
     def setFiber(self, value):
         self.modeTableModel.setFiber(value)
         self.plotFrame.setFiber(value)
         self.showVNumber()
+        self.setDirty(True)
 
     def setWavelength(self, value):
         if 0 <= value - 1 < len(self.doc.wavelengths):
@@ -415,6 +522,7 @@ class ModeSolver(AppWindow):
             self.modeTableModel.setWavelength(value)
             self.plotFrame.setWavelength(value)
             self.showVNumber()
+            self.setDirty(True)
 
     def showVNumber(self):
         try:
@@ -423,7 +531,7 @@ class ModeSolver(AppWindow):
             wl = self.doc.wavelengths[wlnum]
             fiber = self.doc.fibers[fnum]
             self.wavelengthSlider.vLabel.setText(
-                "/ V = {:.5f}".format(fiber.V0(wl)))
+                "| V = {:.5f}".format(fiber.V0(wl)))
         except ValueError:
             pass
 
@@ -434,6 +542,7 @@ class ModeSolver(AppWindow):
                 if self.simParamBoxes[p].isChecked():
                     params.append(p)
         self.doc.params = params
+        self.setDirty(True)
 
     def initProgressBar(self):
         self.progressBar.setMaximum(0)
@@ -528,6 +637,7 @@ class ModeSolver(AppWindow):
             self.actions['paramwin'].setEnabled(True)
             self.actions['tablewin'].setEnabled(True)
             self.actions['graphwin'].setEnabled(True)
+        self.setDirty(True)
 
     def toggleFullscreen(self):
         if self.isFullScreen():
