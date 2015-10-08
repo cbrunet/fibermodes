@@ -3,8 +3,6 @@
 import unittest
 from fibermodes.simulator import PSimulator
 from tests.simulator.simulator import TestSimulator
-import logging
-from fibermodes import Mode
 
 
 class TestPSimulator(TestSimulator):
@@ -23,9 +21,5 @@ class TestPSimulator(TestSimulator):
     #     super().assertEqual(first, second, msg)
 
 if __name__ == "__main__":
-    # logging.basicConfig(level=logging.DEBUG)
-    import os
-    os.chdir("../..")
-    # unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestPSimulator)
     unittest.TextTestRunner(verbosity=1).run(suite)

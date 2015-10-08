@@ -2,8 +2,8 @@ language: python
 sudo: false
 python:
   # - "3.2"
-  # - "3.3"
-  # - "3.4"
+  - "3.3"
+  - "3.4"
   - "3.5"
 before_install:
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
@@ -20,4 +20,4 @@ install:
   # Coverage packages are on my binstar channel
   # - conda install --yes -c dan_blanchard python-coveralls nose-cov
   # - python setup.py install
-script: python runtests.py
+script: python -m unittest discover -s tests -p "*.py"

@@ -1,8 +1,11 @@
 """Test suite for fiber.fiber module"""
 
 import unittest
+import os.path
 
 from fibermodes import FiberFactory
+
+__dir__, _ = os.path.split(__file__)
 
 
 class TestFiber(unittest.TestCase):
@@ -10,7 +13,7 @@ class TestFiber(unittest.TestCase):
     """Test suite for Fiber class"""
 
     def testFiberProperties(self):
-        f = FiberFactory('tests/fiber/rcf.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'rcf.fiber'))
         fiber = f[0]
         self.assertEqual(len(fiber), 3)
         self.assertEqual(fiber.name(0), "center")
@@ -24,7 +27,7 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(fiber.maxIndex(1, 1550e-9), 1.454)
 
     def testFiberWithMaterials(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         f.layers[0].material = "SiO2GeO2"
         f.layers[0].mparams = [0.05]
         f.layers[1].material = "Silica"
@@ -36,7 +39,7 @@ class TestFiber(unittest.TestCase):
                                1.444023621703261)
 
     def testToWl(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         fiber = f[0]
         self.assertAlmostEqual(fiber.toWl(fiber.V0(1600e-9)), 1600e-9)
 
@@ -47,6 +50,4 @@ class TestFiber(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    import os
-    os.chdir('../..')
     unittest.main()

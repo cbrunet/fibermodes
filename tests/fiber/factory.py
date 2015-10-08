@@ -1,8 +1,11 @@
 """Test suite for fiber.factory module"""
 
 import unittest
+import os.path
 
 from fibermodes import FiberFactory
+
+__dir__, _ = os.path.split(__file__)
 
 
 class TestFiberFactory(unittest.TestCase):
@@ -10,7 +13,7 @@ class TestFiberFactory(unittest.TestCase):
     """Test suite for FiberFactory class"""
 
     def testReadAttributes(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         self.assertEqual(f.name, "smf28")
         self.assertEqual(f.author, "Charles Brunet")
         self.assertEqual(f.description, "Single mode fiber")
@@ -31,7 +34,7 @@ class TestFiberFactory(unittest.TestCase):
         self.assertEqual(f.layers[0].name, "core")
 
     def testFactoryLen(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         self.assertEqual(len(f), 1)
 
         f.layers[0].radius = [2e-6, 3e-6, 4e-6]
@@ -81,7 +84,7 @@ class TestFiberFactory(unittest.TestCase):
         self.assertEqual(len(f), 0)
 
     def testFactoryGetItem(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         f.layers[0].radius = [2e-6, 3e-6, 4e-6]
 
         for i, fiber in enumerate(f):
@@ -89,12 +92,10 @@ class TestFiberFactory(unittest.TestCase):
             self.assertEqual(f[i].outerRadius(0), f.layers[0].radius[i])
 
     def testFactoryLayerSetMaterial(self):
-        f = FiberFactory('tests/fiber/smf28.fiber')
+        f = FiberFactory(os.path.join(__dir__, 'smf28.fiber'))
         f.layers[1].material = "Silica"
         self.assertEqual(len(f.layers[1].mparams), 0)
 
 
 if __name__ == "__main__":
-    import os
-    os.chdir("../..")
     unittest.main()
