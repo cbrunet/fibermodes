@@ -15,6 +15,7 @@ class FiberSelector(QtGui.QFrame):
         super().__init__(parent, *args, **kwargs)
 
         self._doc = doc
+        self._editWin = None
 
         self.fiberName = QtGui.QLabel(self.tr("<i>Select fiber...</i>"))
         self.fiberName.setTextFormat(QtCore.Qt.RichText)
@@ -67,12 +68,15 @@ class FiberSelector(QtGui.QFrame):
             self.fileLoaded.emit()
 
     def editFiber(self):
-        win = FiberEditor(self)
-        if self._doc.filename:
-            win.actionOpen(self._doc.filename)
-        # win.setWindowModality(QtCore.Qt.WindowModal)
-        win.saved.connect(self.updateFiber)
-        win.show()
+        if self._editWin is None:
+            self._editWin = FiberEditor(self)
+            self._editWin.closed.connect(self.editorClosed)
+            if self._doc.filename:
+                self._editWin.actionOpen(self._doc.filename)
+            # self._editWin.setWindowModality(QtCore.Qt.WindowModal)
+            self._editWin.saved.connect(self.updateFiber)
+        self._editWin.show()
+        self._editWin.raise_()
 
     def updateFiber(self, filename):
         self._doc.filename = filename
@@ -100,3 +104,6 @@ class FiberSelector(QtGui.QFrame):
         msgBox.setWindowTitle(self.tr("Fiber Properties"))
         msgBox.setText(propTemplate)
         msgBox.exec_()
+
+    def editorClosed(self):
+        self._editWin = None
