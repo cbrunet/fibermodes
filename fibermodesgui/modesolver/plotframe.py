@@ -406,9 +406,10 @@ class PlotFrame(QtGui.QFrame):
                                                 role=QtCore.Qt.BackgroundRole)
                     col = color if color else m.color()
                     self.plot.addLine(
-                        x=v, pen=pg.mkPen(color=col,
-                                          style=QtCore.Qt.DashLine),
-                                          width=3 if m in self._modesel else 1)
+                        x=v,
+                        pen=pg.mkPen(color=col,
+                                     style=QtCore.Qt.DashLine,
+                                     width=3 if m in self._modesel else 1))
 
     def plotLayers(self):
         if self.plotModel.rowCount() == 0:
