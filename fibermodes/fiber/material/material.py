@@ -4,6 +4,7 @@ A material gives a refractive index, as function of the wavelength.
 
 """
 
+from scipy.optimize import brentq
 import warnings
 
 
@@ -53,6 +54,24 @@ class Material(object):
     def n(cls, wl, *args, **kwargs):
         raise NotImplementedError(
             "This method must be implemented in derived class.")
+
+    @classmethod
+    def wlFromN(cls, n, *args, **kwargs):
+        def f(wl):
+            return n - cls.n(wl, *args, **kwargs)
+
+        if cls.WLRANGE is None:
+            raise NotImplementedError(
+                "This method only works if WLRANGE is defined")
+
+        a = f(cls.WLRANGE[0])
+        b = f(cls.WLRANGE[1])
+        if a*b > 0:
+            warnings.warn("Index {} out of range.".format(n),
+                          OutOfRangeWarning)
+            return None
+
+        return brentq(f, cls.WLRANGE[0], cls.WLRANGE[1])
 
     @classmethod
     def str(cls, *args):

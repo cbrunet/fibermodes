@@ -9,6 +9,7 @@ from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
 from .simparams import SimParamsDialog
 from .chareq import CharEqDialog
+from fibermodesgui.materialcalculator import MaterialCalculator
 from fibermodesgui.wavelengthcalculator import WavelengthCalculator
 from fibermodesgui import blockSignals
 import os.path
@@ -103,6 +104,12 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("Ctrl+.")],
                 self.stop_simulation
             ),
+            'mcalc': (
+                self.tr("&Material calculator"),
+                'accessories-calculator',
+                [QtGui.QKeySequence("F8")],
+                self.toggle_mcalc
+            ),
             'wlcalc': (
                 self.tr("&Wavelength calculator"),
                 'accessories-calculator',
@@ -182,7 +189,8 @@ class ModeSolver(AppWindow):
             ),
             (
                 self.tr("&Tools"), [
-                    'wlcalc'
+                    'wlcalc',
+                    'mcalc'
                 ]
             ),
             (
@@ -206,7 +214,7 @@ class ModeSolver(AppWindow):
         toolbars = [
             ['open', 'save', 'exportcur'],
             ['start', 'stop'],
-            ['wlcalc'],
+            ['wlcalc', 'mcalc'],
             ['paramwin', 'tablewin', 'graphwin'],
         ]
 
@@ -221,6 +229,7 @@ class ModeSolver(AppWindow):
         self.actions['stop'].setCheckable(True)
         self.actions['stop'].setChecked(True)
         self.actions['stop'].setEnabled(False)
+        self.actions['mcalc'].setCheckable(True)
         self.actions['wlcalc'].setCheckable(True)
         self.actions['paramwin'].setCheckable(True)
         self.actions['paramwin'].setChecked(True)
@@ -233,6 +242,7 @@ class ModeSolver(AppWindow):
         self.setDirty(False)
         self.closed.connect(self.doc.stop_thread)
 
+        self.mcalc = None
         self.wlcalc = None
 
     def _initLayout(self):
@@ -599,6 +609,17 @@ class ModeSolver(AppWindow):
         self.actions['stop'].setEnabled(False)
         self.actions['start'].setEnabled(True)
         self.actions['start'].setChecked(False)
+
+    def toggle_mcalc(self):
+        if self.mcalc is None:
+            self.mcalc = MaterialCalculator(self)
+            self.mcalc.hidden.connect(self.actions['mcalc'].toggle)
+
+        if self.actions['mcalc'].isChecked():
+            self.mcalc.show()
+        else:
+            with blockSignals(self.mcalc):
+                self.mcalc.hide()
 
     def toggle_wlcalc(self):
         if self.wlcalc is None:
