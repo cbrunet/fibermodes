@@ -282,7 +282,7 @@ class ModeSolver(AppWindow):
         self.wavelengthInput = SLRCWidget()
         self.wavelengthInput.setSuffix(" nm")
         self.wavelengthInput.setScaleFactor(1e9)
-        self.wavelengthInput.setRange(500, 3000)
+        self.wavelengthInput.setRange(200, 10000)
         self.wavelengthInput.setSingleStep(1)
         self.wavelengthInput.valueChanged.connect(self.updateWavelengths)
 
