@@ -1,7 +1,7 @@
 from .solver import FiberSolver
 from fibermodes import Wavelength, Mode, ModeFamily
 from fibermodes import constants
-from math import isnan, sqrt, factorial
+from math import isnan, sqrt
 import numpy
 from scipy.special import kn, kvp, k0, k1, jn, jvp, yn, yvp, iv, ivp
 

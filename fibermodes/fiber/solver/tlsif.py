@@ -20,16 +20,18 @@ class Cutoff(FiberSolver):
                ModeFamily.HE: self._hecoeq,
                ModeFamily.EH: self._ehcoeq
                }
-        # if mode.family is ModeFamily.EH:
-        #     pm = Mode(ModeFamily.HE, mode.nu, mode.m)
-        #     lowbound = self.fiber.cutoff(pm, delta) + delta / 100
-        # elif mode.m > 1:
-        #     f = ModeFamily.EH if mode.family is ModeFamily.HE else mode.family
-        #     pm = Mode(f, mode.nu, mode.m - 1)
-        #     lowbound = self.fiber.cutoff(pm, delta) + delta / 100
         if mode.m > 1:
             pm = Mode(mode.family, mode.nu, mode.m - 1)
+            if pm == Mode(ModeFamily.HE, 1, 1):
+                pm = Mode(ModeFamily.TE, 0, 1)
+            elif pm == Mode(ModeFamily.LP, 0, 1):
+                pm = Mode(ModeFamily.LP, 1, 1)
             lowbound = self.fiber.cutoff(pm, delta) + delta / 100
+        elif mode.nu > 0:
+            # TE(0,1) is single-mode condition
+            # Roots below TE(0,1) are false-positive
+            pm = Mode(ModeFamily.TE, 0, 1)
+            lowbound = self.fiber.cutoff(pm, delta) - delta / 100
         else:
             lowbound = delta
         return self._findFirstRoot(fct[mode.family],
@@ -69,6 +71,7 @@ class Cutoff(FiberSolver):
             return u1*r1, u2*r1, u2*r2, s1, s2, n1sq, n2sq, n3sq
 
     def __delta(self, nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq):
+        """s3 is sign of Delta"""
         if s1 < 0:
             f = ivp(nu, u1r1) / (iv(nu, u1r1) * u1r1)  # c
         else:
@@ -147,52 +150,157 @@ class Cutoff(FiberSolver):
     def _ehcoeq(self, v0, nu):
         u1r1, u2r1, u2r2, s1, s2, n1sq, n2sq, n3sq = self.__params(v0)
         if s1 == 0:
-            delta0 = (n3sq - n2sq) / (n3sq + n2sq)
+            return self.__fct3(nu, u2r1, u2r2, 2, n2sq, n3sq)
         else:
-            s3 = 1 if s1 > 0 and u1r1 < u2r1 else -1
-            if nu == 1 and n1sq > n2sq > n3sq:
+            s3 = 1 if s1 == s2 else -1
+            if nu > 1 and n1sq > n2sq > n3sq:  # Vraiment pas sûr...
                 s3 *= -1
-            # s3 = 1 if s1 == s2 and nu == 1 else -1
-            delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
+            return self.__fct1(nu, u1r1, u2r1, u2r2, s1, s2, s3,
+                               n1sq, n2sq, n3sq)
 
-        if s1 == 0:  # e
-            f22a, f22b = jn(nu, u2r2), yn(nu, u2r2)
-            f2a = jn(nu+2, u2r1) * f22b - yn(nu+2, u2r1) * f22a
-            f2b = jn(nu, u2r1) * f22b - yn(nu, u2r1) * f22a
-        elif s2 > 0:  # b c d
-            f22a, f22b = jn(nu, u2r2), yn(nu, u2r2)
-            f2a = jn(nu+1, u2r1) * f22b - yn(nu+1, u2r1) * f22a
-            f2b = jn(nu, u2r1) * f22b - yn(nu, u2r1) * f22a
-        else:  # a
-            f22a, f22b = iv(nu, u2r2), kn(nu, u2r2)
-            f2a = iv(nu+1, u2r1) * f22b + kn(nu+1, u2r1) * f22a
-            f2b = -iv(nu, u2r1) * f22b + kn(nu, u2r1) * f22a
 
-        return f2a - delta0 * f2b
+        # if s1 == 0:
+        #     delta0 = (n3sq - n2sq) / (n3sq + n2sq)
+        # else:
+        #     s3 = 1 if s1 > 0 and u1r1 < u2r1 else -1
+        #     if nu == 1 and n1sq > n2sq > n3sq:
+        #         s3 *= -1
+        #     # s3 = 1 if s1 == s2 and nu == 1 else -1
+        #     delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
+
+        # if s1 == 0:  # e
+        #     f22a, f22b = jn(nu, u2r2), yn(nu, u2r2)
+        #     f2a = jn(nu+2, u2r1) * f22b - yn(nu+2, u2r1) * f22a
+        #     f2b = jn(nu, u2r1) * f22b - yn(nu, u2r1) * f22a
+        # elif s2 > 0:  # b c d
+        #     f22a, f22b = jn(nu, u2r2), yn(nu, u2r2)
+        #     f2a = jn(nu+1, u2r1) * f22b - yn(nu+1, u2r1) * f22a
+        #     f2b = jn(nu, u2r1) * f22b - yn(nu, u2r1) * f22a
+        # else:  # a
+        #     f22a, f22b = iv(nu, u2r2), kn(nu, u2r2)
+        #     f2a = iv(nu+1, u2r1) * f22b + kn(nu+1, u2r1) * f22a
+        #     f2b = -iv(nu, u2r1) * f22b + kn(nu, u2r1) * f22a
+
+        # return f2a - delta0 * f2b
 
     def _hecoeq(self, v0, nu):
         u1r1, u2r1, u2r2, s1, s2, n1sq, n2sq, n3sq = self.__params(v0)
-        if s1 == 0:  # e
-            f21a, f21b = jn(nu, u2r1), yn(nu, u2r1)
+        if nu == 1:
+            s3 = -1 if s1 == s2 else 1
+            return self.__fct1(nu, u1r1, u2r1, u2r2,
+                               s1, s2, s3,
+                               n1sq, n2sq, n3sq)
+        elif s1 == 0:
+            return self.__fct3(nu, u2r1, u2r2, -2, n2sq, n3sq)
         else:
-            s3 = -1 if s1 > 0 and u1r1 < u2r1 else 1
-            if nu == 1 and n1sq > n2sq > n3sq:
-                s3 *= -1
-            # s3 = -1 if s1 == s2 and nu == 1 else 1
-            delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
-            if s2 > 0:
-                f21a = jn(nu, u2r1) * delta0 - jn(nu+1, u2r1)
-                f21b = yn(nu, u2r1) * delta0 - yn(nu+1, u2r1)
+            s3 = -1 if s1 == s2 and u1r1 < u2r1 else 1
+            return self.__fct2(nu, u1r1, u2r1, u2r2,
+                               s1, s2, s3,
+                               n1sq, n2sq, n3sq)
+
+
+        # if s1 == 0:  # e
+        #     f21a, f21b = jn(nu, u2r1), yn(nu, u2r1)
+        # else:
+        #     s3 = -1 if s1 > 0 and u1r1 < u2r1 else 1
+        #     if nu == 1 and n1sq > n2sq > n3sq:
+        #         s3 *= -1
+        #     # s3 = -1 if s1 == s2 and nu == 1 else 1
+        #     delta0 = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
+        #     if s2 > 0:
+        #         f21a = jn(nu, u2r1) * delta0 - jn(nu+1, u2r1)
+        #         f21b = yn(nu, u2r1) * delta0 - yn(nu+1, u2r1)
+        #     else:
+        #         f21a = iv(nu, u2r1) * delta0 + iv(nu+1, u2r1)
+        #         f21b = kn(nu, u2r1) * delta0 - kn(nu+1, u2r1)
+        # n0sq = (n3sq - n2sq) / (n2sq + n3sq)
+
+        # if s2 > 0:
+        #     f2a = jn(nu-2, u2r2) * f21b - yn(nu-2, u2r2) * f21a
+        #     f2b = jn(nu, u2r2) * f21b - yn(nu, u2r2) * f21a
+        # else:  # a
+        #     f2a = iv(nu-2, u2r2) * f21b - kn(nu-2, u2r2) * f21a
+        #     f2b = -iv(nu, u2r2) * f21b + kn(nu, u2r2) * f21a
+
+        # return f2a - n0sq * f2b
+
+    def __fct1(self, nu, u1r1, u2r1, u2r2, s1, s2, s3, n1sq, n2sq, n3sq):
+        if s2 < 0:  # a
+            b11 = iv(nu, u2r1)
+            b12 = kn(nu, u2r1)
+            b21 = iv(nu, u2r2)
+            b22 = kn(nu, u2r2)
+            b31 = iv(nu+1, u2r1)
+            b32 = kn(nu+1, u2r1)
+            f1 = b31*b22 + b32*b21
+            f2 = b11*b22 - b12*b21
+        else:
+            b11 = jn(nu, u2r1)
+            b12 = yn(nu, u2r1)
+            b21 = jn(nu, u2r2)
+            b22 = yn(nu, u2r2)
+            if s1 == 0:
+                f1 = 0
             else:
-                f21a = iv(nu, u2r1) * delta0 + iv(nu+1, u2r1)
-                f21b = kn(nu, u2r1) * delta0 - kn(nu+1, u2r1)
+                b31 = jn(nu+1, u2r1)
+                b32 = yn(nu+1, u2r1)
+                f1 = b31*b22 - b32*b21
+            f2 = b12*b21 - b11*b22
+        if s1 == 0:
+            delta = 1
+        else:
+            delta = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
+        return f1 + f2 * delta
+
+    def __fct2(self, nu, u1r1, u2r1, u2r2, s1, s2, s3, n1sq, n2sq, n3sq):
+        delta = self.__delta(nu, u1r1, u2r1, s1, s2, s3, n1sq, n2sq, n3sq)
         n0sq = (n3sq - n2sq) / (n2sq + n3sq)
+        if s2 < 0:  # a
+            b11 = iv(nu, u2r1)
+            b12 = kn(nu, u2r1)
+            b21 = iv(nu, u2r2)
+            b22 = kn(nu, u2r2)
+            b31 = iv(nu+1, u2r1)
+            b32 = kn(nu+1, u2r1)
+            b41 = iv(nu-2, u2r2)
+            b42 = kn(nu-2, u2r2)
+            if numpy.isinf(delta):
+                return float("inf")
+            g1 = b11 * delta + b31
+            g2 = b12 * delta - b32
+            f1 = b41*g2 - b42*g1
+            f2 = b21*g2 - b22*g1
+        else:
+            b11 = jn(nu, u2r1)
+            b12 = yn(nu, u2r1)
+            b21 = jn(nu, u2r2)
+            b22 = yn(nu, u2r2)
+            b31 = jn(nu+1, u2r1)
+            b32 = yn(nu+1, u2r1)
+            b41 = jn(nu-2, u2r2)
+            b42 = yn(nu-2, u2r2)
+            g1 = b11 * delta - b31
+            g2 = b12 * delta - b32
+            f1 = b41*g2 - b42*g1
+            f2 = b22*g1 - b21*g2
+        return f1 + n0sq*f2
 
-        if s2 > 0:
-            f2a = jn(nu-2, u2r2) * f21b - yn(nu-2, u2r2) * f21a
-            f2b = jn(nu, u2r2) * f21b - yn(nu, u2r2) * f21a
-        else:  # a
-            f2a = iv(nu-2, u2r2) * f21b - kn(nu-2, u2r2) * f21a
-            f2b = -iv(nu, u2r2) * f21b + kn(nu, u2r2) * f21a
+    def __fct3(self, nu, u2r1, u2r2, dn, n2sq, n3sq):
+        n0sq = (n3sq - n2sq) / (n2sq + n3sq)
+        b11 = jn(nu, u2r1)
+        b12 = yn(nu, u2r1)
+        b21 = jn(nu, u2r2)
+        b22 = yn(nu, u2r2)
 
-        return f2a - n0sq * f2b
+        if dn > 0:
+            b31 = jn(nu+dn, u2r1)
+            b32 = yn(nu+dn, u2r1)
+            f1 = b31*b22 - b32*b21
+            f2 = b11*b22 - b12*b21
+        else:
+            b31 = jn(nu+dn, u2r2)
+            b32 = yn(nu+dn, u2r2)
+            f1 = b31*b12 - b32*b11
+            f2 = b12*b21 - b11*b22
+
+        return f1 - n0sq * f2

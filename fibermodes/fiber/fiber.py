@@ -167,11 +167,11 @@ class Fiber(object):
         if V0 == 0:
             return float("inf")
 
-        b = self.innerRadius(-1)
-        wl = constants.tpi / V0 * b * self.NA(1.55e-6)
-
         def f(x):
             return constants.tpi / V0 * b * self.NA(x)
+
+        b = self.innerRadius(-1)
+        wl = f(1.55e-6)
 
         if abs(wl - f(wl)) > tol:
             wl = fixed_point(f, wl, xtol=tol, maxiter=maxiter)

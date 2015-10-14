@@ -97,7 +97,6 @@ class TestTLSIF(unittest.TestCase):
         for mode, neff in sols:
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
-    @unittest.skip("À régler plus tard...")
     def testCase5LP(self):
         """W-type fiber."""
         self.f.addLayer(radius=10e-6, index=1.4489)
@@ -106,8 +105,7 @@ class TestTLSIF(unittest.TestCase):
         fiber = self.f[0]
         wl = Wavelength(1550e-9)
 
-        sols = [(Mode('LP', 0, 1), 1.448542616086886),  # ???
-                (Mode('LP', 0, 2), 1.44809)]
+        sols = [(Mode('LP', 0, 1), 1.44809)]  # From OptiFiber
         lpmodes = fiber.findLPmodes(wl)
 
         self.assertEqual(len(lpmodes), len(sols))
@@ -190,20 +188,30 @@ class TestTLSIF(unittest.TestCase):
         for mode, neff in sols:
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-5), neff)
 
-    @unittest.skip("À vérifier...")
     def testCase5Vector(self):
         """Annular-core fiber."""
         self.f.addLayer(radius=10e-6, index=1.4489)
         self.f.addLayer(radius=16e-6, index=1.4444)
         self.f.addLayer(index=1.4474)
         fiber = self.f[0]
-        wl = Wavelength(1550e-9)
 
-        sols = [(Mode('HE', 1, 1), 1.448089116517021),
-                (Mode('EH', 1, 1), 1.448089116517021)]
+        wl = Wavelength(1550e-9)
+        sols = [(Mode('HE', 1, 1), 1.448089116517021)]
         vmodes = fiber.findVmodes(wl)
         self.assertEqual(len(vmodes), len(sols))
+        for mode, neff in sols:
+            self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-6), neff)
 
+        wl = Wavelength(800e-9)
+        sols = [(Mode('HE', 1, 1), 1.448638518377151),
+                (Mode('TE', 0, 1), 1.4482384223480635),
+                (Mode('TM', 0, 1), 1.448237707949158),
+                (Mode('EH', 1, 1), 1.4477149),  # Values from OptiFiber
+                (Mode('HE', 1, 2), 1.4475354),
+                (Mode('HE', 2, 1), 1.4482380),
+                (Mode('HE', 3, 1), 1.4477146)]
+        vmodes = fiber.findVmodes(wl)
+        self.assertEqual(len(vmodes), len(sols))
         for mode, neff in sols:
             self.assertAlmostEqual(fiber.neff(mode, wl, delta=1e-6), neff)
 

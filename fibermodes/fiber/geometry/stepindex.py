@@ -40,8 +40,8 @@ class StepIndex(Geometry):
                    C[0] * iv(nu, u))
             psip = u * (C[0] * ivp(nu, u) + C[1] * kvp(nu, u) if C[1] else
                         C[0] * ivp(nu, u))
-        if numpy.isnan(psi):
-            print(neff, self.maxIndex(wl), C, r)
+        # if numpy.isnan(psi):
+        #     print(neff, self.maxIndex(wl), C, r)
         return psi, psip
 
     def lpConstants(self, r, neff, wl, nu, A):
@@ -51,8 +51,8 @@ class StepIndex(Geometry):
             return (W * (u * yvp(nu, u) * A[0] - yn(nu, u) * A[1]),
                     W * (jn(nu, u) * A[1] - u * jvp(nu, u) * A[0]))
         else:
-            return ((kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
-                    (iv(nu, u) * A[1] - ivp(nu, u) * A[0]))
+            return ((u * kvp(nu, u) * A[0] - kn(nu, u) * A[1]),
+                    (iv(nu, u) * A[1] - u * ivp(nu, u) * A[0]))
 
     def EH_fields(self, ri, ro, nu, neff, wl, EH, tm=True):
         """
