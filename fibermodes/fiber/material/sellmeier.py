@@ -21,7 +21,7 @@ class Sellmeier(Material):
     @classmethod
     def _n(cls, wl, B, C):
         x2 = wl * wl * 1e12
-        return sqrt(1 + x2 * sum(b / (x2 - c**2) for (b, c) in zip(B, C)))
+        return sqrt(abs(1 + x2 * sum(b / (x2 - c**2) for (b, c) in zip(B, C))))
 
     @classmethod
     def n(cls, wl):
