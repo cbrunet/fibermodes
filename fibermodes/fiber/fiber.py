@@ -205,7 +205,7 @@ class Fiber(object):
 
         m = 5
         j = (m - 1) // 2
-        h = 1e5
+        h = 1e12  # This value is critical for accurate computation
         lb = lowbound
         for i in range(m-1, -1, -1):
             # Precompute neff using previous wavelength
