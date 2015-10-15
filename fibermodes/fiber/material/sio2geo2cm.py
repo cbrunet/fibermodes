@@ -4,14 +4,11 @@ Created on 2014-09-08
 @author: cbrunet
 '''
 
-from .material import Material, claussiusMossotti
-from .silica import Silica
-from .germania import Germania
-from scipy.optimize import brentq
+from .claussiusmossotti import ClaussiusMossotti
 import numpy
 
 
-class SiO2GeO2(Material):
+class SiO2GeO2(ClaussiusMossotti):
 
     '''
     classdocs
@@ -27,22 +24,8 @@ class SiO2GeO2(Material):
     Z = numpy.array([0.06130807320e-6, 0.1108859848e-6, 8.964441861e-6])
 
     @classmethod
-    def n(cls, wl, x):
-        cls._testRange(wl)
-        cls._testConcentration(x)
-        return claussiusMossotti(wl, cls.A, cls.B, cls.Z, x)
-
-    @classmethod
     def info(cls):
         return "Silica doped with Germania."
-
-    @classmethod
-    def xFromN(cls, wl, n):
-        nSi = Silica.n(wl)
-        nGe = Germania.n(wl)
-        assert nSi <= n <= nGe
-
-        return brentq(lambda x: cls.n(wl, x)-n, 0, cls.XRANGE)
 
 # Article (Sunak1989)
 # Sunak, H. & Bastien, S.
