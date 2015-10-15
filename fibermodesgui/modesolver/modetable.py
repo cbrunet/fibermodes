@@ -11,6 +11,7 @@ class ModeTableView(QtGui.QTableView):
         super().__init__(parent)
         self.setModel(model)
         self.setSortingEnabled(True)
+        self.sortByColumn(1, QtCore.Qt.AscendingOrder)
 
     def selectedModes(self):
         rows = set()
@@ -59,19 +60,33 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         return len(self.modes)
 
     def columnCount(self, parent=QtCore.QModelIndex):
-        return len(self._doc.params)
+        return len(self._doc.params) + 1  # plus selection
+
+    def flags(self, index):
+        if index.column() == 0:
+            f = QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled
+        else:
+            f = super().flags(index)
+        return f
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         mode = self.modes[index.row()]
+        if index.column() == 0:  # selection
+            if role == QtCore.Qt.CheckStateRole:
+                sel = self._doc.selection.get(mode, 1)
+                return QtCore.Qt.Checked if sel else QtCore.Qt.Unchecked
+            else:
+                return None
+
         try:
             v = self._doc.values[(self._fnum,
                                   self._wl,
                                   mode,
-                                  index.column())]
+                                  index.column()-1)]
         except KeyError:
             v = None
 
-        p = self._doc.params[index.column()]
+        p = self._doc.params[index.column()-1]
         m, u = PARAMS.get(p, (1, ""))
         if role == QtCore.Qt.DisplayRole:
             if v is None:
@@ -95,6 +110,9 @@ class ModeTableModel(QtCore.QAbstractTableModel):
             return float(v) if v is not None else v
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
+        if index.column() == 0:
+            mode = self.modes[index.row()]
+            self._doc.selection[mode] = value
         self.dataChanged.emit(index, index)
         return True
 
@@ -102,7 +120,13 @@ class ModeTableModel(QtCore.QAbstractTableModel):
         try:
             if orientation == QtCore.Qt.Horizontal:
                 if role == QtCore.Qt.DisplayRole:
-                    return self._doc.params[section]
+                    if section == 0:
+                        return ""
+                    else:
+                        return self._doc.params[section-1]
+                elif role == QtCore.Qt.ToolTipRole:
+                    if section == 0:
+                        return "Plot mode"
             else:
                 if role == QtCore.Qt.DisplayRole:
                     return str(self.modes[section])

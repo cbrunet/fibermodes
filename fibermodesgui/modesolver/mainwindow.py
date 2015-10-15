@@ -267,6 +267,7 @@ class ModeSolver(AppWindow):
         self.plotFrame = PlotFrame(self)
         self.plotFrame.modified.connect(self.setDirty)
         self.modeTableView.selChanged.connect(self.plotFrame.updateModeSel)
+        self.modeTableModel.dataChanged.connect(self.plotFrame.updatePlot)
         self.splitter.addWidget(self.plotFrame)
         self.setCentralWidget(self.splitter)
 

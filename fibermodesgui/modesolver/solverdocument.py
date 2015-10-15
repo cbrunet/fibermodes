@@ -22,6 +22,7 @@ class SolverDocument(QtCore.QThread):
         self.toCompute = 0
         self.values = {}
         self.modes = []
+        self.selection = {}
 
         self.simulator = PSimulator()
         self._numProcs = 0

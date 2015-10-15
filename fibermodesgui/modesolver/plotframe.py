@@ -27,10 +27,15 @@ class PlotOptions(QtGui.QDialog):
         self.showLayers = QtGui.QCheckBox(self.tr("Show layer boundaries"))
         self.showLayers.stateChanged.connect(parent.updatePlot)
 
+        self.showCurrentFiberWl = QtGui.QCheckBox(
+            self.tr("Show current fiber / wavelength"))
+        self.showCurrentFiberWl.stateChanged.connect(parent.updatePlot)
+
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.showLegend)
         layout.addWidget(self.showCutoffs)
         layout.addWidget(self.showLayers)
+        layout.addWidget(self.showCurrentFiberWl)
         self.setLayout(layout)
 
     def hideEvent(self, event):
@@ -41,7 +46,8 @@ class PlotOptions(QtGui.QDialog):
         return {
             'legend': self.showLegend.isChecked(),
             'cutoffs': self.showCutoffs.isChecked(),
-            'layers': self.showLayers.isChecked()
+            'layers': self.showLayers.isChecked(),
+            'current': self.showCurrentFiberWl.isChecked()
         }
 
     def load(self, options):
@@ -51,6 +57,8 @@ class PlotOptions(QtGui.QDialog):
             self.showCutoffs.setChecked(options['cutoffs'])
         with blockSignals(self.showLayers):
             self.showLayers.setChecked(options['layers'])
+        with blockSignals(self.showCurrentFiberWl):
+            self.showCurrentFiberWl.setChecked(options['current'])
         self.parent.updatePlot()
 
 
@@ -344,6 +352,18 @@ class PlotFrame(QtGui.QFrame):
         else:
             self.plotOptions.showCutoffs.setEnabled(False)
 
+        if self.plotOptions.showCurrentFiberWl.isChecked():
+            if index == FIBERS:
+                posx = self._fnum
+            elif index == WAVELENGTHS:
+                posx = self.doc.wavelengths[self._wl]
+            elif index == VNUMBER:
+                posx = fiber.V0(self.doc.wavelengths[self._wl])
+            self.plot.addLine(x=posx,
+                              pen=pg.mkPen(color=(255, 255, 255, 255),
+                                           style=QtCore.Qt.DotLine,
+                                           width=3))
+
         viewBox = self.plot.getPlotItem().getViewBox()
         viewBox.setXRange(self.X[0], self.X[-1])
         self.modified.emit()
@@ -375,6 +395,8 @@ class PlotFrame(QtGui.QFrame):
                         y[m] = [(w, v)]
 
         for m, xy in y.items():
+            if self.doc.selection.get(m, 1) == 0:
+                continue
             X, Y = zip(*sorted(xy))
             if xaxis == VNUMBER:
                 X = [self.X[-x-1] for x in X]
@@ -400,6 +422,8 @@ class PlotFrame(QtGui.QFrame):
         else:
             index = self.doc.params.index("cutoff (V)")
         for (f, w, m, j), v in self.doc.values.items():
+            if self.doc.selection.get(m, 1) == 0:
+                continue
             if j == index and f == self._fnum and w == 0:
                 if self.X[0] < v < self.X[-1]:
                     color = self.plotModel.data(self.plotModel.index(j, 1),
