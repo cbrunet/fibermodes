@@ -2,6 +2,7 @@
 
 from enum import Enum
 from colorsys import hsv_to_rgb
+from collections import namedtuple
 
 
 #: Constants for identifying mode family. Can be
@@ -9,66 +10,38 @@ from colorsys import hsv_to_rgb
 Family = Enum('Family', 'LP HE EH TE TM', module=__name__)
 
 
-class Mode(object):
+class Mode(namedtuple('Mode', 'family nu m')):
 
     """Fiber mode representation.
 
     The fiber mode consists of a mode family, and two mode parameters
     (*ν* and *m*).
 
-    """
+    .. py:attribute:: family
 
-    def __init__(self, family, nu, m):
-        '''
-        Constructor
-        '''
-        if isinstance(family, Family):
-            self._family = family
-        else:
-            self._family = Family[family]
-        self._nu = nu
-        self._m = m
-
-    def __hash__(self):
-        return hash((self._family, self._nu, self._m))
-
-    @property
-    def family(self):
-        """Mode family.
+        Mode family.
 
         .. seealso:: :py:class:`Family`
 
-        """
-        return self._family
+    .. py:attribute:: nu
 
-    @family.setter
-    def family(self, fam):
-        assert isinstance(fam, Family), "fam must be a Family item"
-        self._family = fam
-
-    @property
-    def nu(self):
-        """*ν* parameter of the mode. It often corresponds to the parameter
+        *ν* parameter of the mode. It often corresponds to the parameter
         of the radial Bessel functions.
 
-        """
-        return self._nu
+    .. py:attribute:: m
 
-    ell = nu
-
-    @property
-    def m(self):
-        """(positive integer) Radial order of the mode.
+        (positive integer) Radial order of the mode.
         It corresponds to the number of concentric rings in the mode fields.
 
-        """
-        return self._m
+    """
 
-    @m.setter
-    def m(self, mparam):
-        assert mparam > 0, "m must be a positive integer."
-        assert int(mparam) == mparam, "m must be a positive integer."
-        self._m = int(mparam)
+    def __new__(cls, family, nu, m):
+        if not isinstance(family, Family):
+            family = Family[family]
+        return super(Mode, cls).__new__(cls, family, nu, m)
+
+    def __hash__(self):
+        return super().__hash__()
 
     def lpEq(self):
         """Equivalent LP mode."""
