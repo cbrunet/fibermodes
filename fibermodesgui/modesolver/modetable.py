@@ -15,7 +15,7 @@ class ModeTableView(QtGui.QTableView):
     def selectedModes(self):
         rows = set()
         for index in self.selectedIndexes():
-            rows.add(index.row())
+            rows.add(self.model().mapToSource(index).row())
 
         modes = []
         for row in rows:
