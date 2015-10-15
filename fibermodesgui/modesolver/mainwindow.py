@@ -247,7 +247,6 @@ class ModeSolver(AppWindow):
 
     def _initLayout(self):
         self.progressBar = QtGui.QProgressBar()
-        self.progressBar.setFormat("%v / %m (%p%)")
         self.statusBar().addWidget(self.progressBar, 1)
 
         self.timeLabel = QtGui.QLabel()
@@ -422,6 +421,7 @@ class ModeSolver(AppWindow):
             print(fiberfile, "not found")
             return False
 
+        self.stop_simulation()
         with open(filename, 'r') as f:
             s = json.load(f)
             self.wavelengthInput.setValue(s['wl'])
@@ -557,7 +557,8 @@ class ModeSolver(AppWindow):
         self.setDirty(True)
 
     def initProgressBar(self):
-        self.progressBar.setMaximum(0)
+        self.progressBar.setFormat("%v / %m (%p%)")
+        self.progressBar.setRange(0, 0)
         self.progressBar.setValue(0)
         self.time.start()
         self.estimation = 0
@@ -604,6 +605,7 @@ class ModeSolver(AppWindow):
 
     def stop_simulation(self):
         self.timer.stop()
+        self.progressBar.setFormat("")
         self.progressBar.setValue(0)
         self.doc.stop_thread()
         self.doc.ready = False
