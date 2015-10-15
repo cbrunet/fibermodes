@@ -40,9 +40,6 @@ class Mode(namedtuple('Mode', 'family nu m')):
             family = Family[family]
         return super(Mode, cls).__new__(cls, family, nu, m)
 
-    def __hash__(self):
-        return super().__hash__()
-
     def lpEq(self):
         """Equivalent LP mode."""
         if self.family is Family.LP:
@@ -58,15 +55,6 @@ class Mode(namedtuple('Mode', 'family nu m')):
     def __repr__(self):
         return "Mode('{}',{},{})".format(
             self.family.name, self.nu, self.m)
-
-    def __eq__(self, m2):
-        s1, s2 = str(self), str(m2)
-        # if set((s1, s2)) <= set(('HE(1,1)', 'LP(0,1)')):
-        #     return True
-        return s1 == s2
-
-    def __ne__(self, m2):
-        return not (self == m2)
 
     def __lt__(self, m2):
         """Function used to sort modes.
@@ -163,3 +151,9 @@ if __name__ == '__main__':
     m = Mode('HE', 1, 1)
     print(m)
     print(repr(m))
+
+    def f():
+        a = Mode('HE', 1, 1)
+        return a
+
+    print(f())

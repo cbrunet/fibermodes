@@ -19,8 +19,11 @@ class ModeTableView(QtGui.QTableView):
 
         modes = []
         for row in rows:
-            modes.append(self.model().headerData(row, QtCore.Qt.Vertical,
-                                                 QtCore.Qt.UserRole))
+            # Use source model, because the proxy model transforms
+            # the Mode object into list...
+            mode = self.model().sourceModel().headerData(
+                row, QtCore.Qt.Vertical, QtCore.Qt.UserRole)
+            modes.append(mode)
         return modes
 
     def selectionChanged(self, selected, deselected):
