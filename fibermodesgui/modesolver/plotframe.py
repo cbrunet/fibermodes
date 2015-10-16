@@ -75,24 +75,13 @@ class PlotOptions(QtGui.QDialog):
         self.parent.updatePlot()
 
 
-class ColorPickerItemDelegate(QtGui.QStyledItemDelegate):
-
-    def createEditor(self, parent, option, index):
-        color = index.data()
-        new_color = QtGui.QColorDialog.getColor(
-            color, parent, self.tr("Select color"))
-        if new_color.isValid():
-            index.model().setData(index, new_color)
-        return None
-
-
 class PropertyItemDelegate(ComboItemDelegate):
 
     def __init__(self, parent=None):
         super().__init__(parent, role=QtCore.Qt.UserRole)
 
     def createEditor(self, parent, option, index):
-        self._items = index.data(role=YAXISLIST)
+        self._items, self._values = index.data(role=YAXISLIST)
         return super().createEditor(parent, option, index)
 
 
@@ -110,6 +99,15 @@ class YAxisTableView(QtGui.QTableView):
         self.setItemDelegateForColumn(0, self.propertyItemDelegate)
         self.setItemDelegateForColumn(1, self.lineStyleItemDelegate)
         self.setItemDelegateForColumn(2, self.markItemDelegate)
+
+    def removeRow(self):
+        rows = set()
+        for idx in self.selectedIndexes():
+            rows.add(idx.row())
+        if len(rows) == 0:
+            self.model().removeRow(-1)
+        for i in sorted(rows, reverse=True):
+            self.model().removeRow(i)
 
 
 class PlotModel(QtCore.QAbstractTableModel):
@@ -131,7 +129,11 @@ class PlotModel(QtCore.QAbstractTableModel):
 
         if index.column() == 0:
             if role == YAXISLIST:
-                return self.doc.params
+                c = [p[0] for (i, p) in enumerate(self.plots)
+                     if i != index.row()]
+                params = [(p, i) for (i, p) in enumerate(self.doc.params)
+                          if i not in c]
+                return zip(*params)
             if role == QtCore.Qt.UserRole:
                 return value
 
@@ -188,6 +190,28 @@ class PlotModel(QtCore.QAbstractTableModel):
         self.plots = data
         self.layoutChanged.emit()
 
+    def addRow(self):
+        if len(self.plots) >= len(self.doc.params):
+            return
+        ci = 0
+        c = [p[0] for p in self.plots]
+        for i in range(len(self.doc.params)):
+            if i not in c:
+                ci = i
+                break
+
+        i = len(self.plots)
+        self.plots.append([ci, QtCore.Qt.SolidLine, None])
+        self.rowsInserted.emit(QtCore.QModelIndex(), i, i)
+
+    def removeRow(self, i):
+        if len(self.plots) == 1:
+            return
+        if i < 0:
+            i = len(self.plots) + i
+        del self.plots[i]
+        self.rowsRemoved.emit(QtCore.QModelIndex(), i, i)
+
 
 class PlotFrame(QtGui.QFrame):
 
@@ -228,10 +252,20 @@ class PlotFrame(QtGui.QFrame):
         self.optionsBut.setCheckable(True)
         self.optionsBut.toggled.connect(self.plotOptions.setVisible)
 
+        self.plusBut = QtGui.QPushButton(
+            QtGui.QIcon.fromTheme('list-add'), '')
+        self.plusBut.clicked.connect(self.plotModel.addRow)
+
+        self.minusBut = QtGui.QPushButton(
+            QtGui.QIcon.fromTheme('list-remove'), '')
+        self.minusBut.clicked.connect(self.yAxisTable.removeRow)
+
         layout = QtGui.QHBoxLayout()
         layout.addWidget(QtGui.QLabel(self.tr("x axis:")))
         layout.addWidget(self.xAxisSelector)
         layout.addWidget(self.optionsBut)
+        layout.addWidget(self.plusBut)
+        layout.addWidget(self.minusBut)
         layout.addStretch(1)
         return layout
 
