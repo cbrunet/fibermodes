@@ -1,14 +1,27 @@
 from PySide import QtGui, QtCore
 import pyqtgraph as pg
 from fibermodesgui import blockSignals
+from fibermodesgui.widgets.delegate import ComboItemDelegate
 from fibermodes import ModeFamily
 
 
 FIBERS, WAVELENGTHS, VNUMBER, MODES = range(4)
 YAXISLIST = QtCore.Qt.UserRole + 1
-MARK = ["None", "Mode", 'o', 's', 't', 'd', '+']
+MARK = ["None", "Mode", "Circle (o)", "Square (s)", "Triangle (t)",
+        "Diamond (d)", "Plus (+)"]
+MARKV = [None, "Mode", 'o', 's', 't', 'd', '+']
 MARKM = {ModeFamily.HE: 'o', ModeFamily.EH: 's', ModeFamily.TE: 't',
          ModeFamily.TM: 'd', ModeFamily.LP: '+'}
+LINES = ['────',
+         '...........',
+         '-------',
+         '_._._._',
+         '_.._.._']
+LINESV = [QtCore.Qt.SolidLine,
+          QtCore.Qt.DotLine,
+          QtCore.Qt.DashLine,
+          QtCore.Qt.DashDotLine,
+          QtCore.Qt.DashDotDotLine]
 
 
 class PlotOptions(QtGui.QDialog):
@@ -73,45 +86,14 @@ class ColorPickerItemDelegate(QtGui.QStyledItemDelegate):
         return None
 
 
-class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
+class PropertyItemDelegate(ComboItemDelegate):
+
+    def __init__(self, parent=None):
+        super().__init__(parent, role=QtCore.Qt.UserRole)
 
     def createEditor(self, parent, option, index):
-        items = index.data(role=YAXISLIST)
-        if items:
-            combo = QtGui.QComboBox(parent)
-            combo.addItems(items)
-            combo.currentIndexChanged.connect(self.currentIndexChanged)
-            return combo
-        return None
-
-    def setEditorData(self, editor, index):
-        with blockSignals(editor):
-            editor.setCurrentIndex(index.data(QtCore.Qt.UserRole))
-
-    def currentIndexChanged(self, index):
-        self.commitData.emit(self.sender())
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, editor.currentIndex())
-
-
-class MarkItemDelegate(QtGui.QStyledItemDelegate):
-
-    def createEditor(self, parent, option, index):
-        combo = QtGui.QComboBox(parent)
-        combo.addItems(MARK)
-        combo.currentIndexChanged.connect(self.currentIndexChanged)
-        return combo
-
-    def setEditorData(self, editor, index):
-        with blockSignals(editor):
-            editor.setCurrentIndex(index.data(QtCore.Qt.UserRole))
-
-    def currentIndexChanged(self, index):
-        self.commitData.emit(self.sender())
-
-    def setModelData(self, editor, model, index):
-        model.setData(index, editor.currentIndex())
+        self._items = index.data(role=YAXISLIST)
+        return super().createEditor(parent, option, index)
 
 
 class YAxisTableView(QtGui.QTableView):
@@ -119,11 +101,14 @@ class YAxisTableView(QtGui.QTableView):
     def __init__(self, model, parent=None):
         super().__init__(parent)
         self.setModel(model)
-        self.comboBoxItemDelegate = ComboBoxItemDelegate(self)
-        self.colorPickerItemDelegate = ColorPickerItemDelegate(self)
-        self.markItemDelegate = MarkItemDelegate(self)
-        self.setItemDelegateForColumn(0, self.comboBoxItemDelegate)
-        self.setItemDelegateForColumn(1, self.colorPickerItemDelegate)
+
+        self.propertyItemDelegate = PropertyItemDelegate(self)
+        self.lineStyleItemDelegate = ComboItemDelegate(self, LINES, LINESV,
+                                                       QtCore.Qt.UserRole)
+        self.markItemDelegate = ComboItemDelegate(self, MARK, MARKV,
+                                                  QtCore.Qt.UserRole)
+        self.setItemDelegateForColumn(0, self.propertyItemDelegate)
+        self.setItemDelegateForColumn(1, self.lineStyleItemDelegate)
         self.setItemDelegateForColumn(2, self.markItemDelegate)
 
 
@@ -133,8 +118,7 @@ class PlotModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.doc = parent.doc
 
-        self.plots = [[0, QtGui.QColor("red").rgba(), 0]]
-        self.usecolor = [False]
+        self.plots = [[0, QtCore.Qt.SolidLine, None]]
 
     def rowCount(self, parent=QtCore.QModelIndex):
         return len(self.plots)
@@ -157,83 +141,51 @@ class PlotModel(QtCore.QAbstractTableModel):
                 except IndexError:
                     return ''
 
-        elif index.column() == 1:  # color
-            value = QtGui.QColor.fromRgba(value)
-
-            if role == QtCore.Qt.CheckStateRole:
-                return (QtCore.Qt.Checked if self.usecolor[index.row()]
-                        else QtCore.Qt.Unchecked)
-
-            if role == QtCore.Qt.DisplayRole:
-                return (value if self.usecolor[index.row()]
-                        else self.tr("Automatic"))
-
-            if not self.usecolor[index.row()]:
-                return None
-
-            if role == QtCore.Qt.BackgroundRole:
+        elif index.column() == 1:  # line style
+            if role == QtCore.Qt.UserRole:
                 return value
-
-            if role == QtCore.Qt.TextColorRole:
-                r = value.redF()
-                r = r/12.92 if r <= 0.03928 else ((r+0.055)/1.055)**2.4
-                g = value.greenF()
-                g = g/12.92 if g <= 0.03928 else ((g+0.055)/1.055)**2.4
-                b = value.blueF()
-                b = b/12.92 if b <= 0.03928 else ((b+0.055)/1.055)**2.4
-                L = 0.2126 * r + 0.7152 * g + 0.0722 * b
-                if L > 0.179:
-                    return QtGui.QColor('black')
-                else:
-                    return QtGui.QColor('white')
+            elif role == QtCore.Qt.DisplayRole:
+                return LINES[LINESV.index(value)]
 
         elif index.column() == 2:  # mark
             if role == QtCore.Qt.UserRole:
                 return value
             elif role == QtCore.Qt.DisplayRole:
-                return MARK[value]
+                return MARK[MARKV.index(value)]
 
         if role == QtCore.Qt.DisplayRole:
             return value
 
     def setData(self, index, value, role=QtCore.Qt.DisplayRole):
-        if role == QtCore.Qt.CheckStateRole:
-            self.usecolor[index.row()] = (value == QtCore.Qt.Checked)
-        else:
-            if index.column() == 1:
-                value = value.rgba()
-            self.plots[index.row()][index.column()] = value
+        self.plots[index.row()][index.column()] = value
         self.dataChanged.emit(index, index)
         return True
-
-    def flags(self, index):
-        if index.column() == 1:
-            return (QtCore.Qt.ItemIsEditable |
-                    QtCore.Qt.ItemIsEnabled |
-                    QtCore.Qt.ItemIsUserCheckable)
-        else:
-            return (QtCore.Qt.ItemIsEditable |
-                    QtCore.Qt.ItemIsEnabled)
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
             if orientation == QtCore.Qt.Horizontal:
                 labels = [self.tr("y axis"),
-                          self.tr("Color"),
+                          self.tr("Line"),
                           self.tr("Mark")]
                 return labels[section]
             else:
                 return str(section + 1)
 
+    def flags(self, index):
+        return (QtCore.Qt.ItemIsEnabled |
+                QtCore.Qt.ItemIsSelectable |
+                QtCore.Qt.ItemIsEditable)
+
     def save(self):
-        return {
-            'plots': self.plots,
-            'usecolor': self.usecolor
-        }
+        data = self.plots.copy()
+        for i, d in enumerate(data):
+            data[i][1] = hash(d[1])
+        return data
 
     def load(self, data):
-        self.plots = data['plots']
-        self.usecolor = data['usecolor']
+        for i, d in enumerate(data):
+            data[i][1] = QtCore.Qt.PenStyle(d[1])
+        self.plots = data
         self.layoutChanged.emit()
 
 
@@ -371,11 +323,12 @@ class PlotFrame(QtGui.QFrame):
     def plotGraph(self, row):
         what = self.plotModel.data(self.plotModel.index(row, 0),
                                    QtCore.Qt.UserRole)
-        color = self.plotModel.data(self.plotModel.index(row, 1),
-                                    role=QtCore.Qt.BackgroundRole)
-        mark = self.plotModel.data(self.plotModel.index(row, 2))
-        if mark == 'None':
-            mark = None if len(self.X) > 1 else 'o'
+        line = self.plotModel.data(self.plotModel.index(row, 1),
+                                   role=QtCore.Qt.UserRole)
+        mark = self.plotModel.data(self.plotModel.index(row, 2),
+                                   QtCore.Qt.UserRole)
+        if mark is None and len(self.X) == 1:
+            mark = 'o'
         xaxis = self.xAxisSelector.currentIndex()
 
         y = {}
@@ -403,10 +356,11 @@ class PlotFrame(QtGui.QFrame):
             elif xaxis == WAVELENGTHS:
                 X = [self.X[x] for x in X]
 
-            col = color if color else m.color()
+            col = m.color()
             symb = MARKM[m.family] if mark == 'Mode' else mark
             symbb = col if mark else None
-            pen = pg.mkPen(color=col, width=3 if m in self._modesel else 1)
+            pen = pg.mkPen(color=col, style=line,
+                           width=3 if m in self._modesel else 1)
             spen = pg.mkPen(color='w', width=2 if m in self._modesel else 1)
             self.plot.plot(X, Y, pen=pen, symbol=symb,
                            symbolBrush=symbb, symbolPen=spen, name=str(m))
@@ -426,9 +380,7 @@ class PlotFrame(QtGui.QFrame):
                 continue
             if j == index and f == self._fnum and w == 0:
                 if self.X[0] < v < self.X[-1]:
-                    color = self.plotModel.data(self.plotModel.index(j, 1),
-                                                role=QtCore.Qt.BackgroundRole)
-                    col = color if color else m.color()
+                    col = m.color()
                     self.plot.addLine(
                         x=v,
                         pen=pg.mkPen(color=col,
