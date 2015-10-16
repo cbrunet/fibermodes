@@ -230,6 +230,8 @@ class PlotFrame(QtGui.QFrame):
         self.plotModel = PlotModel(self)
         self.yAxisTable = YAxisTableView(self.plotModel)
         self.plotModel.dataChanged.connect(self.updatePlot)
+        self.plotModel.rowsInserted.connect(self.updatePMButs)
+        self.plotModel.rowsRemoved.connect(self.updatePMButs)
 
         layout = QtGui.QVBoxLayout()
         layout.addLayout(self._xAxisLayout())
@@ -254,11 +256,14 @@ class PlotFrame(QtGui.QFrame):
 
         self.plusBut = QtGui.QPushButton(
             QtGui.QIcon.fromTheme('list-add'), '')
+        self.plusBut.setToolTip(self.tr("Add plot parameter"))
         self.plusBut.clicked.connect(self.plotModel.addRow)
 
         self.minusBut = QtGui.QPushButton(
             QtGui.QIcon.fromTheme('list-remove'), '')
+        self.minusBut.setToolTip(self.tr("Remove plot parameter"))
         self.minusBut.clicked.connect(self.yAxisTable.removeRow)
+        self.minusBut.setEnabled(False)
 
         layout = QtGui.QHBoxLayout()
         layout.addWidget(QtGui.QLabel(self.tr("x axis:")))
@@ -280,6 +285,11 @@ class PlotFrame(QtGui.QFrame):
     def updateModeSel(self, modes):
         self._modesel = modes
         self.updatePlot()
+
+    def updatePMButs(self, *args, **kwargs):
+        self.minusBut.setEnabled(len(self.plotModel.plots) > 1)
+        self.plusBut.setEnabled(len(self.plotModel.plots) <
+                                len(self.doc.params))
 
     def updatePlot(self):
         if not self.doc.initialized:

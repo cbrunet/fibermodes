@@ -554,6 +554,7 @@ class ModeSolver(AppWindow):
                 if self.simParamBoxes[p].isChecked():
                     params.append(p)
         self.doc.params = params
+        self.plotFrame.updatePMButs()
         self.setDirty(True)
 
     def initProgressBar(self):
