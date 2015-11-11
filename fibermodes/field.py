@@ -8,6 +8,9 @@ class Field(object):
 
     """Electromagnetic field."""
 
+    FTYPES = ('Ex', 'Ey', 'Ez', 'Er', 'Ephi', 'Et', 'Epol', 'Emod',
+              'Hx', 'Hy', 'Hz', 'Hr', 'Hphi', 'Ht', 'Hpol', 'Hmod')
+
     def __init__(self, fiber, mode, wl, r, np=101):
         self.fiber = fiber
         self.mode = mode
@@ -27,7 +30,16 @@ class Field(object):
         return -numpy.sin(self.mode.nu * self.Phi + phi0)
 
     def Ex(self, phi=0, theta=0):
-        """x component of the E field."""
+        """x component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             self._Ex = numpy.zeros(self.X.shape)
             f = self.f(phi)
@@ -39,7 +51,16 @@ class Field(object):
             return self.Et(phi, theta) * numpy.cos(self.Epol(phi, theta))
 
     def Ey(self, phi=0, theta=0):
-        """y component of the E field."""
+        """y component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             self._Ey = numpy.zeros(self.X.shape)
             f = self.f(phi)
@@ -51,7 +72,16 @@ class Field(object):
             return self.Et(phi, theta) * numpy.sin(self.Epol(phi, theta))
 
     def Ez(self, phi=0, theta=0):
-        """z component of the E field."""
+        """z component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         self._Ez = numpy.zeros(self.X.shape)
         f = self.f(phi)
         for i, j in product(range(self.np), repeat=2):
@@ -60,7 +90,16 @@ class Field(object):
         return self._Ez
 
     def Er(self, phi=0, theta=0):
-        """r component of the E field."""
+        """r component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return (self.Et(phi, theta) *
                     numpy.cos(self.Epol(phi, theta) - self.Phi))
@@ -73,7 +112,16 @@ class Field(object):
             return self._Er
 
     def Ephi(self, phi=0, theta=0):
-        """phi component of the E field."""
+        """phi component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return (self.Et(phi, theta) *
                     numpy.sin(self.Epol(phi, theta) - self.Phi))
@@ -86,7 +134,16 @@ class Field(object):
             return self._Ephi
 
     def Et(self, phi=0, theta=0):
-        """transverse component of the E field."""
+        """transverse component of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.sqrt(numpy.square(self.Ex(phi, theta)) +
                               numpy.square(self.Ey(phi, theta)))
@@ -95,7 +152,16 @@ class Field(object):
                               numpy.square(self.Ephi(phi, theta)))
 
     def Epol(self, phi=0, theta=0):
-        """polarization of the transverse E field."""
+        """polarization of the transverse E field (in radians).
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.arctan2(self.Ey(phi, theta),
                                  self.Ex(phi, theta))
@@ -104,7 +170,16 @@ class Field(object):
                                  self.Er(phi, theta)) + self.Phi
 
     def Emod(self, phi=0, theta=0):
-        """modulus of the E field."""
+        """modulus of the E field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.sqrt(numpy.square(self.Ex(phi, theta)) +
                               numpy.square(self.Ey(phi, theta)) +
@@ -115,7 +190,16 @@ class Field(object):
                               numpy.square(self.Ez(phi, theta)))
 
     def Hx(self, phi=0, theta=0):
-        """x component of the H field."""
+        """x component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             self._Hx = numpy.zeros(self.X.shape)
             f = self.f(phi)
@@ -127,7 +211,16 @@ class Field(object):
             return self.Ht(phi, theta) * numpy.cos(self.Hpol(phi, theta))
 
     def Hy(self, phi=0, theta=0):
-        """y component of the H field."""
+        """y component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             self._Hy = numpy.zeros(self.X.shape)
             f = self.f(phi)
@@ -139,7 +232,16 @@ class Field(object):
             return self.Ht(phi, theta) * numpy.sin(self.Hpol(phi, theta))
 
     def Hz(self, phi=0, theta=0):
-        """z component of the H field."""
+        """z component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         self._Hz = numpy.zeros(self.X.shape)
         f = self.f(phi)
         for i, j in product(range(self.np), repeat=2):
@@ -148,7 +250,16 @@ class Field(object):
         return self._Hz
 
     def Hr(self, phi=0, theta=0):
-        """r component of the H field."""
+        """r component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return (self.Ht(phi, theta) *
                     numpy.cos(self.Hpol(phi, theta) - self.Phi))
@@ -161,7 +272,16 @@ class Field(object):
             return self._Hr
 
     def Hphi(self, phi=0, theta=0):
-        """phi component of the H field."""
+        """phi component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return (self.Ht(phi, theta) *
                     numpy.sin(self.Hpol(phi, theta) - self.Phi))
@@ -174,7 +294,16 @@ class Field(object):
             return self._Hphi
 
     def Ht(self, phi=0, theta=0):
-        """transverse component of the H field."""
+        """transverse component of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.sqrt(numpy.square(self.Hx(phi, theta)) +
                               numpy.square(self.Hy(phi, theta)))
@@ -183,7 +312,16 @@ class Field(object):
                               numpy.square(self.Hphi(phi, theta)))
 
     def Hpol(self, phi=0, theta=0):
-        """polarization of the transverse H field."""
+        """polarization of the transverse H field (in radians).
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.arctan2(self.Hy(phi, theta),
                                  self.Hx(phi, theta))
@@ -192,7 +330,16 @@ class Field(object):
                                  self.Hr(phi, theta)) + self.Phi
 
     def Hmod(self, phi=0, theta=0):
-        """modulus of the H field."""
+        """modulus of the H field.
+
+        Args:
+            phi: phase (in radians)
+            theta: orientation (in radians)
+
+        Return:
+            (np x np) numpy array
+
+        """
         if self.mode.family is ModeFamily.LP:
             return numpy.sqrt(numpy.square(self.Hx(phi, theta)) +
                               numpy.square(self.Hy(phi, theta)) +

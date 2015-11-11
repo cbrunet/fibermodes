@@ -9,6 +9,7 @@ from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
 from .simparams import SimParamsDialog
 from .chareq import CharEqDialog
+from fibermodesgui.fieldvisualizer import FieldVisualizer
 from fibermodesgui.materialcalculator import MaterialCalculator
 from fibermodesgui.wavelengthcalculator import WavelengthCalculator
 from fibermodesgui import blockSignals
@@ -106,13 +107,13 @@ class ModeSolver(AppWindow):
             ),
             'mcalc': (
                 self.tr("&Material calculator"),
-                'accessories-calculator',
+                'index-calculator',
                 [QtGui.QKeySequence("F8")],
                 self.toggle_mcalc
             ),
             'wlcalc': (
                 self.tr("&Wavelength calculator"),
-                'accessories-calculator',
+                'lambda-calculator',
                 [QtGui.QKeySequence("F7")],
                 self.toggle_wlcalc
             ),
@@ -158,6 +159,12 @@ class ModeSolver(AppWindow):
                 [QtGui.QKeySequence("F11")],
                 self.toggleFullscreen
             ),
+            'fields': (
+                self.tr("Show &fields"),
+                'report',
+                [QtGui.QKeySequence("F6")],
+                self.plotFields
+            )
         }
 
         menus = [
@@ -189,6 +196,8 @@ class ModeSolver(AppWindow):
             ),
             (
                 self.tr("&Tools"), [
+                    'fields',
+                    '-',
                     'wlcalc',
                     'mcalc'
                 ]
@@ -214,7 +223,7 @@ class ModeSolver(AppWindow):
         toolbars = [
             ['open', 'save', 'exportcur'],
             ['start', 'stop'],
-            ['wlcalc', 'mcalc'],
+            ['fields', '-', 'wlcalc', 'mcalc'],
             ['paramwin', 'tablewin', 'graphwin'],
         ]
 
@@ -238,6 +247,8 @@ class ModeSolver(AppWindow):
         self.actions['graphwin'].setCheckable(True)
         self.actions['graphwin'].setChecked(True)
         self.actions['fullscreen'].setCheckable(True)
+        self.actions['plotchareq'].setEnabled(False)
+        self.actions['fields'].setEnabled(False)
         self.wavelengthInput.setValue(1550e-9)
         self.setDirty(False)
         self.closed.connect(self.doc.stop_thread)
@@ -354,8 +365,10 @@ class ModeSolver(AppWindow):
         self.modeTableProxy.setSortRole(QtCore.Qt.UserRole)
         self.modeTableProxy.setDynamicSortFilter(True)
         self.modeTableView = ModeTableView(self.modeTableProxy)
+        self.modeTableView.selChanged.connect(self.updateUIsel)
         self.modeTableModel.dataChanged.connect(
             self.modeTableView.resizeColumnsToContents)
+        self.modeTableModel.dataChanged.connect(self.updateUImodes)
 
         self.fiberSlider = FiberSlider()
         self.fiberSlider.valueChanged.connect(self.setFiber)
@@ -685,3 +698,18 @@ class ModeSolver(AppWindow):
             filename = exportDialog.selectedFiles()[0]
             self._dir = exportDialog.directory()
             self.doc.export(filename, wlnum, fnum)
+
+    def updateUIsel(self, modes):
+        ms = len(modes) > 0
+        self.actions['plotchareq'].setEnabled(ms)
+
+    def updateUImodes(self):
+        nm = self.modeTableModel.rowCount()
+        self.actions['fields'].setEnabled(nm > 0)
+
+    def plotFields(self):
+        fv = FieldVisualizer(self)
+        sm = self.modeTableView.selectedModes()
+        if sm:
+            fv.setModes([[m, 0, 0, 1] for m in sm])
+        fv.show()

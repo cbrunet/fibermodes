@@ -15,6 +15,7 @@ class AppWindow(QtGui.QMainWindow):
 
         logging.basicConfig()
 
+        self._dirty = False
         self.actions = {}
         actions = {
             'capturewarnings': (
