@@ -16,7 +16,7 @@ try:
             super().setUp()
             self.f.setSolvers(neff=cuda.Neff)
 
-except ImportError as e:
+except Exception as e:
     class TestCuda(unittest.TestCase):
 
         @unittest.skip('Missing dependency - ' + str(e))

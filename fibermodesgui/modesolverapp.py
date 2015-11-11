@@ -14,3 +14,15 @@ if __name__ == '__main__':
     win.show()
 
     sys.exit(app.exec_())
+
+# TODO:
+# Keep legend position when update plot
+# Save results
+# Save selection
+# Save window position / size
+# Save sorting order
+# Save modes checked
+# Color column
+# Two vertical scales
+# Debug: plot cutoff eq
+# Use dock instead of splitter
