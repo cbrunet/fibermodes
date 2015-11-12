@@ -126,9 +126,9 @@ class StepIndex(Geometry):
         else:
             B1 = iv(nu, u)
             B2 = kn(nu, u)
-            F1 = iv(nu, urp) / B1
+            F1 = iv(nu, urp) / B1 if u else 1
             F2 = kn(nu, urp) / B2
-            F3 = ivp(nu, urp) / B1
+            F3 = ivp(nu, urp) / B1 if u else 1
             F4 = kvp(nu, urp) / B2
             c1 = -wl.k0 * ro / u
         c2 = neff * nu / urp * c1

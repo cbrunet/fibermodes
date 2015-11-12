@@ -86,8 +86,9 @@ class TestSimulator(unittest.TestCase):
             os.path.join(__dir__, '..', 'fiber', 'rcfs.fiber'), 1550e-9)
         modes = list(sim.modes())
         self.assertEqual(len(modes), 5)
-        for fmodes in modes:
+        for fmodes, n in zip(modes, (4, 6, 6, 8, 8)):
             self.assertEqual(len(fmodes), 1)
+            self.assertEqual(len(fmodes[0]), n)
 
     def testCutoff(self):
         sim = self.Simulator(

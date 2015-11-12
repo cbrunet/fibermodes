@@ -1,8 +1,8 @@
 
 from .solver import FiberSolver
-from fibermodes import Mode, ModeFamily
+from fibermodes import Mode, ModeFamily, Wavelength
 from fibermodes.fiber.material.material import OutOfRangeWarning
-from math import sqrt
+from math import sqrt, isinf
 import numpy
 from scipy.special import j0, y0, i0, k0
 from scipy.special import j1, y1, i1, k1
@@ -45,17 +45,9 @@ class Cutoff(FiberSolver):
             # ignore OutOfRangeWarning; it will occur elsewhere anyway
             warnings.simplefilter("ignore", category=OutOfRangeWarning)
             r1, r2 = self.fiber._r
-            for _ in range(5):
-                # If we cannot convert V0 to a wavelength, try
-                # to modify fiber radius to get a different normalization
-                try:
-                    wl = self.fiber.toWl(v0)
-                    break
-                except (ValueError, RuntimeError):
-                    self.fiber._r = (self.fiber._r[0] * 2, self.fiber._r[1]*2)
-            else:
-                raise ValueError()
-            self.fiber._r = r1, r2
+            wl = self.fiber.toWl(v0)
+            if isinf(wl):
+                wl = Wavelength(k0=1)  # because it causes troubles if 0
             Nsq = numpy.square(numpy.fromiter(
                                (self.fiber.minIndex(i, wl)
                                 for i in range(3)), dtype=float, count=3))

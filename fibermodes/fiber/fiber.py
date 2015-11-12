@@ -174,7 +174,13 @@ class Fiber(object):
         wl = f(1.55e-6)
 
         if abs(wl - f(wl)) > tol:
-            wl = fixed_point(f, wl, xtol=tol, maxiter=maxiter)
+            try:
+                wl = fixed_point(f, wl, xtol=tol, maxiter=maxiter)
+            except RuntimeError:
+                pass
+                # FIXME: What should we do if it does not converge?
+                # print(V0, wl)
+                # wl = float('inf')
 
         return Wavelength(wl)
 
