@@ -81,7 +81,10 @@ class PropertyItemDelegate(ComboItemDelegate):
         super().__init__(parent, role=QtCore.Qt.UserRole)
 
     def createEditor(self, parent, option, index):
-        self._items, self._values = index.data(role=YAXISLIST)
+        try:
+            self._items, self._values = index.data(role=YAXISLIST)
+        except ValueError:
+            return None  # results not returned yet
         return super().createEditor(parent, option, index)
 
 
@@ -350,7 +353,7 @@ class PlotFrame(QtGui.QFrame):
 
         if self.plotOptions.showCurrentFiberWl.isChecked():
             if index == FIBERS:
-                posx = self._fnum
+                posx = self._fnum + 1
             elif index == WAVELENGTHS:
                 posx = self.doc.wavelengths[self._wl]
             elif index == VNUMBER:

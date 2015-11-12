@@ -9,6 +9,7 @@ scripts/*.tex
 *.zip
 *.pdf
 *.fiber
+*.solver
 *.xmi
 *.dump
 *.mat

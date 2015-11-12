@@ -508,6 +508,7 @@ class ModeSolver(AppWindow):
         self.actions['new'].setEnabled(False)
         self.actions['edit'].setEnabled(True)
         self.actions['info'].setEnabled(True)
+        self.actions['plotchareq'].setEnabled(True)
         self.fiberSelector.updateFiberName()
         self.fiberSlider.setNum(len(self.doc.fibers))
         self.setDirty(True)
@@ -651,8 +652,11 @@ class ModeSolver(AppWindow):
 
     def plot_chareq(self):
         sel = self.modeTableView.selectedIndexes()
-        idx = self.modeTableProxy.mapToSource(sel[0])
-        mode = self.modeTableModel.modes[idx.row()]
+        try:
+            idx = self.modeTableProxy.mapToSource(sel[0])
+            mode = self.modeTableModel.modes[idx.row()]
+        except IndexError:
+            mode = None
         dlg = CharEqDialog(mode, self)
         dlg.show()
 
@@ -700,8 +704,9 @@ class ModeSolver(AppWindow):
             self.doc.export(filename, wlnum, fnum)
 
     def updateUIsel(self, modes):
-        ms = len(modes) > 0
-        self.actions['plotchareq'].setEnabled(ms)
+        pass
+        # ms = len(modes) > 0
+        # self.actions['plotchareq'].setEnabled(ms)
 
     def updateUImodes(self):
         nm = self.modeTableModel.rowCount()
