@@ -143,6 +143,7 @@ class MaterialCalculator(QtGui.QDialog):
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
+    QtCore.QTextCodec.setCodecForTr(QtCore.QTextCodec.codecForName('UTF-8'))
     app.setApplicationName('Material Calculator')
 
     win = MaterialCalculator()
