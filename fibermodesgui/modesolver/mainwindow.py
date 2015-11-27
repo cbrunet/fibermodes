@@ -1,5 +1,28 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
+"""This module contains the main window for the fiber mode solver application.
+
+The ModeSolver class should normally be instantiated from modesolverapp.py,
+excepted if you want to start the mode solver application from another
+Python application.
+
+"""
 
 from PySide import QtGui, QtCore
+from fibermodes import ModeFamily
 from fibermodesgui.widgets import AppWindow, SLRCWidget
 from .solverdocument import SolverDocument
 from .fiberselector import FiberSelector
@@ -9,6 +32,7 @@ from .modetable import ModeTableView, ModeTableModel
 from .plotframe import PlotFrame
 from .simparams import SimParamsDialog
 from .chareq import CharEqDialog
+from .showhide import ShowHideMode
 from fibermodesgui.fieldvisualizer import FieldVisualizer
 from fibermodesgui.materialcalculator import MaterialCalculator
 from fibermodesgui.wavelengthcalculator import WavelengthCalculator
@@ -368,7 +392,7 @@ class ModeSolver(AppWindow):
         self.modeTableView.selChanged.connect(self.updateUIsel)
         self.modeTableModel.dataChanged.connect(
             self.modeTableView.resizeColumnsToContents)
-        self.modeTableModel.dataChanged.connect(self.updateUImodes)
+        self.modeTableModel.modelReset.connect(self.updateUImodes)
 
         self.fiberSlider = FiberSlider()
         self.fiberSlider.valueChanged.connect(self.setFiber)
@@ -376,12 +400,17 @@ class ModeSolver(AppWindow):
         self.wavelengthSlider = WavelengthSlider()
         self.wavelengthSlider.valueChanged.connect(self.setWavelength)
 
+        self.showhidesel = ShowHideMode()
+        self.showhidesel.showModes.connect(self.on_show_modes)
+        self.showhidesel.hideModes.connect(self.on_hide_modes)
+
         layout1 = QtGui.QHBoxLayout()
         layout1.addWidget(self.fiberSlider)
         layout1.addWidget(self.wavelengthSlider)
 
         layout2 = QtGui.QVBoxLayout()
         layout2.addLayout(layout1)
+        layout2.addWidget(self.showhidesel)
         layout2.addWidget(self.modeTableView, stretch=1)
 
         frame = QtGui.QFrame()
@@ -666,6 +695,28 @@ class ModeSolver(AppWindow):
         self.doc.numProcs = dlg.numProcs.value()
         self.doc.simulator.delta = float(dlg.delta.text())
 
+    def on_show_modes(self, what, option):
+        self._show_hide_modes(True, what, option)
+
+    def on_hide_modes(self, what, option):
+        self._show_hide_modes(False, what, option)
+
+    def _show_hide_modes(self, show, what, option):
+        nm = self.modeTableModel.rowCount()
+        for i in range(nm):
+            mode = self.modeTableModel.headerData(i,
+                                                  QtCore.Qt.Vertical,
+                                                  QtCore.Qt.UserRole)
+            if (what == 0 or
+                    (what == 1 and mode.family is ModeFamily(option+1)) or
+                    (what == 2 and mode.nu == option) or
+                    (what == 3 and mode.m == option+1)):
+                index = self.modeTableModel.index(i, 0)
+                self.modeTableModel.setData(
+                    index,
+                    QtCore.Qt.Checked if show else QtCore.Qt.Unchecked,
+                    QtCore.Qt.CheckStateRole)
+
     def togglePanes(self):
         states = [
             self.actions['paramwin'].isChecked(),
@@ -711,6 +762,7 @@ class ModeSolver(AppWindow):
     def updateUImodes(self):
         nm = self.modeTableModel.rowCount()
         self.actions['fields'].setEnabled(nm > 0)
+        self.showhidesel.modes = self.modeTableModel.modes
 
     def plotFields(self):
         fv = FieldVisualizer(self)

@@ -1,7 +1,24 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 from PySide import QtGui
 import pyqtgraph as pg
 import numpy
-from fibermodes import Mode, ModeFamily, Wavelength
+from fibermodes import Mode, ModeFamily
+from itertools import count
+from math import isnan
 
 
 class CharEqDialog(QtGui.QDialog):
@@ -45,6 +62,7 @@ class CharEqDialog(QtGui.QDialog):
         self.nuInput.valueChanged.connect(self.updateMode)
 
         self.mInput = QtGui.QSpinBox()
+        self.mInput.setRange(1, 100)
         self.mInput.setValue(self.mode.m)
         self.mInput.valueChanged.connect(self.updateMode)
 
@@ -55,6 +73,9 @@ class CharEqDialog(QtGui.QDialog):
         self.npInput.setSingleStep(50)
         self.npInput.valueChanged.connect(self.updateMode)
 
+        self.zeros = QtGui.QCheckBox(self.tr("Show zeros"))
+        self.zeros.toggled.connect(self.showZeros)
+
         hlayout = QtGui.QHBoxLayout()
         if hasattr(self.fiber._cutoff, '_lpcoeq'):
             hlayout.addWidget(self.fType)
@@ -64,6 +85,7 @@ class CharEqDialog(QtGui.QDialog):
         hlayout.addSpacing(1)
         hlayout.addWidget(npLabel)
         hlayout.addWidget(self.npInput)
+        hlayout.addWidget(self.zeros)
         hlayout.addStretch(1)
 
         layout = QtGui.QVBoxLayout()
@@ -72,6 +94,7 @@ class CharEqDialog(QtGui.QDialog):
         layout.addWidget(self.plot)
 
         self.setLayout(layout)
+        self.__zeros = None
         self.updateMode()
 
     def setTitle(self):
@@ -123,6 +146,7 @@ class CharEqDialog(QtGui.QDialog):
         self.plot.clear()
         self.plot.plot(Neff, y)
         self.plot.addLine(y=0)
+        self.showZeros(self.zeros.isChecked(), True)
 
     def plotCutoff(self):
         V0 = self.fiber.V0(self.wl)
@@ -146,3 +170,58 @@ class CharEqDialog(QtGui.QDialog):
         self.plot.clear()
         self.plot.plot(V, y)
         self.plot.addLine(y=0)
+        self.showZeros(self.zeros.isChecked(), True)
+
+    def _get_char_eq_zeros(self):
+        x = []
+        for m in count(1):
+            if self.mode.family is ModeFamily.EH:
+                mode = Mode(ModeFamily.HE, self.mode.nu, m)
+            else:
+                mode = Mode(self.mode.family, self.mode.nu, m)
+            neff = self.fiber.neff(mode, self.wl)
+            if isnan(neff):
+                break
+            else:
+                x.append(neff)
+
+            if mode.family is ModeFamily.HE:
+                mode = Mode(ModeFamily.EH, self.mode.nu, m)
+                neff = self.fiber.neff(mode, self.wl)
+                if isnan(neff):
+                    break
+                else:
+                    x.append(neff)
+        return x
+
+    def _get_cutoff_eq_zeros(self):
+        V0 = self.fiber.V0(self.wl)
+        x = []
+        for m in count(1):
+            mode = Mode(self.mode.family, self.mode.nu, m)
+            co = self.fiber.cutoff(mode)
+            if co < V0:
+                x.append(co)
+            else:
+                break
+        return x
+
+    def showZeros(self, checked, reset=False):
+        if reset:
+            if self.__zeros is not None:
+                self.plot.removeItem(self.__zeros)
+                self.__zeros = None
+
+        if checked:
+            if self.__zeros is None:
+                if self.fType.currentIndex() == 0:
+                    x = self._get_char_eq_zeros()
+                else:
+                    x = self._get_cutoff_eq_zeros()
+                y = [0] * len(x)
+                self.__zeros = pg.ScatterPlotItem(x, y, pen='r', brush='r')
+            self.plot.addItem(self.__zeros)
+
+        else:
+            if self.__zeros is not None:
+                self.plot.removeItem(self.__zeros)
