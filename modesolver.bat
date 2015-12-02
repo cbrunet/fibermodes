@@ -1,5 +1,5 @@
 @ECHO OFF
 SETLOCAL
 SET PYTHONPATH=%CD%;%PYTHONPATH%
-pythonw fibermodesgui\modsolverapp.py
+pythonw fibermodesgui\modesolverapp.py
 ENDLOCAL
