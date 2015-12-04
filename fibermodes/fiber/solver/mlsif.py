@@ -1,7 +1,22 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 from .solver import FiberSolver
 from fibermodes import Wavelength, Mode, ModeFamily
 from fibermodes import constants
-from math import isnan, sqrt
+from math import isnan
 import numpy
 from scipy.special import kn, kvp, k0, k1, jn, jvp, yn, yvp, iv, ivp
 
@@ -32,21 +47,22 @@ class Neff(FiberSolver):
                 pm = Mode(mode.family, mode.nu - 1, mode.m)
                 lb = self.fiber.neff(pm, wl, delta)
                 if isnan(lb):
-                    return lowbound
+                    return lb
                 lowbound = min(lowbound, lb)
+        # try:
+        #     # Use cutoff information if available
+        #     co = self.fiber.cutoff(mode)
+        #     if self.fiber.V0(wl) < co:
+        #         return float("nan")
 
-        try:
-            # Use cutoff information if available
-            co = self.fiber.cutoff(mode)
-            if self.fiber.V0(wl) < co:
-                return float("nan")
+        #     nco = max(layer.maxIndex(wl) for layer in self.fiber.layers)
+        #     r = self.fiber.innerRadius(-1)
 
-            nco = max(layer.maxIndex(wl) for layer in self.fiber.layers)
-            r = self.fiber.innerRadius(-1)
-
-            lowbound = min(lowbound, sqrt(nco**2 - (co / (r * wl.k0))**2))
-        except (NotImplementedError):
-            pass
+        #     lowbound = min(lowbound, sqrt(nco**2 - (co / (r * wl.k0))**2))
+        # except (NotImplementedError):
+        #     pass
+        # if mode == Mode(ModeFamily.HE, 3, 1):
+        #     print('3', lowbound)
 
         highbound = self.fiber.minIndex(-1, wl)
 

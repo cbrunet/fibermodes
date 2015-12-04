@@ -118,7 +118,7 @@ class _FSimulator(object):
         if pm is not None:
             lowbound = min(lowbound, self._neff(pm, i))
 
-        if (mode.family is ModeFamily.LP and mode.nu > 0) or mode.nu > 1:
+        if (mode.family is ModeFamily.LP and mode.nu > 0):  # or mode.nu > 1:
             pm = Mode(mode.family, mode.nu-1, mode.m)
             lowbound = min(lowbound, self._neff(pm, i))
 

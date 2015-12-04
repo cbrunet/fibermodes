@@ -1,3 +1,17 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
 from .solver import FiberSolver
 from fibermodes import Mode, ModeFamily
@@ -11,7 +25,7 @@ class Cutoff(FiberSolver):
 
     """Cutoff for standard step-index fiber."""
 
-    def __call__(self, mode, delta):
+    def __call__(self, mode):
         nu = mode.nu
         m = mode.m
 
@@ -25,7 +39,7 @@ class Cutoff(FiberSolver):
             if nu == 1:
                 m -= 1
             else:
-                return self._findHEcutoff(mode, delta)
+                return self._findHEcutoff(mode)
 
         return jn_zeros(nu, m)[m-1]
 
@@ -34,12 +48,14 @@ class Cutoff(FiberSolver):
         n02 = self.fiber.maxIndex(0, wl)**2 / self.fiber.minIndex(1, wl)**2
         return (1+n02) * jn(nu-2, V0) - (1-n02) * jn(nu, V0)
 
-    def _findHEcutoff(self, mode, delta):
+    def _findHEcutoff(self, mode):
         if mode.m > 1:
             pm = Mode(mode.family, mode.nu, mode.m - 1)
-            lowbound = self.fiber.cutoff(pm, delta) + delta
+            lowbound = self.fiber.cutoff(pm)
+            delta = 1 / lowbound if lowbound else 0.25
+            lowbound += delta
         else:
-            lowbound = delta
+            lowbound = delta = 0.25
         ipoints = numpy.concatenate((jn_zeros(mode.nu, mode.m),
                                      jn_zeros(mode.nu-2, mode.m)))
         ipoints.sort()

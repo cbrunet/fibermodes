@@ -1,3 +1,18 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 """A Fiber represents a physical fiber
 (:py:mod:`~fibermodes.fiber.material` and
 :py:mod:`~fibermodes.fiber.geometry`).
@@ -184,16 +199,16 @@ class Fiber(object):
 
         return Wavelength(wl)
 
-    def cutoff(self, mode, delta=0.25):
+    def cutoff(self, mode):
         try:
             return self.co_cache[mode]
         except KeyError:
-            co = self._cutoff(mode, delta)
+            co = self._cutoff(mode)
             self.co_cache[mode] = co
             return co
 
-    def cutoffWl(self, mode, delta=0.25):
-        return self.toWl(self.cutoff(mode, delta))
+    def cutoffWl(self, mode):
+        return self.toWl(self.cutoff(mode))
 
     def neff(self, mode, wl, delta=1e-6, lowbound=None):
         try:

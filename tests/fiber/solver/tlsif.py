@@ -1,3 +1,18 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 """Test suite for fibermodes.fiber.solver.tlsif module."""
 
 import unittest
@@ -294,21 +309,21 @@ class TestTLSIF(unittest.TestCase):
             Mode('EH', 1, 1): 4.669304720761619,
             Mode('HE', 1, 2): 5.088131872468638,
             Mode('HE', 3, 1): 5.118129406153233,
+            Mode('EH', 2, 1): 5.89459696711537,
             Mode('TM', 0, 2): 6.7934897736915065,
             Mode('HE', 2, 2): 6.80880538983052,
             Mode('TE', 0, 2): 6.809117963058563,
-            Mode('EH', 2, 1): 6.958505239863098,
             Mode('HE', 4, 1): 6.993124138822584,
+            Mode('EH', 3, 1): 7.08470361250189,
             Mode('EH', 1, 2): 8.049518101191492,
+            Mode('EH', 4, 1): 8.382115427339519,
             Mode('HE', 1, 3): 8.735885113376382,
             Mode('HE', 3, 2): 8.747374022674864,
-            Mode('EH', 3, 1): 8.790776475777257,
             Mode('HE', 5, 1): 8.828714775284547,
+            Mode('EH', 2, 2): 9.416036962761297,
             Mode('TE', 0, 3): 9.95301298312625,
             Mode('HE', 2, 3): 9.962177458632713,
             Mode('TM', 0, 3): 9.962228554278012,
-            Mode('EH', 2, 2): 10.591251538701066,
-            Mode('EH', 4, 1): 10.600825077678442,
             Mode('HE', 4, 2): 10.605263286689778,
             Mode('HE', 6, 1): 10.64128881198123,
         }
