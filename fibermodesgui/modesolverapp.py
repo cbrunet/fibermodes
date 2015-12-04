@@ -48,4 +48,6 @@ if __name__ == '__main__':
 # Two vertical scales
 # Debug: plot cutoff eq
 # Use dock instead of splitter
-# Select / unselect all / he / eh / te / tm / lp
+# File name and state (unsaved) in windows title
+# Save advanded options in solver file
+# Option to modify Delta for cutoff

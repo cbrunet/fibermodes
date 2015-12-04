@@ -1,3 +1,17 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
 from itertools import count
 from scipy.optimize import brentq
@@ -12,12 +26,30 @@ class FiberSolver(object):
 
     def __init__(self, fiber):
         self.fiber = fiber
+        self.log = []
+        self._logging = False
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
+    def start_log(self):
+        self.log = []
+        self._logging = True
+
+    def stop_log(self):
+        self._logging = False
+
+    def __record(self, fct):
+        def wrapper(z, *args):
+            r = fct(z, *args)
+            if self._logging:
+                self.log.append((z, r))
+            return r
+        return wrapper
+
     def _findFirstRoot(self, fct, args=(), lowbound=0, highbound=None,
                        ipoints=[], delta=0.25, maxiter=None):
+        fct = self.__record(fct)  # For debug purpose.
         while True:
             if ipoints:
                 maxiter = len(ipoints)
@@ -53,11 +85,12 @@ class FiberSolver(object):
                 delta /= 10
             else:
                 break
-        self.logger.warning("maxiter reached ({}, {}, {})".format(
+        self.logger.info("maxiter reached ({}, {}, {})".format(
                             maxiter, lowbound, highbound))
         return float("nan")
 
     def _findBetween(self, fct, lowbound, highbound, args=(), maxj=15):
+        fct = self.__record(fct)  # For debug purpose.
         v = [lowbound, highbound]
         s = [fct(lowbound, *args), fct(highbound, *args)]
 

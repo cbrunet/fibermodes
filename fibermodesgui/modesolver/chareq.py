@@ -25,8 +25,12 @@ class CharEqDialog(QtGui.QDialog):
 
     """Plot characteristic function
 
-    TODO: localize zeros
     TODO: follow the mouse
+    TODO: clear cache button
+    TODO: bug with graph scale (sometime change by itself)
+    TODO: better scale to important region
+    TODO: maximizable window
+    TODO: allow to choose log scale
 
     """
 
@@ -72,9 +76,21 @@ class CharEqDialog(QtGui.QDialog):
         self.npInput.setValue(50)
         self.npInput.setSingleStep(50)
         self.npInput.valueChanged.connect(self.updateMode)
+        npLabel.setBuddy(self.npInput)
 
         self.zeros = QtGui.QCheckBox(self.tr("Show zeros"))
         self.zeros.toggled.connect(self.showZeros)
+
+        self.points = QtGui.QCheckBox(self.tr("Show points"))
+        self.points.toggled.connect(self.showZeros)
+
+        dLabel = QtGui.QLabel(self.tr("∆"))
+        deltaValidator = QtGui.QDoubleValidator(bottom=1e-31, top=1)
+        self.delta = QtGui.QLineEdit()
+        self.delta.setValidator(deltaValidator)
+        self.delta.setText("{:e}".format(parent.doc.simulator.delta))
+        self.delta.textChanged.connect(self.setDelta)
+        dLabel.setBuddy(self.delta)
 
         hlayout = QtGui.QHBoxLayout()
         if hasattr(self.fiber._cutoff, '_lpcoeq'):
@@ -86,6 +102,9 @@ class CharEqDialog(QtGui.QDialog):
         hlayout.addWidget(npLabel)
         hlayout.addWidget(self.npInput)
         hlayout.addWidget(self.zeros)
+        hlayout.addWidget(self.points)
+        hlayout.addWidget(dLabel)
+        hlayout.addWidget(self.delta)
         hlayout.addStretch(1)
 
         layout = QtGui.QVBoxLayout()
@@ -95,6 +114,7 @@ class CharEqDialog(QtGui.QDialog):
 
         self.setLayout(layout)
         self.__zeros = None
+        self.__points = None
         self.updateMode()
 
     def setTitle(self):
@@ -133,7 +153,7 @@ class CharEqDialog(QtGui.QDialog):
                ModeFamily.TE: self.fiber._neff._teceq,
                ModeFamily.TM: self.fiber._neff._tmceq,
                ModeFamily.HE: self.fiber._neff._heceq,
-               ModeFamily.EH: self.fiber._neff._heceq
+               ModeFamily.EH: self.fiber._neff._ehceq
                }
         fct = Fct[self.mode.family]
 
@@ -174,29 +194,34 @@ class CharEqDialog(QtGui.QDialog):
 
     def _get_char_eq_zeros(self):
         x = []
+        delta = float(self.delta.text())
+        nl = len(self.fiber)
+        self.fiber._neff.start_log()
         for m in count(1):
-            if self.mode.family is ModeFamily.EH:
+            if self.mode.family is ModeFamily.EH and nl > 2:
                 mode = Mode(ModeFamily.HE, self.mode.nu, m)
             else:
                 mode = Mode(self.mode.family, self.mode.nu, m)
-            neff = self.fiber.neff(mode, self.wl)
+            neff = self.fiber.neff(mode, self.wl, delta)
             if isnan(neff):
                 break
             else:
                 x.append(neff)
 
-            if mode.family is ModeFamily.HE:
+            if mode.family is ModeFamily.HE and nl > 2:
                 mode = Mode(ModeFamily.EH, self.mode.nu, m)
-                neff = self.fiber.neff(mode, self.wl)
+                neff = self.fiber.neff(mode, self.wl, delta)
                 if isnan(neff):
                     break
                 else:
                     x.append(neff)
+        self.fiber._neff.stop_log()
         return x
 
     def _get_cutoff_eq_zeros(self):
         V0 = self.fiber.V0(self.wl)
         x = []
+        self.fiber._cutoff.start_log()
         for m in count(1):
             mode = Mode(self.mode.family, self.mode.nu, m)
             co = self.fiber.cutoff(mode)
@@ -204,15 +229,25 @@ class CharEqDialog(QtGui.QDialog):
                 x.append(co)
             else:
                 break
+        self.fiber._cutoff.stop_log()
         return x
 
     def showZeros(self, checked, reset=False):
+
+        ckzeros = self.zeros.isChecked()
+        ckpoints = self.points.isChecked() if ckzeros else False
+
+        self.points.setEnabled(ckzeros)
+
         if reset:
             if self.__zeros is not None:
                 self.plot.removeItem(self.__zeros)
                 self.__zeros = None
+            if self.__points is not None:
+                self.plot.removeItem(self.__points)
+                self.__points = None
 
-        if checked:
+        if ckzeros:
             if self.__zeros is None:
                 if self.fType.currentIndex() == 0:
                     x = self._get_char_eq_zeros()
@@ -222,6 +257,27 @@ class CharEqDialog(QtGui.QDialog):
                 self.__zeros = pg.ScatterPlotItem(x, y, pen='r', brush='r')
             self.plot.addItem(self.__zeros)
 
+            if self.__points is None:
+                x, y = [], []
+                if self.fType.currentIndex() == 0:
+                    if len(self.fiber._neff.log) > 0:
+                        x, y = zip(*self.fiber._neff.log)
+                else:
+                    if len(self.fiber._cutoff.log) > 0:
+                        x, y = zip(*self.fiber._cutoff.log)
+                self.__points = pg.ScatterPlotItem(x, y, pen='b', brush='b')
+
+            if ckpoints:
+                self.plot.addItem(self.__points)
+                self.__points.stackBefore(self.__zeros)
+
         else:
             if self.__zeros is not None:
                 self.plot.removeItem(self.__zeros)
+
+        if not ckpoints:
+            if self.__points is not None:
+                self.plot.removeItem(self.__points)
+
+    def setDelta(self, value):
+        self.showZeros(self.zeros.isChecked(), reset=True)
