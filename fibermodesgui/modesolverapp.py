@@ -30,7 +30,7 @@ from modesolver.mainwindow import ModeSolver
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     QtCore.QTextCodec.setCodecForTr(QtCore.QTextCodec.codecForName('UTF-8'))
-    app.setApplicationName('Fiber Editor')
+    app.setApplicationName('Mode Solver')
 
     win = ModeSolver()
     if len(sys.argv) > 1:
