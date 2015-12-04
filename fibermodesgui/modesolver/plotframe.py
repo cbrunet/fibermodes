@@ -1,3 +1,18 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 from PySide import QtGui, QtCore
 import pyqtgraph as pg
 from fibermodesgui import blockSignals
@@ -119,7 +134,7 @@ class PlotModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self.doc = parent.doc
 
-        self.plots = [[0, QtCore.Qt.SolidLine, None]]
+        self.plots = [[0, hash(QtCore.Qt.SolidLine), None]]
 
     def rowCount(self, parent=QtCore.QModelIndex):
         return len(self.plots)
@@ -183,13 +198,13 @@ class PlotModel(QtCore.QAbstractTableModel):
 
     def save(self):
         data = self.plots.copy()
-        for i, d in enumerate(data):
-            data[i][1] = hash(d[1])
+        # for i, d in enumerate(data):
+        #     data[i][1] = hash(d[1])
         return data
 
     def load(self, data):
-        for i, d in enumerate(data):
-            data[i][1] = QtCore.Qt.PenStyle(d[1])
+        # for i, d in enumerate(data):
+        #     data[i][1] = QtCore.Qt.PenStyle(d[1])
         self.plots = data
         self.layoutChanged.emit()
 
@@ -372,6 +387,7 @@ class PlotFrame(QtGui.QFrame):
                                    QtCore.Qt.UserRole)
         line = self.plotModel.data(self.plotModel.index(row, 1),
                                    role=QtCore.Qt.UserRole)
+        line = QtCore.Qt.PenStyle(line)
         mark = self.plotModel.data(self.plotModel.index(row, 2),
                                    QtCore.Qt.UserRole)
         if mark is None and len(self.X) == 1:
@@ -450,7 +466,8 @@ class PlotFrame(QtGui.QFrame):
                       for fiber in self.doc.fibers]
                 n2 = [fiber.maxIndex(-1, wl) for fiber in self.doc.fibers]
             for i in range(len(self.doc.fibers[0])):  # TODO: merged layers...
-                n = [fiber.maxIndex(i, wl) for fiber in self.doc.fibers]
+                n = [fiber.maxIndex(i, wl) if i < len(fiber) else float("nan")
+                     for fiber in self.doc.fibers]
                 if norm:
                     for i in range(len(n)):
                         n[i] = (n[i]**2 - n2[i]**2) / (n1[i]**2 - n2[i]**2)
