@@ -33,6 +33,8 @@ if __name__ == '__main__':
     app.setApplicationName('Fiber Editor')
 
     win = ModeSolver()
+    if len(sys.argv) > 1:
+        win.actionOpen(sys.argv[1])
     win.show()
 
     sys.exit(app.exec_())
@@ -50,4 +52,3 @@ if __name__ == '__main__':
 # Use dock instead of splitter
 # File name and state (unsaved) in windows title
 # Save advanded options in solver file
-# Option to modify Delta for cutoff
