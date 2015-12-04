@@ -20,7 +20,6 @@ import unittest
 from fibermodes import FiberFactory, Mode, ModeFamily
 from itertools import zip_longest
 from math import isnan
-import numpy
 
 
 class TestCutoffs(unittest.TestCase):
@@ -34,7 +33,7 @@ class TestCutoffs(unittest.TestCase):
 
     If this test pass, it doesn't mean cutoffs are OK.
     If it fails because of cutoff order, something is wrong.
-    If it fails because of "b", please double-check results.
+    If it fails because of "b", it is probably a skipped root.
 
     """
 
@@ -63,14 +62,41 @@ class TestCutoffs(unittest.TestCase):
 
                     pco = co
 
-    def testProfileB(self):
+    def testProfileA(self):
+        self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.47, 1.43, 1.44])
+
+    def testProfileB_45(self):
         self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.47, 1.45, 1.44])
+
+    def testProfileB_46(self):
+        self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.47, 1.46, 1.44])
+
+    def testProfileC(self):
+        self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.43, 1.47, 1.44])
+
+    def testProfileD(self):
+        self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.45, 1.47, 1.44])
+
+    def testProfileE(self):
+        self._testFiberCutoffs(r=[4e-6, 6e-6], n=[1.44, 1.47, 1.44])
 
     def testCase1_4474(self):
         self._testFiberCutoffs(r=[4e-6, 10e-6], n=[1.4489, 1.4474, 1.4444])
 
     def testCase1_4484(self):
         self._testFiberCutoffs(r=[4e-6, 10e-6], n=[1.4489, 1.4484, 1.4444])
+
+    def testCase2(self):
+        self._testFiberCutoffs(r=[4e-6, 10e-6], n=[1.4444, 1.4489, 1.4444])
+
+    def testCase3(self):
+        self._testFiberCutoffs(r=[4e-6, 10e-6], n=[1.4474, 1.4489, 1.4444])
+
+    def testCase4(self):
+        self._testFiberCutoffs(r=[4e-6, 10e-6], n=[1.4444, 1.4489, 1.4474])
+
+    def testCase5(self):
+        self._testFiberCutoffs(r=[10e-6, 16e-6], n=[1.4489, 1.4444, 1.4474])
 
 
 if __name__ == "__main__":

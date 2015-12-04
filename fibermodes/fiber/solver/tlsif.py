@@ -18,7 +18,7 @@
 from .solver import FiberSolver
 from fibermodes import Mode, ModeFamily, Wavelength
 from fibermodes.fiber.material.material import OutOfRangeWarning
-from math import sqrt, isinf
+from math import sqrt, isinf, isnan
 import numpy
 from scipy.special import j0, y0, i0, k0
 from scipy.special import j1, y1, i1, k1
@@ -37,33 +37,38 @@ class Cutoff(FiberSolver):
                ModeFamily.EH: self._ehcoeq
                }
         if mode.m > 1:
-            pm = Mode(mode.family, mode.nu, mode.m - 1)
+            if mode.family is ModeFamily.HE:
+                pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
+            else:
+                pm = Mode(mode.family, mode.nu, mode.m - 1)
             if pm == Mode(ModeFamily.HE, 1, 1):
                 pm = Mode(ModeFamily.TE, 0, 1)
             elif pm == Mode(ModeFamily.LP, 0, 1):
                 pm = Mode(ModeFamily.LP, 1, 1)
             lowbound = self.fiber.cutoff(pm)
-            delta = 1 / lowbound if lowbound > 4 else 0.25
+            delta = 0.05 / lowbound if lowbound > 4 else self._MCD
             lowbound += delta / 100
         elif mode.family is ModeFamily.EH:
             pm = Mode(ModeFamily.HE, mode.nu, mode.m)
             lowbound = self.fiber.cutoff(pm)
-            delta = 1 / lowbound if lowbound > 4 else 0.25
+            delta = 0.05 / lowbound if lowbound > 4 else self._MCD
             lowbound += delta / 100
         elif mode.nu > 0:
             # TE(0,1) is single-mode condition
             # Roots below TE(0,1) are false-positive
             pm = Mode(ModeFamily.TE, 0, 1)
             lowbound = self.fiber.cutoff(pm)
-            delta = 1 / lowbound
+            delta = 0.05 / lowbound
             lowbound -= delta / 100
         else:
-            lowbound = delta = 0.25
+            lowbound = delta = self._MCD
+        if isnan(delta):
+            print(lowbound)
         return self._findFirstRoot(fct[mode.family],
                                    args=(mode.nu,),
                                    lowbound=lowbound,
                                    delta=delta,
-                                   maxiter=1000)
+                                   maxiter=int(250/delta))
 
     def __params(self, v0):
         with warnings.catch_warnings():

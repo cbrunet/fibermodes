@@ -23,6 +23,7 @@ class FiberSolver(object):
     """Generic abstract class for callable objects used as fiber solvers."""
 
     logger = logging.getLogger(__name__)
+    _MCD = 0.25
 
     def __init__(self, fiber):
         self.fiber = fiber
