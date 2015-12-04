@@ -393,6 +393,11 @@ class PlotFrame(QtGui.QFrame):
         if mark is None and len(self.X) == 1:
             mark = 'o'
         xaxis = self.xAxisSelector.currentIndex()
+        nr = self.plotModel.rowCount()
+        try:
+            nf = self.doc.params[what]
+        except IndexError:
+            nf = ''
 
         y = {}
         if xaxis == FIBERS:
@@ -425,8 +430,9 @@ class PlotFrame(QtGui.QFrame):
             pen = pg.mkPen(color=col, style=line,
                            width=3 if m in self._modesel else 1)
             spen = pg.mkPen(color='w', width=2 if m in self._modesel else 1)
+            name = str(m) if nr == 1 else "{} ({})".format(str(m), nf)
             self.plot.plot(X, Y, pen=pen, symbol=symb,
-                           symbolBrush=symbb, symbolPen=spen, name=str(m))
+                           symbolBrush=symbb, symbolPen=spen, name=name)
             miny = min(Y)
             maxy = max(Y)
             self.miny = min(miny, self.miny)
