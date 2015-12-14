@@ -21,6 +21,35 @@ For GUI:
  - pyqtgraph
 
 
+General installation
+--------------------
+
+1. Install required environment. For Windows, see below.
+   For Linux, it depends on your distribution, but installing python
+   (version 3.4 or higher),
+   numpy, scipy, pyside, and pyqtgraph should be sufficient.
+   For Mac OS, should be similar, but I haven't tested.
+2. python setup.py install
+
+
+Running tests
+-------------
+
+You need `nose`. Then, can ca either run `nosetests` or `python setup.py nosetests`.
+
+
+Building documentation
+----------------------
+
+You need sphinx (and probably a few dependencies to be documented).
+
+``
+python setup.py build_sphinx
+``
+
+Documentation is generated under `doc/_build/html`.
+
+
 Windows installation
 --------------------
 

@@ -24,10 +24,10 @@ user interface.
 import sys
 from PySide import QtCore, QtGui
 
-from modesolver.mainwindow import ModeSolver
+from fibermodesgui.modesolver.mainwindow import ModeSolver
 
 
-if __name__ == '__main__':
+def main():
     app = QtGui.QApplication(sys.argv)
     QtCore.QTextCodec.setCodecForTr(QtCore.QTextCodec.codecForName('UTF-8'))
     app.setApplicationName('Mode Solver')
@@ -38,6 +38,9 @@ if __name__ == '__main__':
     win.show()
 
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
 
 # TODO:
 # Keep legend position when update plot
