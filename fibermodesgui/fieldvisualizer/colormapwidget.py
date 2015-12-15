@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from pyqtgraph import GradientWidget
 from pyqtgraph.graphicsItems import GradientEditorItem
 from .colormaps import _magma_data, _inferno_data, _plasma_data, _viridis_data
@@ -29,7 +29,7 @@ addCM('plasma', _plasma_data)
 
 class ColorMapWidget(QtGui.QGroupBox):
 
-    sigGradientChanged = QtCore.Signal()
+    sigGradientChanged = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

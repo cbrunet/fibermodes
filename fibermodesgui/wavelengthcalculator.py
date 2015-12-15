@@ -18,14 +18,14 @@
 import sys
 from fibermodes import Wavelength
 from fibermodesgui import blockSignals
-from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
 
 
 class WavelengthCalculator(QtGui.QDialog):
 
-    hidden = QtCore.Signal()
+    hidden = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None, f=0):
+    def __init__(self, parent=None, f=QtCore.Qt.Widget):
         super().__init__(parent, f)
         self.wl = Wavelength(1550e-9)
 

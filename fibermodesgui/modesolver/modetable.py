@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from math import isnan, isinf
 
 
 class ModeTableView(QtGui.QTableView):
 
-    selChanged = QtCore.Signal(list)
+    selChanged = QtCore.pyqtSignal(list)
 
     def __init__(self, model, parent=None):
         super().__init__(parent)

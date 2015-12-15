@@ -1,4 +1,4 @@
-from PySide import QtGui
+from PyQt4 import QtGui
 import pyqtgraph as pg
 import numpy
 from math import isinf

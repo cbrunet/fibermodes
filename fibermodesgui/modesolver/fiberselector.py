@@ -1,5 +1,5 @@
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 import os
 from datetime import datetime
 from string import Template
@@ -8,8 +8,8 @@ from fibermodesgui.fibereditor.mainwindow import FiberEditor
 
 class FiberSelector(QtGui.QFrame):
 
-    fileLoaded = QtCore.Signal()
-    fiberEdited = QtCore.Signal()
+    fileLoaded = QtCore.pyqtSignal()
+    fiberEdited = QtCore.pyqtSignal()
 
     def __init__(self, doc, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)

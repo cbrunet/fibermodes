@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from decimal import Decimal
 from fibermodes.slrc import SLRC
 from fibermodesgui import blockSignals
@@ -6,9 +6,9 @@ from fibermodesgui import blockSignals
 
 class SLRCWidget(QtGui.QFrame, SLRC):
 
-    valueChanged = QtCore.Signal(object)
+    valueChanged = QtCore.pyqtSignal(object)
 
-    def __init__(self, parent=None, f=0):
+    def __init__(self, parent=None, f=QtCore.Qt.Widget):
         QtGui.QFrame.__init__(self, parent, f)
         SLRC.__init__(self)
         self.scale = 1.

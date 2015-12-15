@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-from PySide import QtGui
+from PyQt4 import QtGui
 import pyqtgraph as pg
 import numpy
 from fibermodes import Mode, ModeFamily

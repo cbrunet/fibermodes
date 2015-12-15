@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 import pyqtgraph as pg
 from fibermodesgui import blockSignals
 from fibermodesgui.widgets.delegate import ComboItemDelegate
@@ -41,7 +41,7 @@ LINESV = [QtCore.Qt.SolidLine,
 
 class PlotOptions(QtGui.QDialog):
 
-    def __init__(self, parent, f=0):
+    def __init__(self, parent, f=QtCore.Qt.Widget):
         super().__init__(parent, f)
         self.parent = parent
 
@@ -233,7 +233,7 @@ class PlotModel(QtCore.QAbstractTableModel):
 
 class PlotFrame(QtGui.QFrame):
 
-    modified = QtCore.Signal()
+    modified = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)

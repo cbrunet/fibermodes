@@ -13,14 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
 from fibermodes import ModeFamily
 
 
 class ShowHideMode(QtGui.QGroupBox):
 
-    showModes = QtCore.Signal(int, int)
-    hideModes = QtCore.Signal(int, int)
+    showModes = QtCore.pyqtSignal(int, int)
+    hideModes = QtCore.pyqtSignal(int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)

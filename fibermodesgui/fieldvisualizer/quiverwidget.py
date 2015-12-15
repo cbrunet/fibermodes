@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 import pyqtgraph as pg
 import numpy
 from math import ceil

@@ -21,7 +21,7 @@ Python application.
 
 """
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from fibermodes import ModeFamily
 from fibermodesgui.widgets import AppWindow, SLRCWidget
 from .solverdocument import SolverDocument
@@ -434,7 +434,7 @@ class ModeSolver(AppWindow):
         if not self._closeDocument():
             return
 
-        if filename is None:
+        if not filename:
             openDialog = QtGui.QFileDialog()
             openDialog.setWindowTitle(self.tr("Open solver..."))
             openDialog.setDirectory(self._dir)
@@ -444,7 +444,7 @@ class ModeSolver(AppWindow):
                 filename = openDialog.selectedFiles()[0]
                 self._dir = openDialog.directory()
 
-        if filename is not None:
+        if filename:
             if self.load(filename):
                 self._dir = os.path.dirname(filename)
                 self.setDirty(False)

@@ -1,10 +1,10 @@
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 
 
 class WavelengthSlider(QtGui.QFrame):
 
-    valueChanged = QtCore.Signal(int)
+    valueChanged = QtCore.pyqtSignal(int)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

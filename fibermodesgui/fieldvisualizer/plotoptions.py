@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from fibermodes.field import Field
 from .colormapwidget import ColorMapWidget
 from .quiverwidget import QuiverWidget
@@ -6,9 +6,9 @@ from .quiverwidget import QuiverWidget
 
 class PlotOptions(QtGui.QDockWidget):
 
-    hidden = QtCore.Signal()
+    hidden = QtCore.pyqtSignal()
 
-    def __init__(self, pwin, parent=None, f=0):
+    def __init__(self, pwin, parent=None, f=QtCore.Qt.Widget):
         super().__init__(parent, f)
         self.win = pwin
         self.setWindowTitle(self.tr("Plot Options"))

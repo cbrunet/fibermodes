@@ -1,4 +1,4 @@
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from fibermodes import Mode
 from fibermodes.field import Field
 from fibermodesgui import blockSignals

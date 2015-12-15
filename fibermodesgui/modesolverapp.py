@@ -22,7 +22,7 @@ user interface.
 """
 
 import sys
-from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
 
 from fibermodesgui.modesolver.mainwindow import ModeSolver
 

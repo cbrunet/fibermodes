@@ -1,5 +1,5 @@
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 from fibermodes import FiberFactory
 from fibermodes.fiber import material, geometry
 from fibermodesgui import util, blockSignals

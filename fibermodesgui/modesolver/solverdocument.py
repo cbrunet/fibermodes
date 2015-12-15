@@ -1,15 +1,15 @@
 
-from PySide import QtCore
+from PyQt4 import QtCore
 from fibermodes import FiberFactory, Simulator, PSimulator, Mode
 import csv
 
 
 class SolverDocument(QtCore.QThread):
 
-    computeStarted = QtCore.Signal()
-    modesAvailable = QtCore.Signal(int)  # fiber num
-    valueAvailable = QtCore.Signal(int, int, object, int)
-    computeFinished = QtCore.Signal()
+    computeStarted = QtCore.pyqtSignal()
+    modesAvailable = QtCore.pyqtSignal(int)  # fiber num
+    valueAvailable = QtCore.pyqtSignal(int, int, object, int)
+    computeFinished = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)

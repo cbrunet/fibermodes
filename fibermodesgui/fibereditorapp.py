@@ -16,7 +16,7 @@
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
 
 from fibermodesgui.fibereditor.mainwindow import FiberEditor
 

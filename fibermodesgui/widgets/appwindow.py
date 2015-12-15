@@ -1,5 +1,5 @@
 
-from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
 import os
 from functools import partial
 import logging
@@ -7,8 +7,8 @@ import logging
 
 class AppWindow(QtGui.QMainWindow):
 
-    closed = QtCore.Signal()
-    saved = QtCore.Signal(str)
+    closed = QtCore.pyqtSignal()
+    saved = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
