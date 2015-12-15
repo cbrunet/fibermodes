@@ -22,7 +22,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='fibermodes',
-      version='0.1.0',
+      version='0.2.0',
       description='Multilayers optical fiber mode solver',
       author='Charles Brunet',
       author_email='charles@cbrunet.net',
@@ -53,6 +53,6 @@ setup(name='fibermodes',
         'numpy >= 1.9.0',
         'scipy >= 0.15.0',
         'pyqtgraph >= 0.9.10',
-        'pyside >= 1.2.0'
+        'PyQt4 >= 4.11'
       ]
       )
