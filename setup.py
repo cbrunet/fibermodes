@@ -53,6 +53,9 @@ setup(name='fibermodes',
         'numpy >= 1.9.0',
         'scipy >= 0.15.0',
         'pyqtgraph >= 0.9.10',
-        'PyQt4 >= 4.11'
-      ]
+        # 'PyQt4 >= 4.11'  # see http://stackoverflow.com/questions/4628519/is-it-possible-to-require-pyqt-from-setuptools-setup-py
+      ],
+      extras_require={
+        'test': ['nose >= 1.3.2', 'coverage >= 3.7']
+      }
       )
