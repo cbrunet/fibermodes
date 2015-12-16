@@ -106,7 +106,7 @@ class Mode(namedtuple('Mode', 'family nu m')):
     def __gt__(self, m2):
         return m2 < self
 
-    def color(self, nn=5, nm=3):
+    def color(self, nn=5, nm=3, asint=True):
         """Return color (r, g, b) as function of mode.
 
         LP, HE modes are blue,
@@ -120,6 +120,7 @@ class Mode(namedtuple('Mode', 'family nu m')):
         Args:
             nn(int): Number of different colors for nu parameter (default: 5).
             nm(int): Number of different colors for m parameter (default: 3).
+            asint(bool): If False, normalize values in the 0 .. 1 range
 
         Returns:
             (r, g, b) tuple (0 .. 255)
@@ -144,7 +145,10 @@ class Mode(namedtuple('Mode', 'family nu m')):
         r, g, b = hsv_to_rgb(h, s, v)
 
         # print(str(self), (h, s, v), (r, g, b))
-        return (round(r*255), round(g*255), round(b*255))
+        if asint:
+            return (round(r*255), round(g*255), round(b*255))
+        else:
+            return (r, g, b)
 
 
 if __name__ == '__main__':
