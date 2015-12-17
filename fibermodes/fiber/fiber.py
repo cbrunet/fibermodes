@@ -181,21 +181,30 @@ class Fiber(object):
         """
         if V0 == 0:
             return float("inf")
+        if isinf(V0):
+            return 0
 
         def f(x):
             return constants.tpi / V0 * b * self.NA(x)
 
         b = self.innerRadius(-1)
-        wl = f(1.55e-6)
 
+        wl = f(1.55e-6)
         if abs(wl - f(wl)) > tol:
-            try:
-                wl = fixed_point(f, wl, xtol=tol, maxiter=maxiter)
-            except RuntimeError:
-                pass
-                # FIXME: What should we do if it does not converge?
-                # print(V0, wl)
-                # wl = float('inf')
+            for w in (1.55e-6, 5e-6, 10e-6):
+                try:
+                    wl = fixed_point(f, w, xtol=tol, maxiter=maxiter)
+                except RuntimeError:
+                    # FIXME: What should we do if it does not converge?
+                    self.logger.warning(
+                        "toWl: did not converged from {}µm "
+                        "for V0 = {} (wl={})".format(w*1e6, V0, wl))
+                if wl > 0:
+                    break
+
+        if wl == 0:
+            self.logger.error("toWl: did not converged for "
+                              "V0 = {} (wl={})".format(V0, wl))
 
         return Wavelength(wl)
 

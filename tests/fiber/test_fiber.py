@@ -1,9 +1,28 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """Test suite for fiber.fiber module"""
 
 import unittest
 import os.path
 
 from fibermodes import FiberFactory
+from fibermodes.fiber.material.material import OutOfRangeWarning
+from math import isinf
+import warnings
 
 __dir__, _ = os.path.split(__file__)
 
@@ -47,6 +66,18 @@ class TestFiber(unittest.TestCase):
         f.layers[1].material = "Air"
         fiber = f[0]
         self.assertAlmostEqual(fiber.toWl(fiber.V0(1600e-9)), 1600e-9)
+
+        self.assertEqual(fiber.toWl(float("inf")), 0)
+        self.assertTrue(isinf(fiber.toWl(0)))
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=OutOfRangeWarning)
+            f = FiberFactory()
+            f.addLayer(radius=10e-6, material="SiO2GeO2", x=0.25)
+            f.addLayer(material="Silica")
+            fiber = f[0]
+            wl = fiber.toWl(2.4)
+            self.assertGreater(wl, 10e-6)
 
 
 if __name__ == "__main__":

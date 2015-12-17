@@ -15,15 +15,18 @@
 
 from .solver import FiberSolver
 from fibermodes import Mode, ModeFamily
-from math import sqrt
+from math import sqrt, isnan, isinf
 import numpy
 from scipy.special import jn, jn_zeros, kn, j0, j1, k0, k1, jvp, kvp
 from fibermodes.constants import Y0
+import logging
 
 
 class Cutoff(FiberSolver):
 
     """Cutoff for standard step-index fiber."""
+
+    logger = logging.getLogger(__name__)
 
     def __call__(self, mode):
         nu = mode.nu
@@ -52,19 +55,27 @@ class Cutoff(FiberSolver):
         if mode.m > 1:
             pm = Mode(mode.family, mode.nu, mode.m - 1)
             lowbound = self.fiber.cutoff(pm)
-            delta = 1 / lowbound if lowbound else 0.25
+            if isnan(lowbound) or isinf(lowbound):
+                raise AssertionError("_findHEcutoff: no previous cutoff for"
+                                     "{} mode".format(str(mode)))
+            delta = 1 / lowbound if lowbound else self._MCD
             lowbound += delta
         else:
-            lowbound = delta = 0.25
+            lowbound = delta = self._MCD
         ipoints = numpy.concatenate((jn_zeros(mode.nu, mode.m),
                                      jn_zeros(mode.nu-2, mode.m)))
         ipoints.sort()
         ipoints = list(ipoints[ipoints > lowbound])
-        return self._findFirstRoot(self._cutoffHE,
-                                   args=(mode.nu,),
-                                   lowbound=lowbound,
-                                   ipoints=ipoints,
-                                   delta=delta)
+        co = self._findFirstRoot(self._cutoffHE,
+                                 args=(mode.nu,),
+                                 lowbound=lowbound,
+                                 ipoints=ipoints,
+                                 delta=delta)
+        if isnan(co):
+            self.logger.error("_findHEcutoff: no cutoff found for "
+                              "{} mode".format(str(mode)))
+            return 0
+        return co
 
 
 class Neff(FiberSolver):

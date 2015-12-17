@@ -79,6 +79,8 @@ class FiberSolver(object):
                     z = brentq(fct, a, b, args=args, xtol=1e-20)
                     fz = fct(z, *args)
                     if abs(fa) > abs(fz) < abs(fb):  # Skip discontinuities
+                        self.logger.debug("skipped ({}, {}, {})".format(
+                            fa, fz, fb))
                         return z
 
                 a, fa = b, fb
