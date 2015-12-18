@@ -91,7 +91,7 @@ def compute_fiber_r2(results, modes, simulator, i, Rho, r2, nc2, numax, mmax):
                         results[fct] = numpy.concatenate(
                             (results[fct], column), axis=3)
                     m = len(modes)-1
-                
+
                 results['cutoff'][j, i, k, m] = co
 
                 # This test is to ensure we get values in the right order:
@@ -102,17 +102,23 @@ def compute_fiber_r2(results, modes, simulator, i, Rho, r2, nc2, numax, mmax):
                 #         "{} != {}".format(fiber.layers[1]._mp[0], c2)
     print()
 
-    # Find neffs
-    neffs = simulator.neff()
-    print("  Finding neffs  rho=", end='')
-    for j, rho in enumerate(Rho):
-        print("{:.3f}".format(rho), end='')
-        for k in range(nc2):
-            print(end='.')
-            for mode, neff in next(neffs)[0].items():
-                m = modes.index(mode)
-                results['neff'][j, i, k, m] = neff
-    print()
+    for fct in ('neff', 'beta1', 'beta2', 'beta3'):
+        neffs = getattr(simulator, fct)()
+        print("  Finding {}s  rho=".format(fct), end='')
+        for j, rho in enumerate(Rho):
+            print("{:.3f}".format(rho), end='')
+            for k in range(nc2):
+                print(end='.')
+                for mode, neff in next(neffs)[0].items():
+                    try:
+                        m = modes.index(mode)
+                    except ValueError:
+                        print("{} not found when computing {}".format(
+                            str(mode, fct)))
+                    else:
+                        results[fct][j, i, k, m] = neff
+        print()
+
     return numax, mmax
 
 
@@ -134,8 +140,13 @@ def compute_fiber(filename, nrho, R2, C2, wl, numax=None, mmax=None):
     ckfile += '.ckp.npz'
     if os.path.isfile(ckfile):
         # Restore checkpoint
-        results = numpy.load(ckfile)
-        modes = [Mode(*a) for a in results['modes']]
+        data = numpy.load(ckfile)
+        modes = [Mode(*a) for a in data['modes']]
+        results = {
+            'modes': modes
+        }
+        for fct in ('cutoff', 'neff', 'beta1', 'beta2', 'beta3'):
+            results[fct] = data[fct]
     else:
         # Find modes
         sim[-1].numax = numax
@@ -251,7 +262,7 @@ def run_simulation():
 if __name__ == '__main__':
     logging.captureWarnings(True)
     logging.basicConfig(level=logging.CRITICAL)
-#    run_tests()
     print(time.ctime())
-    run_simulation()
+    run_tests()
+    # run_simulation()
     # compute_fiber()
