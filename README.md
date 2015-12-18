@@ -36,8 +36,7 @@ software, without hacking it.
 Installing the required environment
 -----------------------------------
 
-For Linux
-~~~~~~~~~
+### For Linux
 
 On **Ubuntu** / **Debian**, install the following packages:
 `python3`, `python3-numpy`, `python3-scipy`, `python3-pyqt4`, `python3-pyqtgraph`,
@@ -48,8 +47,7 @@ On **Arch**, the required packages are:
 `python-coverage`, `python-pip`.
 
 
-For Windows
-~~~~~~~~~~~
+### For Windows
 
 I recommend to use a distribution that includes scientific Python.
 Choose a distribution that includes Python 3.4 or higher. I recommend
@@ -59,8 +57,7 @@ using either
 Follow the installation instructions, and everything should work out-of-the-box.
 
 
-For Mac OS
-~~~~~~~~~~
+### For Mac OS
 
 I do not have a machine to test installation on Mac OS. However, it *should* work.
 Please fell free to share me your experience.
