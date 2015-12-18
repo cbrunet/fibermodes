@@ -80,7 +80,18 @@ def compute_fiber_r2(results, modes, simulator, i, Rho, r2, nc2, numax, mmax):
         for k in range(nc2):
             print(end='.')
             for mode, co in next(cutoffs)[0].items():
-                m = modes.index(mode)
+                try:
+                    m = modes.index(mode)
+                except ValueError:
+                    modes.append(mode)
+                    results['modes'] = modes
+                    column = numpy.empty(results['cutoff'].shape[:-1]+(1,))
+                    column.fill(numpy.nan)
+                    for fct in ('cutoff', 'neff', 'beta1', 'beta2', 'beta3'):
+                        results[fct] = numpy.concatenate(
+                            (results[fct], column), axis=3)
+                    m = len(modes)-1
+                
                 results['cutoff'][j, i, k, m] = co
 
                 # This test is to ensure we get values in the right order:
@@ -215,8 +226,32 @@ def run_tests():
     cleanup_file(filename)
 
 
+def run_simulation():
+    filename = "RCFS.npz"
+    cleanup_file(filename)
+    nrho = 50
+    nr2 = 65
+    nc2 = 5
+    wl = 1550e-9
+    numax = 10
+    mmax = 5
+
+    R2 = numpy.linspace(2e-6, 10e-6, nr2)
+    C2 = numpy.linspace(0.15, 0.25, nc2)
+    result = compute_fiber(filename, nrho, R2, C2, wl, numax, mmax)
+
+    test_save_to_file(filename)
+    data = test_lood_file(filename, result)
+    test_list_of_modes(data)
+    test_cutoff(data)
+    test_neff(data)
+    cleanup_file(filename)
+
+
 if __name__ == '__main__':
     logging.captureWarnings(True)
     logging.basicConfig(level=logging.CRITICAL)
-    run_tests()
+#    run_tests()
+    print(time.ctime())
+    run_simulation()
     # compute_fiber()
