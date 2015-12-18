@@ -215,8 +215,8 @@ but the same *V* number (*V=10*)::
 
     code = """V = 10
     ncl = 1.444
-    k0 = 2 * pi / 1550e-9
-    n = sqrt((V / (k0 * r[0]))**2 - ncl**2)
+    k0 = 2 * math.pi / 1550e-9
+    n = math.sqrt((V / (k0 * r[0]))**2 - ncl**2)
     return n
     """
     factory = FiberFactory()
