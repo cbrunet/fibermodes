@@ -118,7 +118,7 @@ class FiberEditor(AppWindow):
         if not self._closeDocument():
             return
 
-        if filename is None:
+        if not filename:
             openDialog = QtGui.QFileDialog()
             openDialog.setWindowTitle(self.tr("Open fiber..."))
             openDialog.setDirectory(self._dir)
@@ -128,7 +128,7 @@ class FiberEditor(AppWindow):
                 filename = openDialog.selectedFiles()[0]
                 self._dir = openDialog.directory()
 
-        if filename is not None:
+        if filename:
             with open(filename, 'r') as f:
                 self.factory.load(f)
             self._dir = os.path.dirname(filename)
