@@ -16,9 +16,7 @@
 
 import unittest
 
-from fibermodes.mode import Mode, Family
-
-# TODO: test color function
+from fibermodes.mode import Mode, Family, HE11
 
 
 class TestMode(unittest.TestCase):
@@ -83,6 +81,33 @@ class TestMode(unittest.TestCase):
                     self.assertEqual(modes[i], modes[j])
                     self.assertLessEqual(modes[i], modes[j])
                     self.assertGreaterEqual(modes[i], modes[j])
+
+    def testColor(self):
+        # HE color is blue
+        color = HE11.color()
+        self.assertGreater(color[2], color[1])
+        self.assertGreater(color[2], color[0])
+        self.assertLess(color[0], 256)
+        self.assertLess(color[1], 256)
+        self.assertLess(color[2], 256)
+
+        # asint=False
+        color = HE11.color(asint=False)
+        self.assertGreater(color[2], color[1])
+        self.assertGreater(color[2], color[0])
+        self.assertLessEqual(color[0], 1)
+        self.assertLessEqual(color[1], 1)
+        self.assertLessEqual(color[2], 1)
+
+        # different modes == different colors
+        co1 = HE11.color()
+        co2 = Mode("HE", 1, 2).color()
+        co3 = Mode("HE", 2, 1).color()
+        co4 = Mode("EH", 1, 1).color()
+        self.assertNotEqual(co1, co2)
+        self.assertNotEqual(co1, co3)
+        self.assertNotEqual(co2, co3)
+        self.assertNotEqual(co1, co4)
 
 
 if __name__ == "__main__":
