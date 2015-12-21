@@ -15,7 +15,7 @@ before_install:
 # Install packages
 install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy coverage
-  - conda install --yes -c dan_blanchard python-coveralls
+  - conda install --yes -c dan_blanchard python-coveralls nose-cov
   - python setup.py install
 
 script: nosetests
