@@ -16,7 +16,7 @@
 from PyQt4 import QtGui
 import pyqtgraph as pg
 import numpy
-from fibermodes import Mode, ModeFamily
+from fibermodes import Mode, ModeFamily, HE11
 from itertools import count
 from math import isnan
 
@@ -41,7 +41,7 @@ class CharEqDialog(QtGui.QDialog):
         wlnum = parent.wavelengthSlider.wavelengthInput.value()
         self.wl = parent.doc.wavelengths[wlnum-1]
 
-        self.mode = mode if mode else Mode(ModeFamily.HE, 1, 1)
+        self.mode = mode if mode else HE11
         self.fiber = parent.doc.fibers[self.fnum-1]
         self.neffMin = self.fiber.minIndex(-1, self.wl)
         self.neffMax = max(layer.maxIndex(self.wl)

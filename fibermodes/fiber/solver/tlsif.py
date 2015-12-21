@@ -16,7 +16,7 @@
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
 from .solver import FiberSolver
-from fibermodes import Mode, ModeFamily, Wavelength
+from fibermodes import Mode, ModeFamily, Wavelength, HE11
 from fibermodes.fiber.material.material import OutOfRangeWarning
 from math import sqrt, isinf, isnan
 import numpy
@@ -41,7 +41,7 @@ class Cutoff(FiberSolver):
                 pm = Mode(ModeFamily.EH, mode.nu, mode.m - 1)
             else:
                 pm = Mode(mode.family, mode.nu, mode.m - 1)
-            if pm == Mode(ModeFamily.HE, 1, 1):
+            if pm == HE11:
                 pm = Mode(ModeFamily.TE, 0, 1)
             elif pm == Mode(ModeFamily.LP, 0, 1):
                 pm = Mode(ModeFamily.LP, 1, 1)

@@ -1,6 +1,6 @@
 
 from collections import OrderedDict
-from fibermodes import fixedFiber, Mode, ModeFamily
+from fibermodes import fixedFiber, Mode, ModeFamily, HE11
 
 
 FIBERS = OrderedDict([
@@ -29,7 +29,7 @@ LPMODES = (
            )
 
 VMODES = (
-          Mode(ModeFamily.HE, 1, 1),
+          HE11,
           Mode(ModeFamily.TE, 0, 1),
           Mode(ModeFamily.HE, 2, 1),
           Mode(ModeFamily.TM, 0, 1),

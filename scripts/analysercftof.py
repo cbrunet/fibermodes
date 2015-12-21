@@ -216,11 +216,11 @@ def plotRCF2oam():
     datafiles = FILES["RCF2oam"]
     data = [oscilloscope.read(PATH + df) for df in datafiles]
     modes = [
-        Mode(ModeFamily.HE, 1, 1),
+        HE11,
         Mode(ModeFamily.TM, 0, 1),
         Mode(ModeFamily.HE, 2, 1),
         Mode(ModeFamily.TE, 0, 1),
-        Mode(ModeFamily.HE, 1, 1),
+        HE11,
         Mode(ModeFamily.TM, 0, 1),
         Mode(ModeFamily.HE, 2, 1),
         Mode(ModeFamily.TE, 0, 1),

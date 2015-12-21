@@ -18,7 +18,7 @@
 
 import numpy
 from itertools import product
-from fibermodes import Mode, ModeFamily, Wavelength
+from fibermodes import Wavelength, ModeFamily, HE11
 from fibermodes import constants
 
 
@@ -407,7 +407,7 @@ class Field(object):
                 numpy.sum(numpy.power(modF, 4))) * dx * dy
 
     def I(self):
-        neff = self.fiber.neff(Mode(ModeFamily.HE, 1, 1), self.wl)
+        neff = self.fiber.neff(HE11, self.wl)
         nm = self.fiber.neff(self.mode, self.wl)
         dx = (self.xlim[1] - self.xlim[0]) / (self.np - 1)
         dy = (self.ylim[1] - self.ylim[0]) / (self.np - 1)
@@ -415,7 +415,7 @@ class Field(object):
 
     def N(self):
         """Normalization constant."""
-        neff = self.fiber.neff(Mode(ModeFamily.HE, 1, 1), self.wl)
+        neff = self.fiber.neff(HE11, self.wl)
         return 0.5 * constants.epsilon0 * neff * constants.c * self.I()
 
     def S(self):

@@ -17,7 +17,7 @@
 
 import unittest
 
-from fibermodes import FiberFactory, Mode, ModeFamily
+from fibermodes import FiberFactory, Mode, ModeFamily, HE11
 from itertools import zip_longest
 from math import isnan
 
@@ -51,7 +51,7 @@ class TestCutoffs(unittest.TestCase):
                     co = fiber.cutoff(mode)
                     self.assertGreater(co, pco, "Not greater "+str(mode))
 
-                    if mode != Mode(ModeFamily.HE, 1, 1):
+                    if mode != HE11:
                         d = 0.
                         b = float("nan")
                         while isnan(b):

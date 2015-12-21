@@ -167,14 +167,20 @@ class Mode(namedtuple('Mode', 'family nu m')):
         else:
             return (r, g, b)
 
+#: Predefined HE(1,1) mode
+HE11 = Mode(Family.HE, 1, 1)
+
+#: Predefined LP(0,1) mode
+LP01 = Mode(Family.LP, 0, 1)
+
 
 if __name__ == '__main__':
-    m = Mode('HE', 1, 1)
+    m = HE11
     print(m)
     print(repr(m))
 
     def f():
-        a = Mode('HE', 1, 1)
+        a = HE11
         return a
 
     print(f())

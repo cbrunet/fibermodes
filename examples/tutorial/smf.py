@@ -1,7 +1,7 @@
 """This is the examples for the first tutorial: Single-mode fiber."""
 
 
-from fibermodes import FiberFactory, Mode, ModeFamily, Wavelength
+from fibermodes import FiberFactory, HE11, Wavelength
 
 
 factory = FiberFactory()
@@ -13,7 +13,7 @@ print(factory)
 fiber = factory[0]
 print(fiber)
 
-he11 = Mode(ModeFamily.HE, 1, 1)
+he11 = HE11
 print(he11)
 
 wl = Wavelength(1550e-9)

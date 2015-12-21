@@ -4,6 +4,7 @@ dist/
 *.egg-info/
 *.pyc
 *.npy
+*.npz
 _build/
 fibermodes.sublime-workspace
 scripts/*.tex

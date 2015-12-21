@@ -18,7 +18,7 @@
 import unittest
 import os.path
 
-from fibermodes import FiberFactory, Mode, ModeFamily
+from fibermodes import FiberFactory, Mode, ModeFamily, HE11
 from fibermodes.simulator import Simulator
 
 __dir__, _ = os.path.split(__file__)
@@ -93,7 +93,7 @@ class TestSimulator(unittest.TestCase):
         self.assertEqual(len(modesf1), 1)
         modeswl1 = modesf1[0]
         self.assertEqual(len(modeswl1), 2)
-        self.assertTrue(Mode(ModeFamily.HE, 1, 1) in modeswl1)
+        self.assertTrue(HE11 in modeswl1)
         self.assertTrue(Mode(ModeFamily.LP, 0, 1) in modeswl1)
 
     def testModesRCF(self):

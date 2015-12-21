@@ -150,7 +150,7 @@ def modalmap(nr1, nr2, r2, cn2, modes):
 
     rho = numpy.linspace(0, 1, nr1, endpoint=False)
     r = numpy.linspace(*r2, nr2) * 1e6
-    X, Y = numpy.meshgrid(r, rho)
+
 
     factories = build_factories(nr1, nr2, r2, cn2)
     for mode in modes:

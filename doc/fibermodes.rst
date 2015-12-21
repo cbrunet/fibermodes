@@ -36,6 +36,8 @@ Module contents
 
         ~fibermodes.fiber.factory.FiberFactory
         ~fibermodes.mode.Mode
+        HE11
+        LP01
         ModeFamily
         ~fibermodes.simulator.simulator.Simulator
         ~fibermodes.simulator.psimulator.PSimulator

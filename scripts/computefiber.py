@@ -24,8 +24,9 @@ from functools import wraps
 import os
 import os.path
 import numpy
-from fibermodes import Mode, FiberFactory
+from fibermodes import Mode, FiberFactory, HE11
 from fibermodes.simulator import PSimulator as Simulator
+from matplotlib import pyplot
 
 
 def measure_time(f):
@@ -240,28 +241,64 @@ def run_tests():
 def run_simulation():
     filename = "RCFS.npz"
     cleanup_file(filename)
-    nrho = 10
-    nr2 = 9
-    nc2 = 3
+    nrho = 6
+    nr2 = 5
+    nc2 = 1
     wl = 1550e-9
     numax = 10
     mmax = 5
 
     R2 = numpy.linspace(2e-6, 8e-6, nr2)
     C2 = numpy.linspace(0.15, 0.25, nc2)
-    result = compute_fiber(filename, nrho, R2, C2, wl, numax, mmax)
+    compute_fiber(filename, nrho, R2, C2, wl, numax, mmax)
 
-    test_save_to_file(filename)
-    data = test_lood_file(filename, result)
-    test_list_of_modes(data)
-    test_cutoff(data)
-    test_neff(data)
-    cleanup_file(filename)
+
+def plot_modal_map(filename):
+    N2 = 0
+
+    nrho = 6
+    nr2 = 5
+    nc2 = 1
+
+    pyplot.figure()
+    data = numpy.load(filename)
+    modes = [Mode(*a) for a in data['modes']]
+    R2 = numpy.linspace(2, 8, nr2)
+    Rho = numpy.linspace(0, 1, nrho, endpoint=False)
+    X, Y = numpy.meshgrid(R2, Rho)
+
+    # Plot dneff map
+    dneff = numpy.empty((nrho, nr2))
+    dneff.fill(numpy.inf)
+    for m1, mode1 in enumerate(modes[:-1]):
+        for m2, mode2 in enumerate(modes[m1+1:], m1+1):
+            dn = numpy.abs(data['neff'][:, :, N2, m1] -
+                           data['neff'][:, :, N2, m2])
+            dn = numpy.ma.masked_invalid(dn)
+            dn = numpy.ma.filled(dn, numpy.inf)
+            dneff = numpy.minimum(dneff, dn)
+    pyplot.imshow(dneff, aspect='auto', extent=(R2[0], R2[-1], 1, 0))
+    pyplot.colorbar()
+
+    # Plot cutoff limits
+    for m, mode in enumerate(modes):
+        if mode == HE11:
+            continue
+        co = numpy.ma.masked_invalid(data['cutoff'][:, :, N2, m])
+        co = numpy.ma.filled(co, 0)
+        pyplot.contour(X, Y, co, [1550e-9], colors=(mode.color(asint=False),))
+
+    # Plot options
+    pyplot.ylim((0, 1))
+    pyplot.xlabel("Outer radius ($r_2$)")
+    pyplot.ylabel("$\\rho = r_1 / r_2$")
 
 
 if __name__ == '__main__':
     logging.captureWarnings(True)
     logging.basicConfig(level=logging.CRITICAL)
-    print(time.ctime())
+    # print(time.ctime())
     # run_tests()
-    run_simulation()
+    # run_simulation()
+    plot_modal_map("RCFS.npz")
+    pyplot.show()

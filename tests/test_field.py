@@ -19,23 +19,27 @@
 import unittest
 import os.path
 
-from fibermodes import FiberFactory, Mode, ModeFamily
+from fibermodes import FiberFactory, HE11, LP01
 from fibermodes.field import Field
 import numpy
 
 __dir__, _ = os.path.split(__file__)
 
 
-# TODO: write tests
-
-
 class TestField(unittest.TestCase):
+
+    """Test Field class.
+
+    Current test are only to ensure code executes without errors.
+    Tests that ensure fields are accurate should be written.
+
+    """
 
     def setUp(self):
         f = FiberFactory(os.path.join(__dir__, 'fiber/smf28.fiber'))
         fiber = f[0]
-        he11 = Mode(ModeFamily.HE, 1, 1)
-        self.field = Field(fiber, he11, 1550e-9, 7e-6)
+        self.field = Field(fiber, HE11, 1550e-9, 50e-6)
+        self.lpfield = Field(fiber, LP01, 1550e-9, 50e-6)
 
     def testFG(self):
         f = self.field.f(0)
@@ -48,6 +52,23 @@ class TestField(unittest.TestCase):
         self.assertTrue(numpy.all(f >= -1))
         self.assertTrue(numpy.all(g <= 1))
         self.assertTrue(numpy.all(g >= -1))
+
+    def testEx(self):
+        ex = self.field.Ex()
+        self.assertEqual(max(ex.ravel()), ex[50, 50])
+        self.assertAlmostEqual(ex[0, 0], 0)
+
+    def testEy(self):
+        ey = self.field.Ey()
+        self.assertTrue(numpy.all(ey < 0.01))
+        self.assertTrue(numpy.all(ey < self.field.Ex()))
+        self.assertAlmostEqual(ey[0, 0], 0)
+
+    def testEz(self):
+        ez = self.field.Ez()
+        self.assertAlmostEqual(ez[0, 0], 0)
+        self.assertTrue(numpy.all(ez < self.field.Ex()))
+
 
 if __name__ == "__main__":
     unittest.main()
