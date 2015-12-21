@@ -1,3 +1,21 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
+
+"""Electromagnetic fields computation."""
+
 import numpy
 from itertools import product
 from fibermodes import Mode, ModeFamily, Wavelength
@@ -6,7 +24,16 @@ from fibermodes import constants
 
 class Field(object):
 
-    """Electromagnetic field."""
+    """Electromagnetic field representation.
+
+    Args:
+        fiber(Fiber): Fiber object
+        mode(Mode): Mode
+        wl(Wavelength): Wavelength
+        r(float): Radius of the field to compute.
+        np(int): Number of points (field will be np x np)
+
+    """
 
     FTYPES = ('Ex', 'Ey', 'Ez', 'Er', 'Ephi', 'Et', 'Epol', 'Emod',
               'Hx', 'Hy', 'Hz', 'Hr', 'Hphi', 'Ht', 'Hpol', 'Hmod')
@@ -24,9 +51,27 @@ class Field(object):
         self.Phi = numpy.arctan2(self.Y, self.X)
 
     def f(self, phi0):
+        """Azimuthal dependency function.
+
+        Args:
+            phi0(float): Phase (rotation) of the field.
+
+        Returns:
+            2D array of values (ndarray). Values are between -1 and 1.
+
+        """
         return numpy.cos(self.mode.nu * self.Phi + phi0)
 
     def g(self, phi0):
+        """Azimuthal dependency function.
+
+        Args:
+            phi0(float): Phase (rotation) of the field.
+
+        Returns:
+            2D array of values (ndarray). Values are between -1 and 1.
+
+        """
         return -numpy.sin(self.mode.nu * self.Phi + phi0)
 
     def Ex(self, phi=0, theta=0):
@@ -352,7 +397,7 @@ class Field(object):
     def Aeff(self):
         """Estimation of mode effective area.
 
-        Suppose than r is large enough, such as |F(r, r)| = 0.
+        Suppose than r is large enough, such as \|F(r, r)\| = 0.
 
         """
         modF = self.Emod()

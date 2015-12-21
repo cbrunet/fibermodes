@@ -13,24 +13,22 @@
 # You should have received a copy of the GNU General Public License
 # along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Module for fixed index material."""
+"""Test suite for module fiber.material.air"""
 
-from .material import Material
+import unittest
+
+from fibermodes import Wavelength
+from fibermodes.fiber.material import Air
 
 
-class Fixed(Material):
+class TestAir(unittest.TestCase):
 
-    """Fixed index material class.
+    """Test suite for Air class"""
 
-    A material with a fixed index always have the same refractive index,
-    whatever the wavelength is.
+    def testIndex(self):
+        self.assertAlmostEqual(Air.n(Wavelength(0.5876e-6)), 1.00027717)
+        self.assertAlmostEqual(Air.n(Wavelength(1.55e-6)), 1.00027326)
 
-    """
 
-    name = "Fixed index"
-    info = "Fixed index"
-    nparams = 1
-
-    @classmethod
-    def n(cls, wl, n):
-        return n
+if __name__ == "__main__":
+    unittest.main()

@@ -196,7 +196,7 @@ class Fiber(object):
                     wl = fixed_point(f, w, xtol=tol, maxiter=maxiter)
                 except RuntimeError:
                     # FIXME: What should we do if it does not converge?
-                    self.logger.warning(
+                    self.logger.info(
                         "toWl: did not converged from {}µm "
                         "for V0 = {} (wl={})".format(w*1e6, V0, wl))
                 if wl > 0:

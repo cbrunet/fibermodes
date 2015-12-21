@@ -14,6 +14,7 @@ Modules list
     fiber.material
     fiber.geometry
     fiber.solver
+    field
     functions
     mode
     simulator

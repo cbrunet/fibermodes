@@ -2,6 +2,7 @@
 Multilayers fiber mode solver
 
 [![Build Status](https://travis-ci.org/cbrunet/fibermodes.svg?branch=master)](https://travis-ci.org/cbrunet/fibermodes)
+[![Coverage Status](https://coveralls.io/repos/cbrunet/fibermodes/badge.svg?branch=master&service=github)](https://coveralls.io/github/cbrunet/fibermodes?branch=master)
 
 API documentation available on http://fibermodes.rtfd.org/
 

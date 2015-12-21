@@ -1,3 +1,18 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
 """Test suite for slrc module"""
 
 import unittest
@@ -124,7 +139,7 @@ class TestSLRC(unittest.TestCase):
     def testConvertListToCode(self):
         x = SLRC([1, 2, 3])
         x.kind = 'code'
-        self.assertEqual(x(), [1, 2, 3])
+        self.assertEqual(x(), 1)
 
     def testConvertRangeToScalar(self):
         testRange = {'start': 0, 'end': 5, 'num': 6}
@@ -142,7 +157,7 @@ class TestSLRC(unittest.TestCase):
         testRange = {'start': 0, 'end': 5, 'num': 6}
         x = SLRC(testRange)
         x.kind = 'code'
-        self.assertEqual(x(), [0, 1, 2, 3, 4, 5])
+        self.assertEqual(x(), 0)
 
     def testConvertCodeToAnything(self):
         testCode = "return 0"

@@ -1,3 +1,19 @@
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """Miscellaneous mathematical functions."""
 
 from math import factorial
@@ -107,13 +123,14 @@ A = {
 def derivative(f, x, k, m, j, h, *args):
     """Numerical differentiation
 
-    f: function
-    x: parameter
-    k: differentiation order (1 to 5)
-    m: number of points (3 to 6)
-    j: central point (0 to m-1)
-    h: distance between points
-    *args: other function arguments
+    Args:
+        f(function): function
+        x(float): parameter
+        k(int): differentiation order (1 to 5)
+        m(int): number of points (3 to 6)
+        j(int): central point (0 to m-1)
+        h(float): distance between points
+        *args: other function arguments
 
     """
     C = factorial(k) / (factorial(m-1) * h**k)

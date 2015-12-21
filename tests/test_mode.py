@@ -1,11 +1,24 @@
-'''
-Created on 2014-05-01
+# This file is part of FiberModes.
+#
+# FiberModes is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# FiberModes is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with FiberModes.  If not, see <http://www.gnu.org/licenses/>.
 
-@author: cbrunet
-'''
+
 import unittest
 
 from fibermodes.mode import Mode, Family
+
+# TODO: test color function
 
 
 class TestMode(unittest.TestCase):
@@ -14,6 +27,20 @@ class TestMode(unittest.TestCase):
         self.assertEqual(Mode('HE', 1, 1), Mode('HE', 1, 1))
         self.assertNotEqual(Mode('HE', 1, 1), Mode('HE', 2, 1))
         self.assertNotEqual(Mode('HE', 1, 1), Mode('LP', 0, 1))
+
+    def testLpEq(self):
+        mode = Mode(Family.HE, 1, 1)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 0, 1))
+        mode = Mode(Family.HE, 2, 1)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 1, 1))
+        mode = Mode(Family.HE, 1, 2)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 0, 2))
+        mode = Mode(Family.EH, 1, 1)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 2, 1))
+        mode = Mode(Family.TM, 0, 1)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 1, 1))
+        mode = Mode(Family.TE, 0, 1)
+        self.assertEqual(mode.lpEq(), Mode(Family.LP, 1, 1))
 
     def testSortModes(self):
         modes = [
