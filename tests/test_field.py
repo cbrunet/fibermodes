@@ -19,7 +19,7 @@
 import unittest
 import os.path
 
-from fibermodes import FiberFactory, HE11, LP01
+from fibermodes import FiberFactory, HE11
 from fibermodes.field import Field
 import numpy
 
@@ -39,7 +39,6 @@ class TestField(unittest.TestCase):
         f = FiberFactory(os.path.join(__dir__, 'fiber/smf28.fiber'))
         fiber = f[0]
         self.field = Field(fiber, HE11, 1550e-9, 50e-6)
-        self.lpfield = Field(fiber, LP01, 1550e-9, 50e-6)
 
     def testFG(self):
         f = self.field.f(0)
@@ -68,6 +67,62 @@ class TestField(unittest.TestCase):
         ez = self.field.Ez()
         self.assertAlmostEqual(ez[0, 0], 0)
         self.assertTrue(numpy.all(ez < self.field.Ex()))
+
+    def testEr(self):
+        # TODO: add test
+        er = self.field.Er()
+
+    def testEphi(self):
+        # TODO: add test
+        ephi = self.field.Ephi()
+
+    def testEt(self):
+        ex = self.field.Ex()
+        et = self.field.Et()
+        self.assertTrue(numpy.all(numpy.abs(ex-et) < 1e-5))
+
+    def testEpol(self):
+        epol = self.field.Epol()
+        self.assertTrue(numpy.all(numpy.abs(epol) < 1e-2))
+
+    def testEmod(self):
+        emod = self.field.Emod()
+        self.assertTrue(numpy.all(emod > 0))
+
+    def testHx(self):
+        pass
+
+    def testHy(self):
+        pass
+
+    def testHz(self):
+        # TODO: add test
+        hz = self.field.Hz()
+
+    def testHr(self):
+        # TODO: add test
+        hr = self.field.Hr()
+
+    def testHphi(self):
+        # TODO: add test
+        hphi = self.field.Hphi()
+
+    def testHt(self):
+        # TODO: add test
+        ht = self.field.Ht()
+
+    def testHpol(self):
+        # TODO: add test
+        hpol = self.field.Hpol()
+
+    def testHmod(self):
+        hmod = self.field.Hmod()
+        self.assertTrue(numpy.all(hmod > 0))
+
+    def testAeff(self):
+        # TODO: add test
+        aeff = self.field.Aeff()
+        self.assertGreater(aeff, 0)
 
 
 if __name__ == "__main__":
