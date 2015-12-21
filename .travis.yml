@@ -15,6 +15,7 @@ before_install:
 # Install packages
 install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy # matplotlib nose dateutil pandas statsmodels
+  - pip install coverage
   - pip install coveralls
   # Coverage packages are on my binstar channel
   # - conda install --yes -c dan_blanchard python-coveralls nose-cov

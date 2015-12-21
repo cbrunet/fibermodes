@@ -240,14 +240,14 @@ def run_tests():
 def run_simulation():
     filename = "RCFS.npz"
     cleanup_file(filename)
-    nrho = 50
-    nr2 = 65
-    nc2 = 5
+    nrho = 10
+    nr2 = 9
+    nc2 = 3
     wl = 1550e-9
     numax = 10
     mmax = 5
 
-    R2 = numpy.linspace(2e-6, 10e-6, nr2)
+    R2 = numpy.linspace(2e-6, 8e-6, nr2)
     C2 = numpy.linspace(0.15, 0.25, nc2)
     result = compute_fiber(filename, nrho, R2, C2, wl, numax, mmax)
 
@@ -263,6 +263,5 @@ if __name__ == '__main__':
     logging.captureWarnings(True)
     logging.basicConfig(level=logging.CRITICAL)
     print(time.ctime())
-    run_tests()
-    # run_simulation()
-    # compute_fiber()
+    # run_tests()
+    run_simulation()
