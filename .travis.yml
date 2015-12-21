@@ -14,7 +14,7 @@ before_install:
   # - sudo ln -s /run/shm /dev/shm
 # Install packages
 install:
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy pip
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy nose pip
   - pip install coverage
   - pip install coveralls
   - python setup.py install
