@@ -21,4 +21,4 @@ install:
 
 script: nosetests
 
-after_sucsess: coveralls
+after_success: coveralls
