@@ -26,7 +26,9 @@ import os.path
 import numpy
 from fibermodes import Mode, FiberFactory, HE11
 from fibermodes.simulator import PSimulator as Simulator
+from fibermodes.fiber.material import Silica, SiO2GeO2
 from matplotlib import pyplot
+import matplotlib
 
 
 def measure_time(f):
@@ -238,55 +240,36 @@ def run_tests():
     cleanup_file(filename)
 
 
-def run_simulation():
-    filename = "RCFS.npz"
-    cleanup_file(filename)
-    nrho = 6
-    nr2 = 5
-    nc2 = 1
-    wl = 1550e-9
-    numax = 10
-    mmax = 5
-
-    R2 = numpy.linspace(2e-6, 8e-6, nr2)
-    C2 = numpy.linspace(0.15, 0.25, nc2)
-    compute_fiber(filename, nrho, R2, C2, wl, numax, mmax)
-
-
-def plot_modal_map(filename):
-    N2 = 0
-
-    nrho = 6
-    nr2 = 5
-    nc2 = 1
-
+def plot_modal_map(filename, nrho, R2, C2, n2, wl):
     pyplot.figure()
     data = numpy.load(filename)
     modes = [Mode(*a) for a in data['modes']]
-    R2 = numpy.linspace(2, 8, nr2)
     Rho = numpy.linspace(0, 1, nrho, endpoint=False)
-    X, Y = numpy.meshgrid(R2, Rho)
+    X, Y = numpy.meshgrid(R2*1e6, Rho)
 
     # Plot dneff map
-    dneff = numpy.empty((nrho, nr2))
+    dneff = numpy.empty((nrho, R2.size))
     dneff.fill(numpy.inf)
     for m1, mode1 in enumerate(modes[:-1]):
         for m2, mode2 in enumerate(modes[m1+1:], m1+1):
-            dn = numpy.abs(data['neff'][:, :, N2, m1] -
-                           data['neff'][:, :, N2, m2])
+            dn = numpy.abs(data['neff'][:, :, n2, m1] -
+                           data['neff'][:, :, n2, m2])
             dn = numpy.ma.masked_invalid(dn)
             dn = numpy.ma.filled(dn, numpy.inf)
             dneff = numpy.minimum(dneff, dn)
-    pyplot.imshow(dneff, aspect='auto', extent=(R2[0], R2[-1], 1, 0))
+    pyplot.imshow(dneff, aspect='auto',
+                  vmax=1e-4,
+                  norm=matplotlib.colors.PowerNorm(.5),
+                  extent=(R2[0]*1e6, R2[-1]*1e6, 1, 0))
     pyplot.colorbar()
 
     # Plot cutoff limits
     for m, mode in enumerate(modes):
         if mode == HE11:
             continue
-        co = numpy.ma.masked_invalid(data['cutoff'][:, :, N2, m])
+        co = numpy.ma.masked_invalid(data['cutoff'][:, :, n2, m])
         co = numpy.ma.filled(co, 0)
-        pyplot.contour(X, Y, co, [1550e-9], colors=(mode.color(asint=False),))
+        pyplot.contour(X, Y, co, [wl], colors=(mode.color(asint=False),))
 
     # Plot options
     pyplot.ylim((0, 1))
@@ -294,11 +277,41 @@ def plot_modal_map(filename):
     pyplot.ylabel("$\\rho = r_1 / r_2$")
 
 
+def plot_neff(filename, nrho, R2, C2, rho, n2, wl):
+    pyplot.figure()
+    data = numpy.load(filename)
+    modes = [Mode(*a) for a in data['modes']]
+
+    index1 = SiO2GeO2.n(wl, C2[n2])
+    index2 = Silica.n(wl)
+    Rho = numpy.linspace(0, 1, nrho, endpoint=False)
+
+    for m, mode in enumerate(modes):
+        neff = data['neff'][rho, :, n2, m]
+        b = ((numpy.square(neff) - index2*index2) /
+             (index1*index1 - index2*index2))
+        pyplot.plot(R2*1e6, b, label=str(mode), color=mode.color(asint=False))
+
+    pyplot.xlabel("Outer radius ($r_2$)")
+    pyplot.ylabel("$b = (n_{eff}^2 - n_2^2) / (n_1^2 - n_2^2) $")
+    pyplot.title("$\\rho={:.2f}, x_2={}$".format(Rho[rho], C2[n2]))
+    pyplot.legend(loc='best')
+
+
 if __name__ == '__main__':
     logging.captureWarnings(True)
     logging.basicConfig(level=logging.CRITICAL)
     # print(time.ctime())
+
+    filename = "RCFS.npz"
+    nrho = 20
+    nr2 = 25
+    nc2 = 1
+    R2 = numpy.linspace(2e-6, 8e-6, nr2)
+    C2 = numpy.linspace(0.15, 0.25, nc2)
+
     # run_tests()
-    # run_simulation()
-    plot_modal_map("RCFS.npz")
+    # compute_fiber(filename, nrho, R2, C2, numax=10, mmax=5)
+    plot_modal_map("RCFS.npz", nrho, R2, C2, n2=0, wl=1550e-9)
+    plot_neff("RCFS.npz", nrho, R2, C2, rho=6, n2=0, wl=1550e-9)
     pyplot.show()
